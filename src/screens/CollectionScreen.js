@@ -10,12 +10,11 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, GRADIENTS, RADIUS, SHADOW, getCategoryStyle } from '../config';
-import { EmptyState, ProgressBar } from '../components/UI';
+import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
+import { PixelPanel, EmptyState, ProgressBar } from '../components/UI';
+import PixelIcon from '../components/PixelIcon';
 import {
   getStickersByDate,
   getStreak,
@@ -26,15 +25,14 @@ import { format, parseISO, isToday, isYesterday } from 'date-fns';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = 12;
-const H_PADDING = 20;
+const H_PADDING = 18;
 const STICKER_SIZE = (SCREEN_WIDTH - H_PADDING * 2 - GRID_GAP * 2) / 3;
 
-/** Human friendly date label: Today / Yesterday / Month d, yyyy */
 function formatDateLabel(dateString) {
   const date = parseISO(dateString);
-  if (isToday(date)) return 'Today';
-  if (isYesterday(date)) return 'Yesterday';
-  return format(date, 'MMMM d, yyyy');
+  if (isToday(date)) return 'TODAY';
+  if (isYesterday(date)) return 'YESTERDAY';
+  return format(date, 'MMM d, yyyy').toUpperCase();
 }
 
 export default function CollectionScreen({ navigation }) {
@@ -82,7 +80,6 @@ export default function CollectionScreen({ navigation }) {
 
   const renderSticker = ({ item }) => {
     const categoryStyle = getCategoryStyle(item.category);
-
     return (
       <TouchableOpacity
         style={styles.stickerItem}
@@ -93,8 +90,8 @@ export default function CollectionScreen({ navigation }) {
           {item.imageUri ? (
             <Image source={{ uri: item.imageUri }} style={styles.stickerImage} />
           ) : (
-            <View style={[styles.stickerFallback, { backgroundColor: `${categoryStyle.color}22` }]}>
-              <Text style={styles.stickerFallbackEmoji}>{categoryStyle.emoji}</Text>
+            <View style={[styles.stickerFallback, { backgroundColor: `${categoryStyle.color}33` }]}>
+              <PixelIcon name={categoryStyle.icon} size={26} color={categoryStyle.color} />
             </View>
           )}
 
@@ -103,12 +100,8 @@ export default function CollectionScreen({ navigation }) {
             onPress={() => speakWord(item.word, item.language)}
             hitSlop={8}
           >
-            <Ionicons name="volume-medium" size={13} color={COLORS.primary} />
+            <PixelIcon name="sound" size={12} color={COLORS.primaryDark} />
           </TouchableOpacity>
-
-          <View style={[styles.categoryDot, { backgroundColor: categoryStyle.color }]}>
-            <Text style={styles.categoryDotEmoji}>{categoryStyle.emoji}</Text>
-          </View>
         </View>
 
         <Text style={styles.stickerWord} numberOfLines={1}>
@@ -129,7 +122,7 @@ export default function CollectionScreen({ navigation }) {
         <Text style={styles.dateText}>{formatDateLabel(item.date)}</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>
-            {item.items.length} {item.items.length === 1 ? 'word' : 'words'}
+            {item.items.length} {item.items.length === 1 ? 'WORD' : 'WORDS'}
           </Text>
         </View>
       </View>
@@ -146,58 +139,41 @@ export default function CollectionScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={GRADIENTS.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>My Sticker Book</Text>
+            <Text style={styles.title}>STICKER BOOK</Text>
             <Text style={styles.subGreeting}>
               {totalWords > 0
-                ? `${totalWords} ${totalWords === 1 ? 'word' : 'words'} collected 🎨`
-                : 'Your collection starts today ✨'}
+                ? `${totalWords} ${totalWords === 1 ? 'WORD' : 'WORDS'} COLLECTED`
+                : 'START YOUR COLLECTION TODAY'}
             </Text>
           </View>
 
           <View style={styles.streakChip}>
-            <Text style={styles.streakEmoji}>{streak.current > 0 ? '🔥' : '🌱'}</Text>
+            <PixelIcon name="flame" size={16} color={COLORS.streak} light={COLORS.sun} />
             <Text style={styles.streakNumber}>{streak.current}</Text>
           </View>
         </View>
 
-        <View style={styles.progressCard}>
+        <PixelPanel tone="alt" style={styles.progressCard}>
           <View style={styles.progressTop}>
             <Text style={styles.progressLabel}>
-              {goalReached ? 'Daily goal complete! 🎉' : "Today's progress"}
+              {goalReached ? 'GOAL COMPLETE!' : "TODAY'S PROGRESS"}
             </Text>
             <Text style={styles.progressCount}>
               {dailyCount}/{dailyGoal}
             </Text>
           </View>
-          <ProgressBar
-            progress={progress}
-            color={goalReached ? COLORS.mint : '#fff'}
-            trackColor="rgba(255,255,255,0.3)"
-            height={10}
-          />
-          {!goalReached ? (
-            <Text style={styles.progressHint}>
-              {Math.max(dailyGoal - dailyCount, 0)} more to keep your streak alive
-            </Text>
-          ) : (
-            <Text style={styles.progressHint}>Amazing work — see you tomorrow!</Text>
-          )}
-        </View>
-      </LinearGradient>
+          <ProgressBar progress={progress} color={goalReached ? COLORS.leaf : COLORS.sun} />
+        </PixelPanel>
+      </View>
 
       {stickerGroups.length === 0 ? (
         <EmptyState
-          emoji="📸"
-          title="No stickers yet!"
-          subtitle="Snap a photo of anything around you and we'll turn it into your first cute sticker."
+          mood="sleepy"
+          title="NO STICKERS YET"
+          subtitle="Snap a photo of anything around you and turn it into your first pixel sticker."
         />
       ) : (
         <FlatList
@@ -207,11 +183,7 @@ export default function CollectionScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.primary}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
           }
         />
       )}
@@ -225,50 +197,49 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: 62,
+    paddingTop: 60,
     paddingHorizontal: H_PADDING,
-    paddingBottom: 22,
-    borderBottomLeftRadius: RADIUS.xl,
-    borderBottomRightRadius: RADIUS.xl,
+    paddingBottom: 16,
+    backgroundColor: COLORS.panel,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.outline,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  greeting: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.2,
+  title: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: 1.5,
   },
   subGreeting: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.88)',
+    fontSize: 11,
+    color: COLORS.textLight,
     marginTop: 5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   streakChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     gap: 5,
   },
-  streakEmoji: {
-    fontSize: 17,
-  },
   streakNumber: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.text,
   },
   progressCard: {
-    marginTop: 20,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: RADIUS.md,
-    padding: 15,
+    marginTop: 16,
   },
   progressTop: {
     flexDirection: 'row',
@@ -277,48 +248,48 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   progressLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.textLight,
+    letterSpacing: 0.8,
   },
   progressCount: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  progressHint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 8,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
   },
   listContent: {
     padding: H_PADDING,
     paddingBottom: 120,
   },
   dateGroup: {
-    marginBottom: 26,
+    marginBottom: 24,
   },
   dateHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   dateText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '900',
     color: COLORS.text,
+    letterSpacing: 1,
   },
   countBadge: {
-    backgroundColor: `${COLORS.primary}14`,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
   countText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
+    letterSpacing: 0.5,
   },
   gridRow: {
     gap: GRID_GAP,
@@ -333,59 +304,43 @@ const styles = StyleSheet.create({
     height: STICKER_SIZE,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surface,
-    overflow: 'visible',
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    overflow: 'hidden',
     ...SHADOW.soft,
   },
   stickerImage: {
     width: '100%',
     height: '100%',
-    borderRadius: RADIUS.md,
   },
   stickerFallback: {
     width: '100%',
     height: '100%',
-    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  stickerFallbackEmoji: {
-    fontSize: 30,
   },
   miniSpeakButton: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#fff',
-    borderRadius: RADIUS.pill,
-    padding: 5,
-    ...SHADOW.soft,
-  },
-  categoryDot: {
-    position: 'absolute',
-    bottom: -4,
-    left: -2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: 4,
+    right: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.sm,
     borderWidth: 2,
-    borderColor: COLORS.surface,
-  },
-  categoryDotEmoji: {
-    fontSize: 10,
+    borderColor: COLORS.outline,
+    padding: 3,
   },
   stickerWord: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '900',
     color: COLORS.text,
-    marginTop: 9,
+    marginTop: 8,
     textAlign: 'center',
   },
   stickerEnglish: {
-    fontSize: 11,
+    fontSize: 10,
     color: COLORS.textMuted,
     marginTop: 1,
     textAlign: 'center',
+    fontWeight: '700',
   },
 });

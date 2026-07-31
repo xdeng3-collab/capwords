@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, PRICING } from '../config';
+import { COLORS, PRICING, RADIUS, SHADOW } from '../config';
+import PixelIcon from '../components/PixelIcon';
 import { updateSubscription } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -100,9 +100,9 @@ export default function SubscriptionScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="close" size={24} color={COLORS.text} />
+          <PixelIcon name="close" size={18} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Upgrade to Pro ✨</Text>
+        <Text style={styles.title}>UPGRADE TO PRO</Text>
         <Text style={styles.subtitle}>
           Unlock unlimited learning and premium features
         </Text>
@@ -110,7 +110,7 @@ export default function SubscriptionScreen({ navigation }) {
 
       {/* Cost Breakdown */}
       <View style={styles.costBreakdown}>
-        <Text style={styles.costTitle}>📊 Our Cost Per Word</Text>
+        <Text style={styles.costTitle}>OUR COST PER WORD</Text>
         <View style={styles.costRow}>
           <Text style={styles.costLabel}>AI Image Recognition:</Text>
           <Text style={styles.costValue}>$0.00007</Text>
@@ -128,7 +128,7 @@ export default function SubscriptionScreen({ navigation }) {
           <Text style={styles.costTotalValue}>~$0.0025</Text>
         </View>
         <Text style={styles.costNote}>
-          We charge ${PRICING.perWord}/word to cover costs + continue development 🙏
+          We charge ${PRICING.perWord}/word to cover costs and continue development.
         </Text>
       </View>
 
@@ -168,7 +168,7 @@ export default function SubscriptionScreen({ navigation }) {
           <View style={styles.planFeatures}>
             {plan.features.map((feature, index) => (
               <View key={index} style={styles.featureRow}>
-                <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                <PixelIcon name="check" size={16} color={COLORS.success} />
                 <Text style={styles.featureText}>{feature}</Text>
               </View>
             ))}
@@ -202,7 +202,7 @@ export default function SubscriptionScreen({ navigation }) {
 
       {/* Free tier info */}
       <View style={styles.freeInfo}>
-        <Ionicons name="information-circle-outline" size={18} color={COLORS.textLight} />
+        <PixelIcon name="star" size={14} color={COLORS.textLight} />
         <Text style={styles.freeInfoText}>
           Free tier includes {PRICING.freeWordsPerDay} words per day. No credit card required.
         </Text>
@@ -231,30 +231,34 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '900',
     color: COLORS.text,
     marginBottom: 8,
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: COLORS.textLight,
     textAlign: 'center',
+    fontWeight: '600',
   },
   costBreakdown: {
     marginHorizontal: 20,
     marginBottom: 20,
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: RADIUS.md,
     padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    ...SHADOW.soft,
   },
   costTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '900',
     color: COLORS.text,
     marginBottom: 12,
+    letterSpacing: 0.8,
   },
   costRow: {
     flexDirection: 'row',
@@ -271,73 +275,78 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   costTotal: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.panel,
     marginTop: 8,
     paddingTop: 8,
   },
   costTotalLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '900',
     color: COLORS.text,
   },
   costTotalValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
   },
   costNote: {
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 8,
     textAlign: 'center',
+    fontWeight: '600',
   },
   planCard: {
     marginHorizontal: 20,
-    marginBottom: 14,
+    marginBottom: 16,
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
+    borderRadius: RADIUS.md,
     padding: 18,
-    borderWidth: 2,
-    borderColor: COLORS.border,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    ...SHADOW.soft,
   },
   planCardSelected: {
-    borderColor: COLORS.primary,
+    borderColor: COLORS.primaryDark,
+    backgroundColor: `${COLORS.sun}22`,
   },
   planCardPopular: {
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    ...SHADOW.card,
   },
   popularBadge: {
     position: 'absolute',
-    top: -10,
+    top: -12,
     right: 16,
     backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   popularText: {
-    color: '#fff',
+    color: '#FBF3E0',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   savingsBadge: {
     position: 'absolute',
-    top: -10,
+    top: -12,
     right: 16,
     backgroundColor: COLORS.success,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: RADIUS.sm,
   },
   savingsText: {
-    color: '#fff',
+    color: '#FBF3E0',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   planHeader: {
     flexDirection: 'row',
@@ -347,25 +356,27 @@ const styles = StyleSheet.create({
   },
   planName: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '900',
     color: COLORS.text,
   },
   planDescription: {
     fontSize: 13,
     color: COLORS.textLight,
     marginTop: 2,
+    fontWeight: '600',
   },
   planPricing: {
     alignItems: 'flex-end',
   },
   planPrice: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
   },
   planPeriod: {
     fontSize: 12,
     color: COLORS.textLight,
+    fontWeight: '600',
   },
   planFeatures: {
     gap: 8,
@@ -378,18 +389,20 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 14,
     color: COLORS.text,
+    fontWeight: '600',
   },
   packsContainer: {
     marginTop: 14,
     paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.panel,
   },
   packsTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '900',
     color: COLORS.textLight,
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   packsRow: {
     flexDirection: 'row',
@@ -397,33 +410,41 @@ const styles = StyleSheet.create({
   },
   packItem: {
     flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     padding: 10,
     alignItems: 'center',
   },
   packWords: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontWeight: '900',
+    color: COLORS.primaryDark,
   },
   packPrice: {
     fontSize: 12,
     color: COLORS.textLight,
     marginTop: 2,
+    fontWeight: '700',
   },
   purchaseButton: {
     marginHorizontal: 20,
     marginTop: 10,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 14,
+    backgroundColor: COLORS.leaf,
+    paddingVertical: 15,
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
     alignItems: 'center',
+    ...SHADOW.glow,
   },
   purchaseButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
+    color: '#FBF3E0',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   freeInfo: {
     flexDirection: 'row',
@@ -436,6 +457,7 @@ const styles = StyleSheet.create({
   freeInfoText: {
     fontSize: 13,
     color: COLORS.textLight,
+    fontWeight: '600',
   },
   bottomPadding: {
     height: 40,

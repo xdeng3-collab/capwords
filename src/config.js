@@ -7,18 +7,18 @@ export const DEEPSEEK_MODEL = 'deepseek-chat'; // Flash model
 
 // Supported languages
 export const LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'en', name: 'English', short: 'EN' },
+  { code: 'zh', name: '中文', short: 'ZH' },
+  { code: 'es', name: 'Español', short: 'ES' },
+  { code: 'fr', name: 'Français', short: 'FR' },
+  { code: 'de', name: 'Deutsch', short: 'DE' },
+  { code: 'ja', name: '日本語', short: 'JA' },
+  { code: 'ko', name: '한국어', short: 'KO' },
+  { code: 'pt', name: 'Português', short: 'PT' },
+  { code: 'it', name: 'Italiano', short: 'IT' },
+  { code: 'ru', name: 'Русский', short: 'RU' },
+  { code: 'ar', name: 'العربية', short: 'AR' },
+  { code: 'hi', name: 'हिन्दी', short: 'HI' },
 ];
 
 // Pricing Configuration
@@ -43,48 +43,80 @@ export const MIN_DAILY_GOAL = 1;
 export const MAX_DAILY_GOAL = 50;
 export const GOAL_CHANGE_COOLDOWN_DAYS = 7; // Can change goal once a week
 
-// App Theme Colors
+// ==================== Pet ====================
+// Pet mood is derived from streak + daily progress (Duolingo style).
+export const PET = {
+  defaultName: 'Biscuit',
+  maxNameLength: 12,
+};
+
+// Mood levels, worst -> best. Drives pet expression and copy.
+export const PET_MOODS = {
+  sad: {
+    key: 'sad',
+    label: 'misses you',
+    line: "I haven't seen a new word in a while...",
+  },
+  neutral: {
+    key: 'neutral',
+    label: 'is waiting',
+    line: 'Ready to learn a word today?',
+  },
+  content: {
+    key: 'content',
+    label: 'is happy',
+    line: 'Nice! Keep the words coming.',
+  },
+  happy: {
+    key: 'happy',
+    label: 'is thrilled',
+    line: 'You hit your goal! I am so proud!',
+  },
+  sleepy: {
+    key: 'sleepy',
+    label: 'is napping',
+    line: 'Zzz... wake me with a new word.',
+  },
+};
+
+// Stardew-inspired retro pixel palette.
 export const COLORS = {
-  primary: '#7C6BFF',
-  primaryLight: '#A99BFF',
-  primaryDark: '#5B4BD6',
-  secondary: '#FF7BA9',
-  accent: '#4ECDC4',
-  mint: '#5FD9A6',
-  sunny: '#FFC93C',
-  peach: '#FFB088',
-  sky: '#6FC8FF',
-  success: '#34D399',
-  warning: '#FBBF24',
-  danger: '#FB7185',
-  background: '#F6F5FF',
-  surface: '#FFFFFF',
-  surfaceAlt: '#FBFAFF',
-  text: '#2B2D42',
-  textLight: '#6B6F8D',
-  textMuted: '#A9AEC7',
-  border: '#E8E6F7',
-  shadow: 'rgba(124,107,255,0.18)',
-  streak: '#FF8A3D',
+  primary: '#C98A3B', // warm wood/amber
+  primaryLight: '#E8B873',
+  primaryDark: '#8C5A22',
+  secondary: '#D96C6C', // barn red
+  accent: '#5BA88C', // sage green
+  leaf: '#7CB06A',
+  leafDark: '#4E7B45',
+  sky: '#8FC6E8',
+  water: '#5D8FC4',
+  sun: '#F2C14E',
+  berry: '#B5638F',
+  success: '#6BAF5A',
+  warning: '#E0A02E',
+  danger: '#C1584E',
+  // Surfaces evoke parchment / wood UI panels
+  background: '#F3E9D2',
+  backgroundAlt: '#EADBBB',
+  surface: '#FBF3E0',
+  surfaceAlt: '#F0E2C4',
+  panel: '#E8D6AE',
+  text: '#4A3826',
+  textLight: '#6F5A41',
+  textMuted: '#A38F6F',
+  // Pixel outlines are dark brown, not black, for a softer retro look
+  outline: '#3A2A1A',
+  outlineSoft: '#6B4E33',
+  streak: '#E0742F',
 };
 
-// Playful gradient pairs used across the app
-export const GRADIENTS = {
-  primary: ['#8B7BFF', '#6C5CE7'],
-  sunset: ['#FF9A8B', '#FF6A88'],
-  mint: ['#6EE7B7', '#34D399'],
-  sky: ['#7DD3FC', '#38BDF8'],
-  candy: ['#FDA7DF', '#D980FA'],
-  sunny: ['#FFD86F', '#FC9842'],
-};
-
-// Rounded, friendly geometry
+// Pixel geometry: tiny, consistent corner radii (near-square for retro feel)
 export const RADIUS = {
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 32,
-  pill: 999,
+  sm: 2,
+  md: 4,
+  lg: 6,
+  xl: 8,
+  pill: 10,
 };
 
 export const SPACING = {
@@ -95,51 +127,52 @@ export const SPACING = {
   xl: 30,
 };
 
-// Soft, elevated card shadow
+// Hard-edged "pixel" drop shadow (offset, no blur) for the retro UI look.
 export const SHADOW = {
   card: {
-    shadowColor: 'rgba(91,75,214,0.22)',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowColor: '#3A2A1A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 0,
+    elevation: 4,
   },
   soft: {
-    shadowColor: 'rgba(91,75,214,0.14)',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: '#3A2A1A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    elevation: 2,
   },
   glow: {
-    shadowColor: 'rgba(124,107,255,0.45)',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowColor: '#3A2A1A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 0,
+    elevation: 6,
   },
 };
 
-// Encouraging copy shown after capturing a word
+// Encouraging copy shown after capturing a word (no emojis).
 export const CELEBRATIONS = [
-  { emoji: '🎉', text: 'Nice catch!' },
-  { emoji: '✨', text: 'New word unlocked!' },
-  { emoji: '🌟', text: 'You are on fire!' },
-  { emoji: '🥳', text: 'Sticker collected!' },
-  { emoji: '🚀', text: 'Vocabulary boost!' },
-  { emoji: '💫', text: 'Beautifully done!' },
+  'Nice catch!',
+  'New word unlocked!',
+  'You are on a roll!',
+  'Sticker collected!',
+  'Vocabulary up!',
+  'Beautifully done!',
 ];
 
-// Friendly pastel palette assigned to sticker categories
+// Retro palette assigned to sticker categories (icon key + color).
+// The `icon` maps to a pixel glyph rendered by PixelIcon, never an emoji.
 export const CATEGORY_STYLES = {
-  food: { emoji: '🍎', color: '#FF7BA9' },
-  animal: { emoji: '🐾', color: '#FFC93C' },
-  object: { emoji: '📦', color: '#7C6BFF' },
-  nature: { emoji: '🌿', color: '#5FD9A6' },
-  drink: { emoji: '🥤', color: '#6FC8FF' },
-  clothing: { emoji: '👕', color: '#FFB088' },
-  vehicle: { emoji: '🚗', color: '#4ECDC4' },
-  other: { emoji: '🎨', color: '#A99BFF' },
+  food: { icon: 'apple', color: '#D96C6C' },
+  animal: { icon: 'paw', color: '#C98A3B' },
+  object: { icon: 'box', color: '#8C7BC0' },
+  nature: { icon: 'leaf', color: '#7CB06A' },
+  drink: { icon: 'drop', color: '#5D8FC4' },
+  clothing: { icon: 'shirt', color: '#E0A02E' },
+  vehicle: { icon: 'wheel', color: '#5BA88C' },
+  other: { icon: 'star', color: '#B5638F' },
 };
 
 export function getCategoryStyle(category) {

@@ -9,11 +9,10 @@ import {
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { COLORS, GRADIENTS, RADIUS, SHADOW, getCategoryStyle } from '../config';
-import { Card, GradientButton, Pill } from '../components/UI';
+import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
+import { PixelPanel, PixelButton, Pill } from '../components/UI';
+import PixelIcon from '../components/PixelIcon';
 
 export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
@@ -25,10 +24,7 @@ export default function StickerDetailScreen({ route, navigation }) {
   };
 
   const details = [
-    sticker.category && {
-      label: 'Category',
-      value: `${categoryStyle.emoji}  ${sticker.category}`,
-    },
+    sticker.category && { label: 'Category', value: sticker.category },
     sticker.language && { label: 'Language', value: sticker.language.toUpperCase() },
     sticker.createdAt && {
       label: 'Learned on',
@@ -39,35 +35,24 @@ export default function StickerDetailScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
+          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sticker</Text>
+        <Text style={styles.headerTitle}>STICKER</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.content}>
         {/* Framed sticker */}
-        <LinearGradient
-          colors={GRADIENTS.candy}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.imageFrame}
-        >
-          <View style={styles.imageInner}>
-            {sticker.imageUri ? (
-              <Image source={{ uri: sticker.imageUri }} style={styles.image} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Text style={styles.placeholderEmoji}>{categoryStyle.emoji}</Text>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
+        <View style={styles.imageFrame}>
+          {sticker.imageUri ? (
+            <Image source={{ uri: sticker.imageUri }} style={styles.image} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <PixelIcon name={categoryStyle.icon} size={72} color={categoryStyle.color} />
+            </View>
+          )}
+        </View>
 
         {/* Word */}
         <View style={styles.wordSection}>
@@ -78,22 +63,22 @@ export default function StickerDetailScreen({ route, navigation }) {
           {sticker.english ? <Text style={styles.english}>{sticker.english}</Text> : null}
           <Pill
             label={sticker.category || 'other'}
-            emoji={categoryStyle.emoji}
+            icon={categoryStyle.icon}
             color={categoryStyle.color}
             style={styles.pill}
           />
         </View>
 
-        <GradientButton
+        <PixelButton
           label="Listen to pronunciation"
-          icon="volume-medium"
+          icon="sound"
           onPress={speakWord}
           size="lg"
           style={styles.listenButton}
         />
 
         {details.length > 0 ? (
-          <Card style={styles.detailsCard}>
+          <PixelPanel style={styles.detailsCard}>
             {details.map((detail, index) => (
               <View
                 key={detail.label}
@@ -103,7 +88,7 @@ export default function StickerDetailScreen({ route, navigation }) {
                 <Text style={styles.detailValue}>{detail.value}</Text>
               </View>
             ))}
-          </Card>
+          </PixelPanel>
         ) : null}
       </View>
     </ScrollView>
@@ -111,13 +96,8 @@ export default function StickerDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 120 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -128,100 +108,59 @@ const styles = StyleSheet.create({
   },
   backButton: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.pill,
-    padding: 9,
-    ...SHADOW.soft,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    padding: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  content: {
-    padding: 20,
-    alignItems: 'center',
-  },
+  headerTitle: { fontSize: 16, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
+  headerSpacer: { width: 40 },
+  content: { padding: 20, alignItems: 'center' },
   imageFrame: {
     width: 216,
     height: 216,
-    borderRadius: RADIUS.xl,
-    padding: 5,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 4,
+    borderColor: COLORS.outline,
+    overflow: 'hidden',
     marginBottom: 22,
     ...SHADOW.glow,
   },
-  imageInner: {
-    flex: 1,
-    borderRadius: RADIUS.xl - 4,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
+  image: { width: '100%', height: '100%' },
   imagePlaceholder: {
     flex: 1,
     backgroundColor: COLORS.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholderEmoji: {
-    fontSize: 60,
-  },
-  wordSection: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  wordSection: { alignItems: 'center', marginBottom: 24 },
   word: {
-    fontSize: 33,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
-  pronunciation: {
-    fontSize: 17,
-    color: COLORS.textLight,
-    marginTop: 5,
-  },
-  english: {
-    fontSize: 15,
-    color: COLORS.textMuted,
-    marginTop: 3,
-  },
-  pill: {
-    marginTop: 11,
-  },
-  listenButton: {
-    width: '100%',
-    marginBottom: 22,
-  },
-  detailsCard: {
-    width: '100%',
-  },
+  pronunciation: { fontSize: 17, color: COLORS.textLight, marginTop: 5, fontWeight: '700' },
+  english: { fontSize: 15, color: COLORS.textMuted, marginTop: 3, fontWeight: '700' },
+  pill: { marginTop: 12 },
+  listenButton: { width: '100%', marginBottom: 22 },
+  detailsCard: { width: '100%' },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.panel,
   },
-  detailRowLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 2,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    fontWeight: '600',
-  },
+  detailRowLast: { borderBottomWidth: 0, paddingBottom: 2 },
+  detailLabel: { fontSize: 13, color: COLORS.textLight, fontWeight: '800' },
   detailValue: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '900',
     color: COLORS.text,
-    textTransform: 'capitalize',
+    textTransform: 'uppercase',
   },
 });

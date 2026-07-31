@@ -8,10 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, GRADIENTS, LANGUAGES, RADIUS, SHADOW } from '../config';
-import { Card } from '../components/UI';
+import { COLORS, LANGUAGES, RADIUS } from '../config';
+import { PixelPanel } from '../components/UI';
+import PixelIcon from '../components/PixelIcon';
 import {
   getUserProfile,
   updateUserProfile,
@@ -19,13 +18,14 @@ import {
   getSubscription,
   getStickers,
   canChangeGoal,
+  getPet,
 } from '../services/storageService';
 
 const PLAN_LABELS = {
-  free: { title: 'Free Plan', detail: '3 free words each day', emoji: '🌱' },
-  per_word: { title: 'Pay Per Word', detail: 'Word pack balance', emoji: '🎟️' },
-  monthly: { title: 'Monthly Pro', detail: 'Unlimited words', emoji: '⭐' },
-  yearly: { title: 'Yearly Pro', detail: 'Unlimited words', emoji: '👑' },
+  free: { title: 'Free Plan', detail: '3 free words each day', icon: 'seed' },
+  per_word: { title: 'Pay Per Word', detail: 'Word pack balance', icon: 'star' },
+  monthly: { title: 'Monthly Pro', detail: 'Unlimited words', icon: 'trophy' },
+  yearly: { title: 'Yearly Pro', detail: 'Unlimited words', icon: 'trophy' },
 };
 
 export default function ProfileScreen({ navigation }) {
@@ -33,19 +33,22 @@ export default function ProfileScreen({ navigation }) {
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [subscription, setSubscription] = useState(null);
   const [totalWords, setTotalWords] = useState(0);
+  const [petName, setPetName] = useState('');
 
   const loadData = useCallback(async () => {
-    const [p, s, sub, stickers] = await Promise.all([
+    const [p, s, sub, stickers, pet] = await Promise.all([
       getUserProfile(),
       getStreak(),
       getSubscription(),
       getStickers(),
+      getPet(),
     ]);
 
     setProfile(p);
     setStreak(s);
     setSubscription(sub);
     setTotalWords(stickers.length);
+    setPetName(pet.name);
   }, []);
 
   useFocusEffect(
@@ -58,8 +61,8 @@ export default function ProfileScreen({ navigation }) {
     const canChange = await canChangeGoal();
     if (!canChange) {
       Alert.alert(
-        'Not just yet 🗓️',
-        'You can change your daily goal once a week. This keeps your habit nice and steady!'
+        'Not just yet',
+        'You can change your daily goal once a week. This keeps your habit nice and steady.'
       );
       return;
     }
@@ -67,7 +70,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const showComingSoon = (feature) =>
-    Alert.alert(`${feature}`, 'This is coming in a future update. Thanks for your patience! 💜');
+    Alert.alert(feature, 'This is coming in a future update. Thanks for your patience!');
 
   if (!profile) {
     return <View style={styles.container} />;
@@ -89,9 +92,9 @@ export default function ProfileScreen({ navigation }) {
     .toUpperCase();
 
   const stats = [
-    { label: 'Words', value: totalWords, emoji: '📚' },
-    { label: 'Streak', value: streak.current, emoji: '🔥' },
-    { label: 'Best', value: streak.longest, emoji: '🏆' },
+    { label: 'WORDS', value: totalWords, icon: 'book' },
+    { label: 'STREAK', value: streak.current, icon: 'flame' },
+    { label: 'BEST', value: streak.longest, icon: 'trophy' },
   ];
 
   return (
@@ -100,70 +103,58 @@ export default function ProfileScreen({ navigation }) {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient
-        colors={GRADIENTS.primary}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.avatarRing}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+      <View style={styles.header}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <Text style={styles.userName}>{profile.name}</Text>
         <Text style={styles.userSubtext}>
-          Learning {targetLang?.flag} {targetLang?.name}
+          LEARNING {targetLang?.name?.toUpperCase()} WITH {petName.toUpperCase()}
         </Text>
 
         <View style={styles.statsRow}>
           {stats.map((stat) => (
-            <View key={stat.label} style={styles.statBox}>
-              <Text style={styles.statEmoji}>{stat.emoji}</Text>
+            <PixelPanel key={stat.label} tone="alt" style={styles.statBox}>
+              <PixelIcon name={stat.icon} size={18} color={COLORS.primary} light={COLORS.sun} />
               <Text style={styles.statNumber}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
+            </PixelPanel>
           ))}
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Subscription */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your plan</Text>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('Subscription')}
-        >
-          <Card style={styles.planCard}>
+        <Text style={styles.sectionTitle}>YOUR PLAN</Text>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Subscription')}>
+          <PixelPanel style={styles.planCard}>
             <View style={styles.planLeft}>
-              <View style={styles.planEmojiWrap}>
-                <Text style={styles.planEmoji}>{plan.emoji}</Text>
+              <View style={styles.iconBadge}>
+                <PixelIcon name={plan.icon} size={20} color={COLORS.primary} light={COLORS.sun} />
               </View>
               <View style={styles.planTextWrap}>
                 <Text style={styles.planTitle}>{plan.title}</Text>
                 <Text style={styles.planDetail}>{planDetail}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={19} color={COLORS.textMuted} />
-          </Card>
+            <PixelIcon name="chevron" size={16} color={COLORS.textMuted} />
+          </PixelPanel>
         </TouchableOpacity>
       </View>
 
       {/* Learning settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Learning</Text>
-
+        <Text style={styles.sectionTitle}>LEARNING</Text>
         <MenuRow
-          emoji="🎯"
+          icon="target"
           label={`${profile.dailyGoal} words per day`}
-          hint="Daily goal"
+          hint="DAILY GOAL"
           onPress={handleChangeGoal}
         />
-
         <MenuRow
-          emoji={targetLang?.flag || '🌍'}
+          icon="chat"
           label={targetLang?.name || 'Choose a language'}
-          hint="Target language"
+          hint="TARGET LANGUAGE"
           onPress={() =>
             navigation.navigate('LanguageSelect', {
               current: profile.targetLanguage,
@@ -178,211 +169,117 @@ export default function ProfileScreen({ navigation }) {
 
       {/* More */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>More</Text>
-        <MenuRow emoji="⚙️" label="App settings" onPress={() => showComingSoon('App settings')} />
-        <MenuRow
-          emoji="💬"
-          label="Help & support"
-          onPress={() => showComingSoon('Help & support')}
-        />
-        <MenuRow
-          emoji="🔒"
-          label="Privacy policy"
-          onPress={() => showComingSoon('Privacy policy')}
-        />
+        <Text style={styles.sectionTitle}>MORE</Text>
+        <MenuRow icon="gear" label="App settings" onPress={() => showComingSoon('App settings')} />
+        <MenuRow icon="chat" label="Help & support" onPress={() => showComingSoon('Help & support')} />
+        <MenuRow icon="lock" label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} />
       </View>
 
-      <Text style={styles.footer}>Made with 💜 for curious minds</Text>
+      <Text style={styles.footer}>MADE FOR CURIOUS MINDS</Text>
     </ScrollView>
   );
 }
 
-/** A single rounded settings row with an emoji badge. */
-function MenuRow({ emoji, label, hint, onPress }) {
+function MenuRow({ icon, label, hint, onPress }) {
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
-      <Card style={styles.menuItem}>
+      <PixelPanel style={styles.menuItem}>
         <View style={styles.menuLeft}>
-          <View style={styles.menuEmojiWrap}>
-            <Text style={styles.menuEmoji}>{emoji}</Text>
+          <View style={styles.iconBadge}>
+            <PixelIcon name={icon} size={18} color={COLORS.primary} light={COLORS.sun} />
           </View>
           <View>
             {hint ? <Text style={styles.menuHint}>{hint}</Text> : null}
             <Text style={styles.menuText}>{label}</Text>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={19} color={COLORS.textMuted} />
-      </Card>
+        <PixelIcon name="chevron" size={16} color={COLORS.textMuted} />
+      </PixelPanel>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    paddingBottom: 120,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 120 },
   header: {
     paddingTop: 64,
-    paddingBottom: 26,
+    paddingBottom: 22,
     paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomLeftRadius: RADIUS.xl,
-    borderBottomRightRadius: RADIUS.xl,
-  },
-  avatarRing: {
-    padding: 4,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: COLORS.panel,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.outline,
   },
   avatar: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  userName: {
-    fontSize: 23,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 12,
-  },
-  userSubtext: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.88)',
-    marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignSelf: 'stretch',
-    marginTop: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 74,
+    height: 74,
     borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-  },
-  statBox: {
-    flex: 1,
+    backgroundColor: COLORS.sun,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statEmoji: {
-    fontSize: 17,
-  },
-  statNumber: {
-    fontSize: 21,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 3,
-  },
-  statLabel: {
+  avatarText: { fontSize: 26, fontWeight: '900', color: COLORS.primaryDark },
+  userName: { fontSize: 22, fontWeight: '900', color: COLORS.text, marginTop: 12, letterSpacing: 0.5 },
+  userSubtext: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 1,
-    fontWeight: '600',
-  },
-  section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
     color: COLORS.textLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
+    marginTop: 4,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  statsRow: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 20 },
+  statBox: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  statNumber: { fontSize: 20, fontWeight: '900', color: COLORS.text, marginTop: 5 },
+  statLabel: { fontSize: 9, color: COLORS.textLight, marginTop: 1, fontWeight: '900', letterSpacing: 0.5 },
+  section: { marginTop: 22, paddingHorizontal: 20 },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.textLight,
+    letterSpacing: 1,
     marginBottom: 10,
-    marginLeft: 4,
+    marginLeft: 2,
   },
-  planCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  planLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    flex: 1,
-  },
-  planEmojiWrap: {
-    width: 44,
-    height: 44,
+  planCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  planLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  iconBadge: {
+    width: 42,
+    height: 42,
     borderRadius: RADIUS.sm,
-    backgroundColor: `${COLORS.sunny}22`,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  planEmoji: {
-    fontSize: 21,
-  },
-  planTextWrap: {
-    flex: 1,
-  },
-  planTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  planDetail: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
+  planTextWrap: { flex: 1 },
+  planTitle: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  planDetail: { fontSize: 12, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
-    paddingVertical: 13,
+    paddingVertical: 11,
   },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    flex: 1,
-  },
-  menuEmojiWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  menuEmoji: {
-    fontSize: 19,
-  },
+  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   menuHint: {
-    fontSize: 11,
+    fontSize: 9,
     color: COLORS.textMuted,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    fontWeight: '900',
+    letterSpacing: 0.6,
     marginBottom: 2,
   },
-  menuText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
+  menuText: { fontSize: 15, fontWeight: '800', color: COLORS.text },
   footer: {
     textAlign: 'center',
     color: COLORS.textMuted,
-    fontSize: 13,
+    fontSize: 11,
     marginTop: 28,
-    fontWeight: '600',
+    fontWeight: '900',
+    letterSpacing: 1,
   },
 });

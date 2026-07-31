@@ -2,11 +2,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
-import { Platform, StyleSheet, View } from 'react-native';
-import { COLORS, RADIUS } from '../config';
+import { Platform, StyleSheet, View, Text } from 'react-native';
+import { COLORS, RADIUS, SHADOW } from '../config';
+import PixelIcon from '../components/PixelIcon';
 
 // Screens
+import PetScreen from '../screens/PetScreen';
 import CameraScreen from '../screens/CameraScreen';
 import CollectionScreen from '../screens/CollectionScreen';
 import FriendsScreen from '../screens/FriendsScreen';
@@ -21,13 +22,21 @@ import StickerDetailScreen from '../screens/StickerDetailScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
+function PetStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="PetMain" component={PetScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function CameraStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="CameraMain" component={CameraScreen} />
-      <Stack.Screen 
-        name="StickerResult" 
-        component={StickerResultScreen} 
+      <Stack.Screen
+        name="StickerResult"
+        component={StickerResultScreen}
         options={{ presentation: 'modal' }}
       />
       <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
@@ -64,57 +73,46 @@ function ProfileStack() {
   );
 }
 
-const ICONS = {
-  Camera: ['camera', 'camera-outline'],
-  Collection: ['grid', 'grid-outline'],
-  Friends: ['people', 'people-outline'],
-  Profile: ['happy', 'happy-outline'],
+const TAB_ICONS = {
+  Buddy: 'heart',
+  Camera: 'camera',
+  Collection: 'grid',
+  Friends: 'people',
+  Profile: 'gear',
 };
+
+function TabBarIcon({ routeName, focused, color }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <PixelIcon name={TAB_ICONS[routeName] || 'star'} size={focused ? 20 : 18} color={color} />
+    </View>
+  );
+}
 
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          const [active, inactive] = ICONS[route.name] || ICONS.Camera;
-          return (
-            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-              <Ionicons
-                name={focused ? active : inactive}
-                size={focused ? size + 1 : size}
-                color={color}
-              />
-            </View>
-          );
-        },
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarIcon: ({ focused, color }) => (
+          <TabBarIcon routeName={route.name} focused={focused} color={color} />
+        ),
+        tabBarActiveTintColor: COLORS.primaryDark,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: styles.tabBar,
         tabBarItemStyle: styles.tabBarItem,
         tabBarLabelStyle: styles.tabBarLabel,
       })}
     >
-      <Tab.Screen
-        name="Camera"
-        component={CameraStack}
-        options={{ tabBarLabel: 'Capture' }}
-      />
+      <Tab.Screen name="Buddy" component={PetStack} options={{ tabBarLabel: 'BUDDY' }} />
+      <Tab.Screen name="Camera" component={CameraStack} options={{ tabBarLabel: 'SNAP' }} />
       <Tab.Screen
         name="Collection"
         component={CollectionStack}
-        options={{ tabBarLabel: 'Stickers' }}
+        options={{ tabBarLabel: 'BOOK' }}
       />
-      <Tab.Screen
-        name="Friends"
-        component={FriendsStack}
-        options={{ tabBarLabel: 'Friends' }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStack}
-        options={{ tabBarLabel: 'Me' }}
-      />
+      <Tab.Screen name="Friends" component={FriendsStack} options={{ tabBarLabel: 'PALS' }} />
+      <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'ME' }} />
     </Tab.Navigator>
   );
 }
@@ -122,39 +120,41 @@ function TabNavigator() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: Platform.OS === 'ios' ? 26 : 16,
-    height: 68,
+    left: 12,
+    right: 12,
+    bottom: Platform.OS === 'ios' ? 24 : 14,
+    height: 66,
     paddingTop: 8,
     paddingBottom: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    borderTopWidth: 0,
-    shadowColor: 'rgba(91,75,214,0.28)',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 12,
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderTopWidth: 3,
+    borderTopColor: COLORS.outline,
+    ...SHADOW.card,
   },
   tabBarItem: {
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.sm,
   },
   tabBarLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 2,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    marginTop: 1,
   },
   iconWrap: {
-    width: 40,
-    height: 28,
+    width: 38,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIUS.pill,
+    borderRadius: RADIUS.sm,
   },
   iconWrapActive: {
-    backgroundColor: `${COLORS.primary}16`,
+    backgroundColor: COLORS.sun,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
 });
 

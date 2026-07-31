@@ -3,6 +3,7 @@ import {
   DEFAULT_DAILY_GOAL,
   GOAL_CHANGE_COOLDOWN_DAYS,
   PRICING,
+  PET,
 } from '../config';
 
 const STORAGE_KEYS = {
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'capwords_settings',
   SUBSCRIPTION: 'capwords_subscription',
   DAILY_WORDS: 'capwords_daily_words',
+  PET: 'capwords_pet',
 };
 
 // ==================== Stickers ====================
@@ -256,4 +258,89 @@ export async function updateSettings(updates) {
   const updated = { ...settings, ...updates };
   await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
   return updated;
+}
+
+// ==================== Pet ====================
+
+export async function getPet() {
+  const data = await AsyncStorage.getItem(STORAGE_KEYS.PET);
+  if (data) return JSON.parse(data);
+
+  const defaultPet = {
+    name: PET.defaultName,
+    named: false, // whether the user has chosen a name yet
+    createdAt: new Date().toISOString(),
+  };
+  await AsyncStorage.setItem(STORAGE_KEYS.PET, JSON.stringify(defaultPet));
+  return defaultPet;
+}
+
+export async function updatePet(updates) {
+  const pet = await getPet();
+  const updated = { ...pet, ...updates };
+  await AsyncStorage.setItem(STORAGE_KEYS.PET, JSON.stringify(updated));
+  return updated;
+}
+
+export async function namePet(name) {
+  const trimmed = (name || '').trim().slice(0, PET.maxNameLength);
+  if (!trimmed) return getPet();
+  return updatePet({ name: trimmed, named: true });
+}
+
+/**
+ * Derive the pet's mood from streak + today's progress (Duolingo style).
+ * Returns { mood, name, wordsToday, dailyGoal, streak, goalReached }.
+ *
+ * Mood ladder:
+ *  - happy   : hit today's goal
+ *  - content : learned at least one word today (progressing)
+ *  - neutral : nothing yet today but streak is alive
+ *  - sleepy  : brand new / no activity and no streak
+ *  - sad     : had a streak but missed a day (streak broken / at risk)
+ */
+export async function getPetState() {
+  const [pet, profile, streak, wordsToday] = await Promise.all([
+    getPet(),
+    getUserProfile(),
+    getStreak(),
+    getDailyWordCount(),
+  ]);
+
+  const dailyGoal = profile.dailyGoal || DEFAULT_DAILY_GOAL;
+  const goalReached = wordsToday >= dailyGoal;
+  const today = new Date().toISOString().split('T')[0];
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  // Was the user active recently? lastActiveDate is today or yesterday = fresh.
+  const activeRecently =
+    streak.lastActiveDate === today || streak.lastActiveDate === yesterdayStr;
+
+  let mood;
+  if (goalReached) {
+    mood = 'happy';
+  } else if (wordsToday > 0) {
+    mood = 'content';
+  } else if (streak.current > 0 && activeRecently) {
+    mood = 'neutral';
+  } else if (streak.current > 0 && !activeRecently) {
+    // Had a streak but has been away — the pet misses you.
+    mood = 'sad';
+  } else {
+    mood = 'sleepy';
+  }
+
+  return {
+    mood,
+    name: pet.name,
+    named: pet.named,
+    wordsToday,
+    dailyGoal,
+    goalReached,
+    streak: streak.current,
+    longestStreak: streak.longest,
+  };
 }

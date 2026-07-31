@@ -7,13 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, GRADIENTS, RADIUS, SHADOW } from '../config';
+import { COLORS, RADIUS, SHADOW } from '../config';
 import { EmptyState } from '../components/UI';
+import PixelIcon from '../components/PixelIcon';
 import { getFriends, addFriend, removeFriend } from '../services/storageService';
 
 // Mock friend data for demo purposes
@@ -45,8 +43,7 @@ export default function FriendsScreen({ navigation }) {
     setSearchQuery(query);
     if (query.length > 1) {
       setIsSearching(true);
-      // Simulate search - in production, this would call a backend API
-      const results = MOCK_FRIENDS_SEARCH.filter(f => 
+      const results = MOCK_FRIENDS_SEARCH.filter((f) =>
         f.name.toLowerCase().includes(query.toLowerCase())
       );
       setSearchResults(results);
@@ -57,118 +54,89 @@ export default function FriendsScreen({ navigation }) {
   };
 
   const handleAddFriend = async (friend) => {
-    const existing = friends.find(f => f.id === friend.id);
+    const existing = friends.find((f) => f.id === friend.id);
     if (existing) {
       Alert.alert('Already Friends', `You're already friends with ${friend.name}`);
       return;
     }
-    
     await addFriend(friend);
     await loadFriends();
     setSearchQuery('');
     setIsSearching(false);
-    Alert.alert('Friend Added!', `${friend.name} has been added to your friends.`);
+    Alert.alert('Friend Added', `${friend.name} has been added to your friends.`);
   };
 
   const handleRemoveFriend = (friend) => {
-    Alert.alert(
-      'Remove Friend',
-      `Are you sure you want to remove ${friend.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: async () => {
-            await removeFriend(friend.id);
-            await loadFriends();
-          }
+    Alert.alert('Remove Friend', `Are you sure you want to remove ${friend.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await removeFriend(friend.id);
+          await loadFriends();
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const getAvatarInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  };
+  const getAvatarInitials = (name) =>
+    name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
   const renderFriend = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.friendCard}
       onPress={() => navigation.navigate('FriendProfile', { friend: item })}
     >
-      <View style={styles.avatarContainer}>
-        {item.avatar ? (
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
-          </View>
-        )}
+      <View style={styles.avatarPlaceholder}>
+        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
       </View>
-      
+
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
         <View style={styles.friendStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.streakIcon}>🔥</Text>
-            <Text style={styles.statText}>{item.streak || 0}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Today:</Text>
-            <Text style={styles.statText}>{item.wordsToday || 0} words</Text>
-          </View>
+          <PixelIcon name="flame" size={12} color={COLORS.streak} light={COLORS.sun} />
+          <Text style={styles.statText}>{item.streak || 0}</Text>
+          <Text style={styles.statLabel}>· {item.wordsToday || 0} today</Text>
         </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.moreButton}
-        onPress={() => handleRemoveFriend(item)}
-      >
-        <Ionicons name="ellipsis-vertical" size={20} color={COLORS.textLight} />
+      <TouchableOpacity style={styles.moreButton} onPress={() => handleRemoveFriend(item)} hitSlop={8}>
+        <PixelIcon name="close" size={14} color={COLORS.textLight} />
       </TouchableOpacity>
     </TouchableOpacity>
   );
 
   const renderSearchResult = ({ item }) => (
     <View style={styles.searchResultCard}>
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
-        </View>
+      <View style={styles.avatarPlaceholder}>
+        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
       </View>
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.searchSubtext}>🔥 {item.streak} day streak</Text>
+        <Text style={styles.searchSubtext}>{item.streak} day streak</Text>
       </View>
       <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
-        <Ionicons name="person-add" size={18} color={COLORS.primary} />
+        <PixelIcon name="add" size={16} color={COLORS.primaryDark} />
       </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={GRADIENTS.sky}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <Text style={styles.title}>Friends</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>FRIENDS</Text>
         <Text style={styles.subtitle}>
           {friends.length > 0
-            ? `${friends.length} learning buddies 🎉`
-            : 'Find buddies to learn with 🌟'}
+            ? `${friends.length} LEARNING BUDDIES`
+            : 'FIND BUDDIES TO LEARN WITH'}
         </Text>
 
-        {/* Search Bar */}
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={19} color={COLORS.textMuted} />
+          <PixelIcon name="search" size={16} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search friends by name…"
+            placeholder="Search friends by name"
             value={searchQuery}
             onChangeText={handleSearch}
             placeholderTextColor={COLORS.textMuted}
@@ -182,18 +150,17 @@ export default function FriendsScreen({ navigation }) {
               }}
               hitSlop={8}
             >
-              <Ionicons name="close-circle" size={19} color={COLORS.textMuted} />
+              <PixelIcon name="close" size={14} color={COLORS.textMuted} />
             </TouchableOpacity>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
-      {/* Search Results */}
       {isSearching ? (
         <View style={styles.searchResults}>
-          <Text style={styles.sectionTitle}>Search results</Text>
+          <Text style={styles.sectionTitle}>SEARCH RESULTS</Text>
           {searchResults.length === 0 ? (
-            <Text style={styles.noResultsText}>No one found with that name 🤔</Text>
+            <Text style={styles.noResultsText}>No one found with that name</Text>
           ) : (
             <FlatList
               data={searchResults}
@@ -205,9 +172,9 @@ export default function FriendsScreen({ navigation }) {
         </View>
       ) : friends.length === 0 ? (
         <EmptyState
-          emoji="👋"
-          title="No friends yet"
-          subtitle="Search for friends to peek at their sticker collections and cheer on their streaks!"
+          mood="neutral"
+          title="NO FRIENDS YET"
+          subtitle="Search for friends to peek at their sticker collections and cheer on their streaks."
         />
       ) : (
         <FlatList
@@ -223,149 +190,101 @@ export default function FriendsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
-    paddingTop: 62,
+    paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomLeftRadius: RADIUS.xl,
-    borderBottomRightRadius: RADIUS.xl,
+    paddingBottom: 18,
+    backgroundColor: COLORS.panel,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.outline,
   },
-  title: {
-    fontSize: 27,
-    fontWeight: '800',
-    color: '#fff',
-  },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.text, letterSpacing: 1.5 },
   subtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    color: COLORS.textLight,
     marginTop: 4,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: RADIUS.sm,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     gap: 10,
-    marginTop: 18,
+    marginTop: 16,
     ...SHADOW.soft,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-    padding: 0,
-  },
-  searchResults: {
-    flex: 1,
-    paddingTop: 20,
-  },
+  searchInput: { flex: 1, fontSize: 15, color: COLORS.text, padding: 0, fontWeight: '600' },
+  searchResults: { flex: 1, paddingTop: 18 },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '900',
     color: COLORS.textLight,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 1,
     marginBottom: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
   },
   noResultsText: {
     color: COLORS.textLight,
     textAlign: 'center',
     marginTop: 24,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '600',
   },
   searchResultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 14,
+    padding: 12,
     borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
     marginBottom: 10,
+    gap: 12,
     ...SHADOW.soft,
   },
-  searchSubtext: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
+  searchSubtext: { fontSize: 12, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
   addButton: {
-    backgroundColor: `${COLORS.primary}15`,
-    padding: 11,
-    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.sun,
+    padding: 10,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 120,
-  },
+  listContent: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 120 },
   friendCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 14,
+    padding: 12,
     borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
     marginBottom: 10,
+    gap: 12,
     ...SHADOW.soft,
   },
-  avatarContainer: {
-    marginRight: 12,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
   avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight + '30',
+    width: 46,
+    height: 46,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.sun,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  friendInfo: {
-    flex: 1,
-  },
-  friendName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  friendStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 12,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  streakIcon: {
-    fontSize: 14,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-  },
-  statText: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    fontWeight: '600',
-  },
-  moreButton: {
-    padding: 8,
-  },
+  avatarText: { fontSize: 15, fontWeight: '900', color: COLORS.primaryDark },
+  friendInfo: { flex: 1 },
+  friendName: { fontSize: 15, fontWeight: '900', color: COLORS.text },
+  friendStats: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 },
+  statText: { fontSize: 12, color: COLORS.text, fontWeight: '800' },
+  statLabel: { fontSize: 12, color: COLORS.textLight, fontWeight: '600' },
+  moreButton: { padding: 8 },
 });

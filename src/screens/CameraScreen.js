@@ -14,10 +14,10 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, GRADIENTS, LANGUAGES, RADIUS, SHADOW } from '../config';
-import { GradientButton } from '../components/UI';
+import { COLORS, LANGUAGES, RADIUS, SHADOW } from '../config';
+import { PixelButton } from '../components/UI';
+import PixelIcon from '../components/PixelIcon';
+import PetSprite from '../components/PetSprite';
 import { recognizeAndTranslate } from '../services/aiService';
 import {
   saveSticker,
@@ -25,6 +25,7 @@ import {
   canLearnWord,
   consumeWord,
   getDailyWordCount,
+  getPet,
 } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -37,16 +38,22 @@ export default function CameraScreen({ navigation }) {
   const [targetLanguage, setTargetLanguage] = useState('es');
   const [wordsToday, setWordsToday] = useState(0);
   const [dailyGoal, setDailyGoal] = useState(5);
+  const [petName, setPetName] = useState('your buddy');
 
   const cameraRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const shutterScale = useRef(new Animated.Value(1)).current;
 
   const loadProfile = useCallback(async () => {
-    const [profile, count] = await Promise.all([getUserProfile(), getDailyWordCount()]);
+    const [profile, count, pet] = await Promise.all([
+      getUserProfile(),
+      getDailyWordCount(),
+      getPet(),
+    ]);
     setTargetLanguage(profile.targetLanguage);
     setDailyGoal(profile.dailyGoal);
     setWordsToday(count);
+    setPetName(pet.name);
   }, []);
 
   useFocusEffect(
@@ -81,8 +88,8 @@ export default function CameraScreen({ navigation }) {
 
   const promptUpgrade = () => {
     Alert.alert(
-      'Daily words used up 🌙',
-      "You've learned all your free words for today. Upgrade for unlimited learning!",
+      'Out of words for today',
+      `${petName} is getting sleepy. Upgrade for unlimited learning!`,
       [
         { text: 'Maybe later', style: 'cancel' },
         { text: 'See plans', onPress: () => navigation.navigate('Subscription') },
@@ -90,7 +97,6 @@ export default function CameraScreen({ navigation }) {
     );
   };
 
-  /** Shared pipeline for both camera capture and library picks. */
   const processImage = async ({ uri, base64 }) => {
     setIsProcessing(true);
     try {
@@ -115,8 +121,8 @@ export default function CameraScreen({ navigation }) {
     } catch (error) {
       console.error(error);
       Alert.alert(
-        'Hmm, that did not work 😅',
-        "We couldn't recognise that one. Try getting a little closer or find better light."
+        'That did not work',
+        "We couldn't recognise that one. Try getting closer or finding better light."
       );
     } finally {
       setIsProcessing(false);
@@ -139,10 +145,7 @@ export default function CameraScreen({ navigation }) {
     ]).start();
 
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.7,
-      });
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
       await processImage({ uri: photo.uri, base64: photo.base64 });
     } catch (error) {
       console.error(error);
@@ -183,14 +186,12 @@ export default function CameraScreen({ navigation }) {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <View style={styles.permissionBubble}>
-          <Text style={styles.permissionEmoji}>📷</Text>
-        </View>
-        <Text style={styles.permissionTitle}>Let's see the world!</Text>
+        <PetSprite mood="neutral" pixelSize={8} />
+        <Text style={styles.permissionTitle}>LET'S SEE THE WORLD</Text>
         <Text style={styles.permissionText}>
-          CapWords uses your camera to turn everyday objects into cute vocabulary stickers.
+          CapWords uses your camera to turn everyday objects into pixel vocabulary stickers.
         </Text>
-        <GradientButton
+        <PixelButton
           label="Enable camera"
           icon="camera"
           onPress={requestPermission}
@@ -207,10 +208,9 @@ export default function CameraScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-        {/* Top bar */}
         <View style={styles.topBar}>
           <TouchableOpacity
-            style={styles.languageSelector}
+            style={styles.langButton}
             activeOpacity={0.85}
             onPress={() =>
               navigation.navigate('LanguageSelect', {
@@ -219,9 +219,9 @@ export default function CameraScreen({ navigation }) {
               })
             }
           >
-            <Text style={styles.languageFlag}>{currentLang?.flag}</Text>
-            <Text style={styles.languageName}>{currentLang?.name}</Text>
-            <Ionicons name="chevron-down" size={15} color="#fff" />
+            <Text style={styles.langShort}>{currentLang?.short}</Text>
+            <Text style={styles.langName}>{currentLang?.name}</Text>
+            <PixelIcon name="chevron" size={12} color="#FBF3E0" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -231,20 +231,18 @@ export default function CameraScreen({ navigation }) {
               setFacing((f) => (f === 'back' ? 'front' : 'back'));
             }}
           >
-            <Ionicons name="camera-reverse-outline" size={22} color="#fff" />
+            <PixelIcon name="flip" size={18} color="#FBF3E0" />
           </TouchableOpacity>
         </View>
 
-        {/* Daily goal chip */}
         <View style={styles.goalChip}>
           <Text style={styles.goalChipText}>
             {remaining > 0
-              ? `${remaining} more to hit today's goal 🎯`
-              : "Daily goal complete! Keep going 🎉"}
+              ? `${remaining} MORE TO REACH TODAY'S GOAL`
+              : 'DAILY GOAL COMPLETE'}
           </Text>
         </View>
 
-        {/* Viewfinder */}
         <View style={styles.guideContainer}>
           <View style={styles.guideFrame}>
             <View style={[styles.corner, styles.cornerTL]} />
@@ -253,33 +251,21 @@ export default function CameraScreen({ navigation }) {
             <View style={[styles.corner, styles.cornerBR]} />
 
             {isProcessing ? (
-              <Animated.View
-                style={[styles.processingOverlay, { transform: [{ scale: pulseAnim }] }]}
-              >
-                <LinearGradient
-                  colors={GRADIENTS.primary}
-                  style={styles.processingBubble}
-                >
-                  <ActivityIndicator size="small" color="#fff" />
-                </LinearGradient>
-                <Text style={styles.processingText}>Finding the word…</Text>
+              <Animated.View style={[styles.processingBox, { transform: [{ scale: pulseAnim }] }]}>
+                <ActivityIndicator size="small" color="#FBF3E0" />
+                <Text style={styles.processingText}>FINDING THE WORD...</Text>
               </Animated.View>
             ) : null}
           </View>
 
           {!isProcessing ? (
-            <Text style={styles.guideText}>Point at an object to learn its name ✨</Text>
+            <Text style={styles.guideText}>POINT AT AN OBJECT TO LEARN ITS NAME</Text>
           ) : null}
         </View>
 
-        {/* Bottom controls */}
         <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.galleryButton}
-            onPress={pickImage}
-            disabled={isProcessing}
-          >
-            <Ionicons name="images-outline" size={24} color="#fff" />
+          <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={isProcessing}>
+            <PixelIcon name="images" size={20} color="#FBF3E0" />
           </TouchableOpacity>
 
           <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
@@ -289,14 +275,9 @@ export default function CameraScreen({ navigation }) {
               disabled={isProcessing}
               activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={GRADIENTS.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.captureButtonInner}
-              >
-                <Ionicons name="sparkles" size={26} color="#fff" />
-              </LinearGradient>
+              <View style={styles.captureInner}>
+                <PixelIcon name="camera" size={26} color="#FBF3E0" />
+              </View>
             </TouchableOpacity>
           </Animated.View>
 
@@ -308,13 +289,8 @@ export default function CameraScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  camera: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#000' },
+  camera: { flex: 1 },
   loadingContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -328,178 +304,138 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 36,
   },
-  permissionBubble: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...SHADOW.card,
-  },
-  permissionEmoji: {
-    fontSize: 54,
-  },
   permissionTitle: {
-    fontSize: 25,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
     color: COLORS.text,
     marginTop: 26,
     marginBottom: 10,
     textAlign: 'center',
+    letterSpacing: 1,
   },
   permissionText: {
-    fontSize: 15,
+    fontSize: 14,
     color: COLORS.textLight,
     textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 23,
+    marginBottom: 28,
+    lineHeight: 21,
   },
-  permissionButton: {
-    width: '100%',
-  },
+  permissionButton: { width: '100%' },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 58,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
   },
-  languageSelector: {
+  langButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    paddingHorizontal: 14,
+    backgroundColor: 'rgba(58,42,26,0.72)',
+    paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: RADIUS.pill,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     gap: 7,
   },
-  languageFlag: {
-    fontSize: 17,
+  langShort: {
+    color: COLORS.sun,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  languageName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  langName: { color: '#FBF3E0', fontSize: 13, fontWeight: '800' },
   flipButton: {
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(58,42,26,0.72)',
     padding: 11,
-    borderRadius: RADIUS.pill,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
   goalChip: {
     alignSelf: 'center',
     marginTop: 14,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: RADIUS.pill,
+    backgroundColor: 'rgba(58,42,26,0.72)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
-  goalChipText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  guideContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  goalChipText: { color: '#FBF3E0', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+  guideContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   guideFrame: {
     width: FRAME_SIZE,
     height: FRAME_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  corner: {
-    position: 'absolute',
-    width: 34,
-    height: 34,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  cornerTL: {
-    top: 0,
-    left: 0,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: RADIUS.md,
-  },
-  cornerTR: {
-    top: 0,
-    right: 0,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: RADIUS.md,
-  },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: RADIUS.md,
-  },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: RADIUS.md,
-  },
-  processingOverlay: {
+  corner: { position: 'absolute', width: 30, height: 30, borderColor: COLORS.sun },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5 },
+  processingBox: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  processingBubble: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(58,42,26,0.8)',
+    borderWidth: 2,
+    borderColor: COLORS.sun,
+    borderRadius: RADIUS.sm,
+    padding: 16,
   },
   processingText: {
-    color: '#fff',
-    fontSize: 15,
-    marginTop: 14,
-    fontWeight: '700',
+    color: '#FBF3E0',
+    fontSize: 12,
+    marginTop: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
   guideText: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#FBF3E0',
+    fontSize: 12,
+    fontWeight: '900',
     marginTop: 20,
+    letterSpacing: 0.5,
+    backgroundColor: 'rgba(58,42,26,0.55)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.sm,
   },
   bottomBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 122,
-    paddingHorizontal: 42,
+    paddingBottom: 120,
+    paddingHorizontal: 40,
   },
   galleryButton: {
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(58,42,26,0.72)',
     padding: 14,
-    borderRadius: RADIUS.pill,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
   },
   captureButton: {
     width: 82,
     height: 82,
-    borderRadius: 41,
-    backgroundColor: 'rgba(255,255,255,0.28)',
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.sun,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 5,
+    borderWidth: 4,
+    borderColor: COLORS.outline,
   },
-  captureButtonDisabled: {
-    opacity: 0.55,
-  },
-  captureButtonInner: {
+  captureButtonDisabled: { opacity: 0.55 },
+  captureInner: {
     flex: 1,
     width: '100%',
-    borderRadius: 36,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  spacer: {
-    width: 52,
-  },
+  spacer: { width: 52 },
 });

@@ -2,14 +2,14 @@
   "expo": {
     "name": "CapWords",
     "slug": "capwords",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#7C6BFF"
+      "backgroundColor": "#F3E9D2"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -25,7 +25,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#7C6BFF"
+        "backgroundColor": "#F3E9D2"
       },
       "package": "com.capwords.app",
       "permissions": [

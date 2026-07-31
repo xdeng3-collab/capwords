@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
 import { COLORS, LANGUAGES, RADIUS, SHADOW } from '../config';
+import PixelIcon from '../components/PixelIcon';
 
 export default function LanguageSelectScreen({ route, navigation }) {
   const { current, onSelect } = route.params;
@@ -27,15 +27,11 @@ export default function LanguageSelectScreen({ route, navigation }) {
         onPress={() => handleSelect(item.code)}
         activeOpacity={0.85}
       >
-        <View style={styles.flagBubble}>
-          <Text style={styles.flag}>{item.flag}</Text>
+        <View style={[styles.shortBubble, selected && styles.shortBubbleSelected]}>
+          <Text style={[styles.short, selected && styles.shortSelected]}>{item.short}</Text>
         </View>
         <Text style={[styles.name, selected && styles.nameSelected]}>{item.name}</Text>
-        {selected ? (
-          <Ionicons name="checkmark-circle" size={23} color={COLORS.primary} />
-        ) : (
-          <Ionicons name="ellipse-outline" size={21} color={COLORS.border} />
-        )}
+        {selected ? <PixelIcon name="check" size={20} color={COLORS.leafDark} /> : null}
       </TouchableOpacity>
     );
   };
@@ -43,18 +39,14 @@ export default function LanguageSelectScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          hitSlop={10}
-        >
-          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
+          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Choose language</Text>
+        <Text style={styles.title}>CHOOSE LANGUAGE</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <Text style={styles.subtitle}>Which language would you like to learn? 🌍</Text>
+      <Text style={styles.subtitle}>Which language would you like to learn?</Text>
 
       <FlatList
         data={LANGUAGES}
@@ -68,10 +60,7 @@ export default function LanguageSelectScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -82,62 +71,50 @@ const styles = StyleSheet.create({
   },
   backButton: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.pill,
-    padding: 9,
-    ...SHADOW.soft,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    padding: 8,
   },
-  title: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
+  title: { fontSize: 16, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
+  headerSpacer: { width: 40 },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textLight,
     textAlign: 'center',
     marginTop: 10,
+    fontWeight: '600',
   },
-  listContent: {
-    padding: 20,
-    paddingBottom: 120,
-  },
+  listContent: { padding: 20, paddingBottom: 120 },
   languageItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 13,
+    padding: 12,
     borderRadius: RADIUS.md,
     marginBottom: 10,
     gap: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 3,
+    borderColor: COLORS.outline,
     ...SHADOW.soft,
   },
   languageItemSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}0A`,
+    borderColor: COLORS.leafDark,
+    backgroundColor: `${COLORS.leaf}22`,
   },
-  flagBubble: {
+  shortBubble: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  flag: {
-    fontSize: 24,
-  },
-  name: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  nameSelected: {
-    color: COLORS.primary,
-  },
+  shortBubbleSelected: { backgroundColor: COLORS.leaf },
+  short: { fontSize: 14, fontWeight: '900', color: COLORS.textLight, letterSpacing: 0.5 },
+  shortSelected: { color: '#FBF3E0' },
+  name: { flex: 1, fontSize: 16, fontWeight: '800', color: COLORS.text },
+  nameSelected: { color: COLORS.leafDark },
 });

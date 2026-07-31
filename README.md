@@ -1,21 +1,26 @@
-# CapWords 📸🗣️
+# CapWords
 
-A visual language learning app where users photograph objects to learn vocabulary in their target language.
+A visual language learning app where users photograph objects to learn vocabulary in their target language — wrapped in a cozy Stardew-Valley-style pixel art theme with a virtual pet companion.
 
 ## Features
 
+### Your Pixel Pet
+- **Buddy companion**: An original, hand-drawn pixel pet (rendered purely from Views, no image assets) that lives on the home screen
+- **Name your pet**: On first launch you choose your buddy's name; rename any time
+- **Mood reacts to learning**: Like Duolingo, the pet is happy when you hit your daily goal, content while you make progress, and sad if you have been away and your streak is at risk
+
 ### Core Learning
-- **📷 Photo Recognition**: Take a photo of any object, and AI identifies it and provides the word in your target language
-- **🎨 Sticker Collection**: Each learned word becomes a beautiful sticker in your collection
-- **🔊 Pronunciation**: Listen to correct pronunciation with one tap
-- **🎙️ Record & Practice**: Hold to record your pronunciation, release to stop
-- **📊 Progress Tracking**: Daily word count, streak tracking, and goal setting
+- **Photo recognition**: Take a photo of any object, and AI identifies it and provides the word in your target language
+- **Sticker collection**: Each learned word becomes a pixel sticker in your collection
+- **Pronunciation**: Listen to correct pronunciation with one tap
+- **Record & practice**: Hold to record your pronunciation, release to stop
+- **Progress tracking**: Daily word count, streak tracking, and goal setting
 
 ### Social
-- **👥 Add Friends**: Search and add friends (like Duolingo)
-- **🔥 Streak System**: Meet your daily word target to extend your streak
-- **👀 View Collections**: See your friends' sticker collections
-- **🎧 Listen to Friends**: Hear how your friends pronounce words
+- **Add friends**: Search and add friends (like Duolingo)
+- **Streak system**: Meet your daily word target to extend your streak
+- **View collections**: See your friends' sticker collections
+- **Listen to friends**: Hear how your friends pronounce words
 
 ### Subscription & Pricing
 - **Free Tier**: 3 words per day
@@ -45,21 +50,25 @@ With a selling price of $0.01/word, we maintain a 4x margin to cover:
 - **AI**: DeepSeek V4 Flash (image recognition, translation)
 - **TTS**: expo-speech (native text-to-speech)
 - **Audio**: expo-audio (recording & playback)
-- **Visuals**: expo-linear-gradient + Animated API
+- **Visuals**: hand-authored pixel art (Views) + Animated API
 - **Feedback**: expo-haptics
 - **Storage**: AsyncStorage (local), expandable to cloud backend
 - **Navigation**: React Navigation
 
 ## Design System
 
-Shared design tokens live in `src/config.js` and reusable components in
-`src/components/`:
+A cozy, retro Stardew-Valley-inspired pixel theme. No emojis — every icon and
+the pet are drawn from pixel grids. Shared design tokens live in `src/config.js`
+and reusable components in `src/components/`:
 
-- `COLORS` / `GRADIENTS` — pastel-forward palette with playful gradient pairs
-- `RADIUS` / `SPACING` / `SHADOW` — rounded, soft-shadow geometry
-- `CATEGORY_STYLES` — an emoji + colour per sticker category
-- `UI.js` — `GradientButton`, `Card`, `Pill`, `EmptyState`, `ProgressBar`
-- `Confetti.js` — celebratory burst when a new word is learned
+- `COLORS` — warm parchment/wood retro palette
+- `RADIUS` / `SPACING` / `SHADOW` — near-square corners and hard, offset pixel shadows
+- `CATEGORY_STYLES` — a pixel-icon key + colour per sticker category
+- `PET_MOODS` — mood copy driven by streak + daily progress
+- `PixelSprite.js` — renders any bitmap from a 2D grid of colour keys (no image files)
+- `PetSprite.js` — the original pixel pet with per-mood expressions and idle animation
+- `PixelIcon.js` — pixel-art glyph set used everywhere in place of emojis/vector icons
+- `UI.js` — `PixelPanel`/`Card`, `PixelButton`, `Pill`, `EmptyState`, `ProgressBar` (segmented)
 
 ## Troubleshooting
 
@@ -84,7 +93,7 @@ The app launched but the Metro bundler isn't running. Start it with
 
 ## Supported Languages
 
-🇺🇸 English | 🇨🇳 中文 | 🇪🇸 Español | 🇫🇷 Français | 🇩🇪 Deutsch | 🇯🇵 日本語 | 🇰🇷 한국어 | 🇧🇷 Português | 🇮🇹 Italiano | 🇷🇺 Русский | 🇸🇦 العربية | 🇮🇳 हिन्दी
+English | 中文 | Español | Français | Deutsch | 日本語 | 한국어 | Português | Italiano | Русский | العربية | हिन्दी
 
 ## Getting Started
 
@@ -112,11 +121,14 @@ capwords/
 ├── src/
 │   ├── config.js                 # Design tokens, API keys, pricing
 │   ├── components/
-│   │   ├── UI.js                 # Buttons, cards, pills, empty states
-│   │   └── Confetti.js           # Celebration animation
+│   │   ├── UI.js                 # PixelPanel, PixelButton, Pill, EmptyState, ProgressBar
+│   │   ├── PixelSprite.js        # Grid-based bitmap renderer (no image assets)
+│   │   ├── PetSprite.js          # Original pixel pet with per-mood expressions
+│   │   └── PixelIcon.js          # Pixel-art glyph set (replaces emojis/vector icons)
 │   ├── navigation/
-│   │   └── AppNavigator.js       # Floating tab bar + stacks
+│   │   └── AppNavigator.js       # Pixel tab bar + stacks
 │   ├── screens/
+│   │   ├── PetScreen.js          # Pet home: mood, streak, goal, naming
 │   │   ├── CameraScreen.js       # Photo capture screen
 │   │   ├── StickerResultScreen.js # Word result + pronunciation
 │   │   ├── CollectionScreen.js   # Sticker collection by date
@@ -129,7 +141,7 @@ capwords/
 │   │   └── GoalSettingScreen.js  # Daily goal configuration
 │   └── services/
 │       ├── aiService.js          # DeepSeek API integration
-│       └── storageService.js     # Local data management
+│       └── storageService.js     # Local data + pet state
 ├── package.json
 ├── app.json                      # Expo configuration
 └── babel.config.js

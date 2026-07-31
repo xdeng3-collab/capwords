@@ -1,44 +1,49 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { COLORS, GRADIENTS, RADIUS, SHADOW } from '../config';
+import { COLORS, RADIUS, SHADOW } from '../config';
+import PixelIcon from './PixelIcon';
+import PetSprite from './PetSprite';
 
 /**
- * A soft, rounded card with a gentle shadow.
+ * PixelPanel: a wood/parchment UI panel with a hard pixel border and
+ * offset shadow — the base surface for the retro look.
  */
-export function Card({ style, children, ...rest }) {
+export function PixelPanel({ style, children, tone = 'surface', ...rest }) {
+  const bg = tone === 'alt' ? COLORS.surfaceAlt : tone === 'panel' ? COLORS.panel : COLORS.surface;
   return (
-    <View style={[styles.card, style]} {...rest}>
+    <View style={[styles.panel, { backgroundColor: bg }, style]} {...rest}>
       {children}
     </View>
   );
 }
 
+// Backwards-compatible alias used around the app.
+export const Card = PixelPanel;
+
 /**
- * Playful gradient button that squishes on press and fires a haptic tap.
+ * PixelButton: a chunky retro button that presses "down" (offset + shadow
+ * removal) like a physical key and fires a haptic tap.
  */
-export function GradientButton({
+export function PixelButton({
   label,
   icon,
-  gradient = GRADIENTS.primary,
+  color = COLORS.primary,
   onPress,
   disabled,
   style,
   textStyle,
   size = 'md',
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const pressed = useRef(new Animated.Value(0)).current;
 
-  const animateTo = (value) => {
-    Animated.spring(scale, {
-      toValue: value,
-      friction: 6,
-      tension: 220,
+  const animate = (to) =>
+    Animated.timing(pressed, {
+      toValue: to,
+      duration: 60,
+      easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     }).start();
-  };
 
   const handlePress = () => {
     if (disabled) return;
@@ -46,38 +51,37 @@ export function GradientButton({
     onPress?.();
   };
 
+  const translateY = pressed.interpolate({ inputRange: [0, 1], outputRange: [0, 3] });
   const sizing = size === 'lg' ? styles.buttonLg : styles.buttonMd;
+  const bg = disabled ? COLORS.textMuted : color;
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
+    <Animated.View style={[{ transform: [{ translateY }] }, style]}>
       <Pressable
-        onPressIn={() => animateTo(0.96)}
-        onPressOut={() => animateTo(1)}
+        onPressIn={() => animate(1)}
+        onPressOut={() => animate(0)}
         onPress={handlePress}
         disabled={disabled}
-        style={({ pressed }) => [pressed && styles.pressedDim]}
       >
-        <LinearGradient
-          colors={disabled ? [COLORS.textMuted, COLORS.textMuted] : gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.button, sizing, !disabled && SHADOW.glow]}
-        >
-          {icon ? <Ionicons name={icon} size={20} color="#fff" /> : null}
+        <View style={[styles.button, sizing, { backgroundColor: bg }, !disabled && SHADOW.glow]}>
+          {icon ? <PixelIcon name={icon} size={16} color="#FBF3E0" style={styles.buttonIcon} /> : null}
           <Text style={[styles.buttonText, textStyle]}>{label}</Text>
-        </LinearGradient>
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
+// Alias so existing screens keep working during the migration.
+export const GradientButton = PixelButton;
+
 /**
- * Small rounded pill, useful for categories and counters.
+ * Pill: a small tag with a pixel border and optional icon.
  */
-export function Pill({ label, emoji, color = COLORS.primary, style }) {
+export function Pill({ label, icon, color = COLORS.primary, style }) {
   return (
-    <View style={[styles.pill, { backgroundColor: `${color}1A` }, style]}>
-      {emoji ? <Text style={styles.pillEmoji}>{emoji}</Text> : null}
+    <View style={[styles.pill, { borderColor: color, backgroundColor: `${color}22` }, style]}>
+      {icon ? <PixelIcon name={icon} size={12} color={color} /> : null}
       <Text style={[styles.pillText, { color }]} numberOfLines={1}>
         {label}
       </Text>
@@ -86,40 +90,12 @@ export function Pill({ label, emoji, color = COLORS.primary, style }) {
 }
 
 /**
- * A friendly empty-state illustration built from emoji + copy.
+ * EmptyState: uses the pet sprite as a friendly, on-brand illustration.
  */
-export function EmptyState({ emoji, title, subtitle, action }) {
-  const float = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(float, {
-          toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(float, {
-          toValue: 0,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [float]);
-
-  const translateY = float.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -10],
-  });
-
+export function EmptyState({ mood = 'neutral', title, subtitle, action }) {
   return (
     <View style={styles.emptyWrap}>
-      <Animated.View style={[styles.emptyBubble, { transform: [{ translateY }] }]}>
-        <Text style={styles.emptyEmoji}>{emoji}</Text>
-      </Animated.View>
+      <PetSprite mood={mood} pixelSize={7} />
       <Text style={styles.emptyTitle}>{title}</Text>
       {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
       {action}
@@ -128,89 +104,80 @@ export function EmptyState({ emoji, title, subtitle, action }) {
 }
 
 /**
- * Animated progress bar with rounded caps.
+ * ProgressBar: segmented pixel meter that fills in blocky steps.
  */
-export function ProgressBar({ progress, color = COLORS.primary, height = 10, trackColor }) {
-  const width = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(width, {
-      toValue: Math.max(0, Math.min(progress, 1)),
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [progress, width]);
+export function ProgressBar({ progress, color = COLORS.leaf, height = 14, segments = 10 }) {
+  const clamped = Math.max(0, Math.min(progress, 1));
+  const filled = Math.round(clamped * segments);
 
   return (
-    <View
-      style={[
-        styles.progressTrack,
-        { height, borderRadius: height / 2, backgroundColor: trackColor || COLORS.border },
-      ]}
-    >
-      <Animated.View
-        style={{
-          height: '100%',
-          borderRadius: height / 2,
-          backgroundColor: color,
-          width: width.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['0%', '100%'],
-          }),
-        }}
-      />
+    <View style={[styles.progressTrack, { height }]}>
+      {Array.from({ length: segments }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.progressSegment,
+            {
+              backgroundColor: i < filled ? color : 'transparent',
+              borderRightWidth: i < segments - 1 ? 1 : 0,
+            },
+          ]}
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: 16,
-    ...SHADOW.soft,
+  panel: {
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    padding: 14,
+    ...SHADOW.card,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: RADIUS.pill,
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
     gap: 8,
   },
   buttonMd: {
-    paddingVertical: 14,
-    paddingHorizontal: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
   buttonLg: {
-    paddingVertical: 17,
-    paddingHorizontal: 28,
+    paddingVertical: 15,
+    paddingHorizontal: 26,
+  },
+  buttonIcon: {
+    marginRight: 2,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  pressedDim: {
-    opacity: 0.9,
+    color: '#FBF3E0',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: RADIUS.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
     gap: 5,
   },
-  pillEmoji: {
-    fontSize: 13,
-  },
   pillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'capitalize',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   emptyWrap: {
     flex: 1,
@@ -218,34 +185,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 40,
   },
-  emptyBubble: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    ...SHADOW.card,
-  },
-  emptyEmoji: {
-    fontSize: 52,
-  },
   emptyTitle: {
-    fontSize: 21,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '900',
     color: COLORS.text,
     textAlign: 'center',
+    marginTop: 20,
+    letterSpacing: 0.5,
   },
   emptySubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: COLORS.textLight,
     textAlign: 'center',
     marginTop: 8,
-    lineHeight: 22,
+    lineHeight: 21,
   },
   progressTrack: {
+    flexDirection: 'row',
     width: '100%',
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceAlt,
     overflow: 'hidden',
+  },
+  progressSegment: {
+    flex: 1,
+    height: '100%',
+    borderRightColor: COLORS.outline,
   },
 });
