@@ -8,79 +8,103 @@ import {
   ScrollView,
 } from 'react-native';
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { format } from 'date-fns';
+import { COLORS, GRADIENTS, RADIUS, SHADOW, getCategoryStyle } from '../config';
+import { Card, GradientButton, Pill } from '../components/UI';
 
 export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
+  const categoryStyle = getCategoryStyle(sticker.category);
 
   const speakWord = () => {
+    Haptics.selectionAsync().catch(() => {});
     Speech.speak(sticker.word, { language: sticker.language, rate: 0.8 });
   };
 
+  const details = [
+    sticker.category && {
+      label: 'Category',
+      value: `${categoryStyle.emoji}  ${sticker.category}`,
+    },
+    sticker.language && { label: 'Language', value: sticker.language.toUpperCase() },
+    sticker.createdAt && {
+      label: 'Learned on',
+      value: format(new Date(sticker.createdAt), 'MMM d, yyyy'),
+    },
+  ].filter(Boolean);
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={10}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Sticker Detail</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Sticker</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.content}>
-        {/* Sticker Image */}
-        <View style={styles.imageContainer}>
-          {sticker.imageUri ? (
-            <Image source={{ uri: sticker.imageUri }} style={styles.image} />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <Ionicons name="image-outline" size={48} color={COLORS.textMuted} />
-            </View>
-          )}
-        </View>
+        {/* Framed sticker */}
+        <LinearGradient
+          colors={GRADIENTS.candy}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.imageFrame}
+        >
+          <View style={styles.imageInner}>
+            {sticker.imageUri ? (
+              <Image source={{ uri: sticker.imageUri }} style={styles.image} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Text style={styles.placeholderEmoji}>{categoryStyle.emoji}</Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
 
-        {/* Word Info */}
+        {/* Word */}
         <View style={styles.wordSection}>
           <Text style={styles.word}>{sticker.word}</Text>
-          {sticker.pronunciation && (
+          {sticker.pronunciation ? (
             <Text style={styles.pronunciation}>/{sticker.pronunciation}/</Text>
-          )}
-          {sticker.english && (
-            <Text style={styles.english}>{sticker.english}</Text>
-          )}
+          ) : null}
+          {sticker.english ? <Text style={styles.english}>{sticker.english}</Text> : null}
+          <Pill
+            label={sticker.category || 'other'}
+            emoji={categoryStyle.emoji}
+            color={categoryStyle.color}
+            style={styles.pill}
+          />
         </View>
 
-        {/* Actions */}
-        <TouchableOpacity style={styles.listenButton} onPress={speakWord}>
-          <Ionicons name="volume-medium" size={24} color="#fff" />
-          <Text style={styles.listenButtonText}>Listen to Pronunciation</Text>
-        </TouchableOpacity>
+        <GradientButton
+          label="Listen to pronunciation"
+          icon="volume-medium"
+          onPress={speakWord}
+          size="lg"
+          style={styles.listenButton}
+        />
 
-        {/* Details */}
-        <View style={styles.detailsCard}>
-          {sticker.category && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Category</Text>
-              <Text style={styles.detailValue}>{sticker.category}</Text>
-            </View>
-          )}
-          {sticker.language && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Language</Text>
-              <Text style={styles.detailValue}>{sticker.language}</Text>
-            </View>
-          )}
-          {sticker.createdAt && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Learned on</Text>
-              <Text style={styles.detailValue}>
-                {new Date(sticker.createdAt).toLocaleDateString()}
-              </Text>
-            </View>
-          )}
-        </View>
+        {details.length > 0 ? (
+          <Card style={styles.detailsCard}>
+            {details.map((detail, index) => (
+              <View
+                key={detail.label}
+                style={[styles.detailRow, index === details.length - 1 && styles.detailRowLast]}
+              >
+                <Text style={styles.detailLabel}>{detail.label}</Text>
+                <Text style={styles.detailValue}>{detail.value}</Text>
+              </View>
+            ))}
+          </Card>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -91,104 +115,112 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
+    paddingTop: 58,
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: COLORS.surface,
+    paddingBottom: 8,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
+  backButton: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
+    padding: 9,
+    ...SHADOW.soft,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
     color: COLORS.text,
+  },
+  headerSpacer: {
+    width: 40,
   },
   content: {
     padding: 20,
     alignItems: 'center',
   },
-  imageContainer: {
-    width: 200,
-    height: 200,
-    borderRadius: 24,
+  imageFrame: {
+    width: 216,
+    height: 216,
+    borderRadius: RADIUS.xl,
+    padding: 5,
+    marginBottom: 22,
+    ...SHADOW.glow,
+  },
+  imageInner: {
+    flex: 1,
+    borderRadius: RADIUS.xl - 4,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
-    marginBottom: 24,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
   },
   image: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: COLORS.border,
+    flex: 1,
+    backgroundColor: COLORS.surfaceAlt,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  placeholderEmoji: {
+    fontSize: 60,
   },
   wordSection: {
     alignItems: 'center',
     marginBottom: 24,
   },
   word: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 33,
+    fontWeight: '800',
     color: COLORS.text,
+    textAlign: 'center',
   },
   pronunciation: {
-    fontSize: 18,
+    fontSize: 17,
     color: COLORS.textLight,
-    marginTop: 4,
+    marginTop: 5,
   },
   english: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textMuted,
-    marginTop: 4,
+    marginTop: 3,
+  },
+  pill: {
+    marginTop: 11,
   },
   listenButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    gap: 10,
-    marginBottom: 24,
     width: '100%',
-    justifyContent: 'center',
-  },
-  listenButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    marginBottom: 22,
   },
   detailsCard: {
     width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    alignItems: 'center',
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  detailRowLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
   },
   detailLabel: {
     fontSize: 14,
     color: COLORS.textLight,
+    fontWeight: '600',
   },
   detailValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.text,
     textTransform: 'capitalize',
   },

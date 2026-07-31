@@ -2,14 +2,14 @@
   "expo": {
     "name": "CapWords",
     "slug": "capwords",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6C63FF"
+      "backgroundColor": "#7C6BFF"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -23,14 +23,15 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6C63FF"
+        "backgroundColor": "#7C6BFF"
       },
       "package": "com.capwords.app",
       "permissions": ["CAMERA", "RECORD_AUDIO"]
     },
     "plugins": [
       "expo-camera",
-      "expo-av"
+      "expo-av",
+      "./plugins/withFmtConstevalFix"
     ]
   }
 }

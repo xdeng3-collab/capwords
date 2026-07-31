@@ -1,4 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  DEFAULT_DAILY_GOAL,
+  GOAL_CHANGE_COOLDOWN_DAYS,
+  PRICING,
+} from '../config';
 
 const STORAGE_KEYS = {
   STICKERS: 'capwords_stickers',
@@ -68,7 +73,7 @@ export async function getUserProfile() {
     avatar: null,
     targetLanguage: 'es',
     nativeLanguage: 'en',
-    dailyGoal: 5,
+    dailyGoal: DEFAULT_DAILY_GOAL,
     lastGoalChange: null,
     joinDate: new Date().toISOString(),
   };
@@ -90,7 +95,7 @@ export async function canChangeGoal() {
   const lastChange = new Date(profile.lastGoalChange);
   const now = new Date();
   const daysSinceChange = (now - lastChange) / (1000 * 60 * 60 * 24);
-  return daysSinceChange >= 7;
+  return daysSinceChange >= GOAL_CHANGE_COOLDOWN_DAYS;
 }
 
 // ==================== Streak ====================
@@ -217,7 +222,7 @@ export async function canLearnWord() {
   
   // Free tier check
   const dailyCount = await getDailyWordCount();
-  if (dailyCount < 3) {
+  if (dailyCount < PRICING.freeWordsPerDay) {
     return { allowed: true, reason: 'free' };
   }
   

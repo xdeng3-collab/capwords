@@ -1,92 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   FlatList,
   ScrollView,
 } from 'react-native';
 import * as Speech from 'expo-speech';
-import { Audio } from 'expo-av';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { COLORS, GRADIENTS, RADIUS, SHADOW, getCategoryStyle } from '../config';
 
 export default function FriendProfileScreen({ route, navigation }) {
   const { friend } = route.params;
 
   // Mock friend's collection data
   const [friendStickers] = useState([
-    { id: '1', word: 'Manzana', english: 'Apple', language: 'es', imageUri: null },
-    { id: '2', word: 'Gato', english: 'Cat', language: 'es', imageUri: null },
-    { id: '3', word: 'Libro', english: 'Book', language: 'es', imageUri: null },
-    { id: '4', word: 'Casa', english: 'House', language: 'es', imageUri: null },
-    { id: '5', word: 'Perro', english: 'Dog', language: 'es', imageUri: null },
+    { id: '1', word: 'Manzana', english: 'Apple', language: 'es', category: 'food' },
+    { id: '2', word: 'Gato', english: 'Cat', language: 'es', category: 'animal' },
+    { id: '3', word: 'Libro', english: 'Book', language: 'es', category: 'object' },
+    { id: '4', word: 'Casa', english: 'House', language: 'es', category: 'object' },
+    { id: '5', word: 'Perro', english: 'Dog', language: 'es', category: 'animal' },
   ]);
 
   const speakWord = (word, language) => {
+    Haptics.selectionAsync().catch(() => {});
     Speech.speak(word, { language, rate: 0.8 });
   };
 
-  const getInitials = (name) => {
-    return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const getInitials = (name) =>
+    name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+
+  const renderSticker = ({ item }) => {
+    const categoryStyle = getCategoryStyle(item.category);
+    return (
+      <View style={styles.stickerCard}>
+        <View
+          style={[styles.stickerThumb, { backgroundColor: `${categoryStyle.color}22` }]}
+        >
+          <Text style={styles.stickerEmoji}>{categoryStyle.emoji}</Text>
+        </View>
+        <View style={styles.stickerInfo}>
+          <Text style={styles.stickerWord}>{item.word}</Text>
+          <Text style={styles.stickerEnglish}>{item.english}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.speakButton}
+          onPress={() => speakWord(item.word, item.language)}
+          hitSlop={8}
+        >
+          <Ionicons name="volume-medium" size={19} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
+    );
   };
 
-  const renderSticker = ({ item }) => (
-    <View style={styles.stickerCard}>
-      <View style={styles.stickerImagePlaceholder}>
-        <Text style={styles.stickerEmoji}>📷</Text>
-      </View>
-      <View style={styles.stickerInfo}>
-        <Text style={styles.stickerWord}>{item.word}</Text>
-        <Text style={styles.stickerEnglish}>{item.english}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.speakButton}
-        onPress={() => speakWord(item.word, item.language)}
-      >
-        <Ionicons name="volume-medium" size={20} color={COLORS.primary} />
-      </TouchableOpacity>
-    </View>
-  );
+  const stats = [
+    { label: 'Streak', value: `🔥 ${friend.streak || 0}` },
+    { label: 'Today', value: friend.wordsToday || 0 },
+    { label: 'Words', value: friendStickers.length },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={GRADIENTS.sky}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={10}
+        >
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
 
         <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(friend.name)}</Text>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{getInitials(friend.name)}</Text>
+            </View>
           </View>
           <Text style={styles.name}>{friend.name}</Text>
-          
+
           <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statNumber}>🔥 {friend.streak || 0}</Text>
-              <Text style={styles.statLabel}>Streak</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNumber}>{friend.wordsToday || 0}</Text>
-              <Text style={styles.statLabel}>Today</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statNumber}>{friendStickers.length}</Text>
-              <Text style={styles.statLabel}>Words</Text>
-            </View>
+            {stats.map((stat) => (
+              <View key={stat.label} style={styles.stat}>
+                <Text style={styles.statNumber}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
-      {/* Friend's Collection */}
       <View style={styles.collectionSection}>
-        <Text style={styles.sectionTitle}>Their Collection</Text>
+        <Text style={styles.sectionTitle}>Their collection</Text>
         <Text style={styles.sectionSubtitle}>
-          Tap the speaker to hear their pronunciation
+          Tap the speaker to hear how they say it 🎧
         </Text>
 
         <FlatList
@@ -105,86 +129,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   header: {
-    backgroundColor: COLORS.surface,
-    paddingTop: 55,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingTop: 56,
+    paddingBottom: 26,
+    borderBottomLeftRadius: RADIUS.xl,
+    borderBottomRightRadius: RADIUS.xl,
   },
   backButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    marginLeft: 20,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: RADIUS.pill,
+    padding: 9,
+    alignSelf: 'flex-start',
   },
   profileSection: {
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    paddingHorizontal: 20,
+  },
+  avatarRing: {
+    padding: 4,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   avatar: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: COLORS.primaryLight + '30',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
   avatarText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 25,
+    fontWeight: '800',
+    color: COLORS.sky,
   },
   name: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 12,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 30,
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    marginTop: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: RADIUS.md,
+    paddingVertical: 13,
   },
   stat: {
+    flex: 1,
     alignItems: 'center',
   },
   statNumber: {
     fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text,
+    fontWeight: '800',
+    color: '#fff',
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.88)',
     marginTop: 2,
+    fontWeight: '600',
   },
   collectionSection: {
     padding: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.text,
-    marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 13,
     color: COLORS.textLight,
+    marginTop: 3,
     marginBottom: 16,
   },
   stickerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    padding: 14,
-    borderRadius: 14,
+    padding: 13,
+    borderRadius: RADIUS.md,
     marginBottom: 10,
-    gap: 12,
+    gap: 13,
+    ...SHADOW.soft,
   },
-  stickerImagePlaceholder: {
+  stickerThumb: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -196,7 +237,7 @@ const styles = StyleSheet.create({
   },
   stickerWord: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.text,
   },
   stickerEnglish: {
@@ -205,8 +246,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   speakButton: {
-    backgroundColor: COLORS.primary + '15',
-    padding: 10,
-    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    padding: 11,
+    borderRadius: RADIUS.pill,
   },
 });

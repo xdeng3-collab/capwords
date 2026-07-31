@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
   Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { COLORS, GRADIENTS, RADIUS, SHADOW } from '../config';
+import { EmptyState } from '../components/UI';
 import { getFriends, addFriend, removeFriend } from '../services/storageService';
 
 // Mock friend data for demo purposes
@@ -129,7 +131,7 @@ export default function FriendsScreen({ navigation }) {
   );
 
   const renderSearchResult = ({ item }) => (
-    <TouchableOpacity style={styles.searchResultCard} onPress={() => handleAddFriend(item)}>
+    <View style={styles.searchResultCard}>
       <View style={styles.avatarContainer}>
         <View style={styles.avatarPlaceholder}>
           <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
@@ -142,68 +144,79 @@ export default function FriendsScreen({ navigation }) {
       <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
         <Ionicons name="person-add" size={18} color={COLORS.primary} />
       </TouchableOpacity>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={GRADIENTS.sky}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <Text style={styles.title}>Friends</Text>
-        <Text style={styles.subtitle}>{friends.length} friends</Text>
-      </View>
+        <Text style={styles.subtitle}>
+          {friends.length > 0
+            ? `${friends.length} learning buddies 🎉`
+            : 'Find buddies to learn with 🌟'}
+        </Text>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
+        {/* Search Bar */}
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={COLORS.textMuted} />
+          <Ionicons name="search" size={19} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search friends by name..."
+            placeholder="Search friends by name…"
             value={searchQuery}
             onChangeText={handleSearch}
             placeholderTextColor={COLORS.textMuted}
+            returnKeyType="search"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearchQuery(''); setIsSearching(false); }}>
-              <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setIsSearching(false);
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="close-circle" size={19} color={COLORS.textMuted} />
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Search Results */}
       {isSearching ? (
         <View style={styles.searchResults}>
-          <Text style={styles.sectionTitle}>Search Results</Text>
+          <Text style={styles.sectionTitle}>Search results</Text>
           {searchResults.length === 0 ? (
-            <Text style={styles.noResultsText}>No users found</Text>
+            <Text style={styles.noResultsText}>No one found with that name 🤔</Text>
           ) : (
             <FlatList
               data={searchResults}
               renderItem={renderSearchResult}
               keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContent}
             />
           )}
         </View>
+      ) : friends.length === 0 ? (
+        <EmptyState
+          emoji="👋"
+          title="No friends yet"
+          subtitle="Search for friends to peek at their sticker collections and cheer on their streaks!"
+        />
       ) : (
-        /* Friends List */
-        friends.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={60} color={COLORS.textMuted} />
-            <Text style={styles.emptyTitle}>No friends yet</Text>
-            <Text style={styles.emptyText}>
-              Search for friends to see their collections and compete on streaks!
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={friends}
-            renderItem={renderFriend}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-          />
-        )
+        <FlatList
+          data={friends}
+          renderItem={renderFriend}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
       )}
     </View>
   );
@@ -215,68 +228,66 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 62,
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    backgroundColor: COLORS.surface,
+    paddingBottom: 20,
+    borderBottomLeftRadius: RADIUS.xl,
+    borderBottomRightRadius: RADIUS.xl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 27,
+    fontWeight: '800',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 4,
-  },
-  searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 10,
+    marginTop: 18,
+    ...SHADOW.soft,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     color: COLORS.text,
+    padding: 0,
   },
   searchResults: {
     flex: 1,
-    padding: 20,
+    paddingTop: 20,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textLight,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+    paddingHorizontal: 24,
   },
   noResultsText: {
     color: COLORS.textLight,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 24,
+    fontSize: 15,
   },
   searchResultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     marginBottom: 10,
+    ...SHADOW.soft,
   },
   searchSubtext: {
     fontSize: 13,
@@ -284,24 +295,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   addButton: {
-    backgroundColor: COLORS.primary + '15',
-    padding: 10,
-    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}15`,
+    padding: 11,
+    borderRadius: RADIUS.pill,
   },
   listContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 120,
   },
   friendCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
     padding: 14,
-    borderRadius: 16,
+    borderRadius: RADIUS.md,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    ...SHADOW.soft,
   },
   avatarContainer: {
     marginRight: 12,
@@ -329,7 +339,7 @@ const styles = StyleSheet.create({
   },
   friendName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.text,
   },
   friendStats: {
@@ -353,28 +363,9 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     color: COLORS.textLight,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   moreButton: {
     padding: 8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 22,
   },
 });

@@ -1,34 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, MIN_DAILY_GOAL, MAX_DAILY_GOAL } from '../config';
+import { COLORS, MIN_DAILY_GOAL, MAX_DAILY_GOAL, RADIUS, SHADOW } from '../config';
+import { Card, GradientButton, ProgressBar } from '../components/UI';
 import { getUserProfile, updateUserProfile, canChangeGoal } from '../services/storageService';
+
+const PRESETS = [3, 5, 10, 15, 20];
+
+const TIPS = [
+  { emoji: '🌱', label: 'Casual', range: '3-5 words/day' },
+  { emoji: '📚', label: 'Regular', range: '5-10 words/day' },
+  { emoji: '🔥', label: 'Intensive', range: '10-20 words/day' },
+  { emoji: '🏆', label: 'Hardcore', range: '20+ words/day' },
+];
 
 export default function GoalSettingScreen({ navigation }) {
   const [goal, setGoal] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  React.useEffect(() => {
-    loadGoal();
+  useEffect(() => {
+    (async () => {
+      const profile = await getUserProfile();
+      setGoal(profile.dailyGoal);
+    })();
   }, []);
 
-  const loadGoal = async () => {
-    const profile = await getUserProfile();
-    setGoal(profile.dailyGoal);
+  const changeGoal = (value) => {
+    const next = Math.min(Math.max(value, MIN_DAILY_GOAL), MAX_DAILY_GOAL);
+    if (next !== goal) {
+      Haptics.selectionAsync().catch(() => {});
+      setGoal(next);
+    }
   };
 
   const handleSave = async () => {
     const canChange = await canChangeGoal();
     if (!canChange) {
       Alert.alert(
-        'Cannot Change Yet',
-        'You can only change your daily goal once every 7 days. This helps build consistent habits!',
+        'Not just yet 🗓️',
+        'You can change your daily goal once every 7 days. This helps build a steady habit!'
       );
       return;
     }
@@ -38,86 +56,118 @@ export default function GoalSettingScreen({ navigation }) {
       dailyGoal: goal,
       lastGoalChange: new Date().toISOString(),
     });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setLoading(false);
     navigation.goBack();
   };
 
+  const progress = (goal - MIN_DAILY_GOAL) / (MAX_DAILY_GOAL - MIN_DAILY_GOAL);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={10}
+        >
+          <Ionicons name="arrow-back" size={22} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Daily Goal</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.title}>Daily goal</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Big number with steppers */}
         <View style={styles.goalDisplay}>
-          <Text style={styles.goalNumber}>{goal}</Text>
-          <Text style={styles.goalLabel}>words per day</Text>
+          <TouchableOpacity
+            style={styles.stepper}
+            onPress={() => changeGoal(goal - 1)}
+            disabled={goal <= MIN_DAILY_GOAL}
+          >
+            <Ionicons
+              name="remove"
+              size={24}
+              color={goal <= MIN_DAILY_GOAL ? COLORS.textMuted : COLORS.primary}
+            />
+          </TouchableOpacity>
+
+          <View style={styles.goalNumberWrap}>
+            <Text style={styles.goalNumber}>{goal}</Text>
+            <Text style={styles.goalLabel}>words / day</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.stepper}
+            onPress={() => changeGoal(goal + 1)}
+            disabled={goal >= MAX_DAILY_GOAL}
+          >
+            <Ionicons
+              name="add"
+              size={24}
+              color={goal >= MAX_DAILY_GOAL ? COLORS.textMuted : COLORS.primary}
+            />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.sliderContainer}>
+        <View style={styles.sliderRow}>
           <Text style={styles.sliderLabel}>{MIN_DAILY_GOAL}</Text>
-          <View style={styles.slider}>
-            <View style={styles.sliderTrack}>
-              <View 
-                style={[
-                  styles.sliderFill, 
-                  { width: `${((goal - MIN_DAILY_GOAL) / (MAX_DAILY_GOAL - MIN_DAILY_GOAL)) * 100}%` }
-                ]} 
-              />
-            </View>
-            {[1, 5, 10, 15, 20, 30, 50].map((value) => (
-              <TouchableOpacity
-                key={value}
-                style={[styles.sliderDot, goal === value && styles.sliderDotActive]}
-                onPress={() => setGoal(value)}
-              />
-            ))}
+          <View style={styles.sliderTrackWrap}>
+            <ProgressBar progress={progress} height={8} />
           </View>
           <Text style={styles.sliderLabel}>{MAX_DAILY_GOAL}</Text>
         </View>
 
         {/* Quick presets */}
         <View style={styles.presets}>
-          {[3, 5, 10, 15, 20].map((value) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.presetButton, goal === value && styles.presetButtonActive]}
-              onPress={() => setGoal(value)}
-            >
-              <Text style={[styles.presetText, goal === value && styles.presetTextActive]}>
-                {value}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {PRESETS.map((value) => {
+            const active = goal === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.presetButton, active && styles.presetButtonActive]}
+                onPress={() => changeGoal(value)}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.presetText, active && styles.presetTextActive]}>
+                  {value}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle" size={20} color={COLORS.primary} />
+        <Card style={styles.infoCard}>
+          <Text style={styles.infoEmoji}>💡</Text>
           <Text style={styles.infoText}>
-            You can only change your daily goal once a week. Choose a goal that's challenging but achievable to maintain your streak!
+            You can change your goal once a week. Pick something challenging but doable so
+            your streak keeps growing!
           </Text>
-        </View>
+        </Card>
 
-        <View style={styles.tipCard}>
-          <Text style={styles.tipTitle}>Recommended Goals:</Text>
-          <Text style={styles.tipRow}>🌱 Casual: 3-5 words/day</Text>
-          <Text style={styles.tipRow}>📚 Regular: 5-10 words/day</Text>
-          <Text style={styles.tipRow}>🔥 Intensive: 10-20 words/day</Text>
-          <Text style={styles.tipRow}>🏆 Hardcore: 20+ words/day</Text>
-        </View>
+        <Card style={styles.tipCard}>
+          <Text style={styles.tipTitle}>Recommended goals</Text>
+          {TIPS.map((tip) => (
+            <View key={tip.label} style={styles.tipRow}>
+              <Text style={styles.tipEmoji}>{tip.emoji}</Text>
+              <Text style={styles.tipLabel}>{tip.label}</Text>
+              <Text style={styles.tipRange}>{tip.range}</Text>
+            </View>
+          ))}
+        </Card>
 
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+        <GradientButton
+          label={loading ? 'Saving…' : 'Save goal'}
+          icon="checkmark-circle"
           onPress={handleSave}
           disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>Save Goal</Text>
-        </TouchableOpacity>
-      </View>
+          size="lg"
+          style={styles.saveButton}
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -131,71 +181,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 60,
+    paddingTop: 58,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 8,
+  },
+  backButton: {
     backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
+    padding: 9,
+    ...SHADOW.soft,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '800',
     color: COLORS.text,
   },
+  headerSpacer: {
+    width: 40,
+  },
   content: {
-    padding: 24,
+    padding: 22,
+    paddingBottom: 130,
     alignItems: 'center',
   },
   goalDisplay: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 30,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 14,
+    marginBottom: 22,
+  },
+  stepper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW.soft,
+  },
+  goalNumberWrap: {
+    alignItems: 'center',
   },
   goalNumber: {
-    fontSize: 64,
-    fontWeight: 'bold',
+    fontSize: 62,
+    fontWeight: '800',
     color: COLORS.primary,
+    lineHeight: 68,
   },
   goalLabel: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.textLight,
-    marginTop: 4,
+    fontWeight: '600',
   },
-  sliderContainer: {
+  sliderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 24,
     gap: 12,
+    marginBottom: 22,
+  },
+  sliderTrackWrap: {
+    flex: 1,
   },
   sliderLabel: {
     fontSize: 13,
     color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  slider: {
-    flex: 1,
-    height: 40,
-    justifyContent: 'center',
-  },
-  sliderTrack: {
-    height: 4,
-    backgroundColor: COLORS.border,
-    borderRadius: 2,
-  },
-  sliderFill: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    borderRadius: 2,
-  },
-  sliderDot: {
-    position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.border,
-  },
-  sliderDotActive: {
-    backgroundColor: COLORS.primary,
-    transform: [{ scale: 1.5 }],
+    fontWeight: '700',
   },
   presets: {
     flexDirection: 'row',
@@ -203,22 +256,23 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   presetButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORS.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: COLORS.border,
+    borderColor: 'transparent',
+    ...SHADOW.soft,
   },
   presetButtonActive: {
     borderColor: COLORS.primary,
-    backgroundColor: COLORS.primary + '10',
+    backgroundColor: `${COLORS.primary}12`,
   },
   presetText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.textLight,
   },
   presetTextActive: {
@@ -227,12 +281,13 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.primary + '10',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    gap: 10,
+    gap: 11,
     width: '100%',
+    marginBottom: 14,
+    backgroundColor: `${COLORS.primary}0D`,
+  },
+  infoEmoji: {
+    fontSize: 18,
   },
   infoText: {
     flex: 1,
@@ -242,35 +297,35 @@ const styles = StyleSheet.create({
   },
   tipCard: {
     width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 24,
   },
   tipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '800',
     color: COLORS.text,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 10,
+  },
+  tipEmoji: {
+    fontSize: 17,
+  },
+  tipLabel: {
+    flex: 1,
     fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  tipRange: {
+    fontSize: 13,
     color: COLORS.textLight,
-    paddingVertical: 3,
+    fontWeight: '600',
   },
   saveButton: {
     width: '100%',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '700',
   },
 });

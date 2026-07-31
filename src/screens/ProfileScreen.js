@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
-  Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, LANGUAGES, PRICING } from '../config';
+import { COLORS, GRADIENTS, LANGUAGES, RADIUS, SHADOW } from '../config';
+import { Card } from '../components/UI';
 import {
   getUserProfile,
   updateUserProfile,
@@ -20,186 +21,199 @@ import {
   canChangeGoal,
 } from '../services/storageService';
 
+const PLAN_LABELS = {
+  free: { title: 'Free Plan', detail: '3 free words each day', emoji: '🌱' },
+  per_word: { title: 'Pay Per Word', detail: 'Word pack balance', emoji: '🎟️' },
+  monthly: { title: 'Monthly Pro', detail: 'Unlimited words', emoji: '⭐' },
+  yearly: { title: 'Yearly Pro', detail: 'Unlimited words', emoji: '👑' },
+};
+
 export default function ProfileScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [subscription, setSubscription] = useState(null);
   const [totalWords, setTotalWords] = useState(0);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async () => {
+    const [p, s, sub, stickers] = await Promise.all([
+      getUserProfile(),
+      getStreak(),
+      getSubscription(),
+      getStickers(),
+    ]);
 
-  const loadData = async () => {
-    const p = await getUserProfile();
-    const s = await getStreak();
-    const sub = await getSubscription();
-    const stickers = await getStickers();
-    
     setProfile(p);
     setStreak(s);
     setSubscription(sub);
     setTotalWords(stickers.length);
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const handleChangeGoal = async () => {
     const canChange = await canChangeGoal();
     if (!canChange) {
-      Alert.alert('Cannot Change', 'You can only change your daily goal once a week.');
+      Alert.alert(
+        'Not just yet 🗓️',
+        'You can change your daily goal once a week. This keeps your habit nice and steady!'
+      );
       return;
     }
     navigation.navigate('GoalSetting');
   };
 
-  if (!profile) return null;
+  const showComingSoon = (feature) =>
+    Alert.alert(`${feature}`, 'This is coming in a future update. Thanks for your patience! 💜');
 
-  const targetLang = LANGUAGES.find(l => l.code === profile.targetLanguage);
+  if (!profile) {
+    return <View style={styles.container} />;
+  }
+
+  const targetLang = LANGUAGES.find((l) => l.code === profile.targetLanguage);
+  const planKey = subscription?.type || 'free';
+  const plan = PLAN_LABELS[planKey] || PLAN_LABELS.free;
+  const planDetail =
+    planKey === 'per_word'
+      ? `${subscription?.wordBalance ?? 0} words remaining`
+      : plan.detail;
+
+  const initials = profile.name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const stats = [
+    { label: 'Words', value: totalWords, emoji: '📚' },
+    { label: 'Streak', value: streak.current, emoji: '🔥' },
+    { label: 'Best', value: streak.longest, emoji: '🏆' },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarLarge}>
-            <Text style={styles.avatarLargeText}>
-              {profile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.userName}>{profile.name}</Text>
-          <Text style={styles.userSubtext}>
-            Learning {targetLang?.flag} {targetLang?.name}
-          </Text>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{totalWords}</Text>
-            <Text style={styles.statLabel}>Words</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{streak.current}</Text>
-            <Text style={styles.statLabel}>Streak</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{streak.longest}</Text>
-            <Text style={styles.statLabel}>Best</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <LinearGradient
+        colors={GRADIENTS.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
+        <View style={styles.avatarRing}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
         </View>
-      </View>
+        <Text style={styles.userName}>{profile.name}</Text>
+        <Text style={styles.userSubtext}>
+          Learning {targetLang?.flag} {targetLang?.name}
+        </Text>
 
-      {/* Subscription Status */}
+        <View style={styles.statsRow}>
+          {stats.map((stat) => (
+            <View key={stat.label} style={styles.statBox}>
+              <Text style={styles.statEmoji}>{stat.emoji}</Text>
+              <Text style={styles.statNumber}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      </LinearGradient>
+
+      {/* Subscription */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Subscription</Text>
-        <TouchableOpacity 
-          style={styles.subscriptionCard}
+        <Text style={styles.sectionTitle}>Your plan</Text>
+        <TouchableOpacity
+          activeOpacity={0.9}
           onPress={() => navigation.navigate('Subscription')}
         >
-          <View style={styles.subInfo}>
-            <Ionicons 
-              name={subscription?.type === 'free' ? 'star-outline' : 'star'} 
-              size={24} 
-              color={COLORS.warning} 
-            />
-            <View style={styles.subTextContainer}>
-              <Text style={styles.subType}>
-                {subscription?.type === 'free' ? 'Free Plan' : 
-                 subscription?.type === 'monthly' ? 'Monthly Pro' :
-                 subscription?.type === 'yearly' ? 'Yearly Pro' :
-                 'Pay Per Word'}
-              </Text>
-              <Text style={styles.subDetail}>
-                {subscription?.type === 'free' ? '3 free words/day' :
-                 subscription?.type === 'per_word' ? `${subscription.wordBalance} words remaining` :
-                 'Unlimited words'}
-              </Text>
+          <Card style={styles.planCard}>
+            <View style={styles.planLeft}>
+              <View style={styles.planEmojiWrap}>
+                <Text style={styles.planEmoji}>{plan.emoji}</Text>
+              </View>
+              <View style={styles.planTextWrap}>
+                <Text style={styles.planTitle}>{plan.title}</Text>
+                <Text style={styles.planDetail}>{planDetail}</Text>
+              </View>
             </View>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-forward" size={19} color={COLORS.textMuted} />
+          </Card>
         </TouchableOpacity>
       </View>
 
-      {/* Daily Goal */}
+      {/* Learning settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Daily Goal</Text>
-        <TouchableOpacity style={styles.menuItem} onPress={handleChangeGoal}>
-          <View style={styles.menuLeft}>
-            <Ionicons name="flag-outline" size={22} color={COLORS.primary} />
-            <Text style={styles.menuText}>{profile.dailyGoal} words per day</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>Learning</Text>
+
+        <MenuRow
+          emoji="🎯"
+          label={`${profile.dailyGoal} words per day`}
+          hint="Daily goal"
+          onPress={handleChangeGoal}
+        />
+
+        <MenuRow
+          emoji={targetLang?.flag || '🌍'}
+          label={targetLang?.name || 'Choose a language'}
+          hint="Target language"
+          onPress={() =>
+            navigation.navigate('LanguageSelect', {
+              current: profile.targetLanguage,
+              onSelect: async (code) => {
+                await updateUserProfile({ targetLanguage: code });
+                loadData();
+              },
+            })
+          }
+        />
       </View>
 
-      {/* Language Settings */}
+      {/* More */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Language</Text>
-        <TouchableOpacity 
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('LanguageSelect', {
-            current: profile.targetLanguage,
-            onSelect: async (code) => {
-              await updateUserProfile({ targetLanguage: code });
-              loadData();
-            }
-          })}
-        >
-          <View style={styles.menuLeft}>
-            <Text style={styles.menuIcon}>{targetLang?.flag}</Text>
-            <Text style={styles.menuText}>Target: {targetLang?.name}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
+        <Text style={styles.sectionTitle}>More</Text>
+        <MenuRow emoji="⚙️" label="App settings" onPress={() => showComingSoon('App settings')} />
+        <MenuRow
+          emoji="💬"
+          label="Help & support"
+          onPress={() => showComingSoon('Help & support')}
+        />
+        <MenuRow
+          emoji="🔒"
+          label="Privacy policy"
+          onPress={() => showComingSoon('Privacy policy')}
+        />
       </View>
 
-      {/* Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        
-        <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Settings')}>
-          <View style={styles.menuLeft}>
-            <Ionicons name="settings-outline" size={22} color={COLORS.textLight} />
-            <Text style={styles.menuText}>App Settings</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuLeft}>
-            <Ionicons name="help-circle-outline" size={22} color={COLORS.textLight} />
-            <Text style={styles.menuText}>Help & Support</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.menuItem}>
-          <View style={styles.menuLeft}>
-            <Ionicons name="document-text-outline" size={22} color={COLORS.textLight} />
-            <Text style={styles.menuText}>Privacy Policy</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Pricing Info */}
-      <View style={styles.pricingSection}>
-        <Text style={styles.pricingTitle}>💰 Pricing</Text>
-        <View style={styles.pricingRow}>
-          <Text style={styles.pricingLabel}>Per word:</Text>
-          <Text style={styles.pricingValue}>${PRICING.perWord}</Text>
-        </View>
-        <View style={styles.pricingRow}>
-          <Text style={styles.pricingLabel}>Monthly:</Text>
-          <Text style={styles.pricingValue}>${PRICING.monthly}/mo</Text>
-        </View>
-        <View style={styles.pricingRow}>
-          <Text style={styles.pricingLabel}>Yearly:</Text>
-          <Text style={styles.pricingValue}>${PRICING.yearly}/yr (save 33%)</Text>
-        </View>
-      </View>
-
-      <View style={styles.bottomPadding} />
+      <Text style={styles.footer}>Made with 💜 for curious minds</Text>
     </ScrollView>
+  );
+}
+
+/** A single rounded settings row with an emoji badge. */
+function MenuRow({ emoji, label, hint, onPress }) {
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
+      <Card style={styles.menuItem}>
+        <View style={styles.menuLeft}>
+          <View style={styles.menuEmojiWrap}>
+            <Text style={styles.menuEmoji}>{emoji}</Text>
+          </View>
+          <View>
+            {hint ? <Text style={styles.menuHint}>{hint}</Text> : null}
+            <Text style={styles.menuText}>{label}</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={19} color={COLORS.textMuted} />
+      </Card>
+    </TouchableOpacity>
   );
 }
 
@@ -208,95 +222,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   header: {
-    backgroundColor: COLORS.surface,
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingTop: 64,
+    paddingBottom: 26,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-  },
-  avatarSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    borderBottomLeftRadius: RADIUS.xl,
+    borderBottomRightRadius: RADIUS.xl,
   },
-  avatarLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primary + '20',
+  avatarRing: {
+    padding: 4,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  avatar: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  avatarLargeText: {
-    fontSize: 28,
-    fontWeight: '700',
+  avatarText: {
+    fontSize: 27,
+    fontWeight: '800',
     color: COLORS.primary,
   },
   userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 23,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 12,
   },
   userSubtext: {
     fontSize: 14,
-    color: COLORS.textLight,
+    color: 'rgba(255,255,255,0.88)',
     marginTop: 4,
   },
-  statsGrid: {
+  statsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    marginTop: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
   statBox: {
+    flex: 1,
     alignItems: 'center',
   },
+  statEmoji: {
+    fontSize: 17,
+  },
   statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 3,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 2,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 1,
+    fontWeight: '600',
   },
   section: {
-    marginTop: 20,
+    marginTop: 24,
     paddingHorizontal: 20,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '800',
     color: COLORS.textLight,
     textTransform: 'uppercase',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 0.7,
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  subscriptionCard: {
+  planCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: 16,
-    borderRadius: 14,
   },
-  subInfo: {
+  planLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 13,
+    flex: 1,
   },
-  subTextContainer: {},
-  subType: {
+  planEmojiWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.sm,
+    backgroundColor: `${COLORS.sunny}22`,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planEmoji: {
+    fontSize: 21,
+  },
+  planTextWrap: {
+    flex: 1,
+  },
+  planTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     color: COLORS.text,
   },
-  subDetail: {
+  planDetail: {
     fontSize: 13,
     color: COLORS.textLight,
     marginTop: 2,
@@ -305,52 +343,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingVertical: 13,
   },
   menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 13,
+    flex: 1,
   },
-  menuIcon: {
-    fontSize: 20,
+  menuEmojiWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  menuEmoji: {
+    fontSize: 19,
+  },
+  menuHint: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
   },
   menuText: {
     fontSize: 15,
+    fontWeight: '700',
     color: COLORS.text,
   },
-  pricingSection: {
-    margin: 20,
-    backgroundColor: COLORS.primary + '08',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '20',
-  },
-  pricingTitle: {
-    fontSize: 16,
+  footer: {
+    textAlign: 'center',
+    color: COLORS.textMuted,
+    fontSize: 13,
+    marginTop: 28,
     fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 12,
-  },
-  pricingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  pricingLabel: {
-    fontSize: 14,
-    color: COLORS.textLight,
-  },
-  pricingValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  bottomPadding: {
-    height: 40,
   },
 });

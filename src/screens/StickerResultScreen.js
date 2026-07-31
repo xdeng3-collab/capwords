@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,23 @@ import {
   Image,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import {
+  COLORS,
+  GRADIENTS,
+  RADIUS,
+  SHADOW,
+  CELEBRATIONS,
+  getCategoryStyle,
+} from '../config';
+import { GradientButton, Pill } from '../components/UI';
+import Confetti from '../components/Confetti';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -21,12 +33,21 @@ export default function StickerResultScreen({ route, navigation }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState(null);
   const [recordedUri, setRecordedUri] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(true);
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const recordPulse = useRef(new Animated.Value(1)).current;
 
+  const celebration = useMemo(
+    () => CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)],
+    []
+  );
+  const categoryStyle = getCategoryStyle(recognition.category);
+
   useEffect(() => {
-    // Entry animation
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -40,27 +61,54 @@ export default function StickerResultScreen({ route, navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+
+    const timer = setTimeout(() => setShowConfetti(false), 2600);
+    return () => clearTimeout(timer);
+  }, [fadeAnim, scaleAnim]);
 
   useEffect(() => {
     if (isRecording) {
       Animated.loop(
         Animated.sequence([
-          Animated.timing(recordPulse, { toValue: 1.3, duration: 600, useNativeDriver: true }),
-          Animated.timing(recordPulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(recordPulse, {
+            toValue: 1.25,
+            duration: 600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(recordPulse, {
+            toValue: 1,
+            duration: 600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
         ])
       ).start();
     } else {
+      recordPulse.stopAnimation();
       recordPulse.setValue(1);
     }
-  }, [isRecording]);
+  }, [isRecording, recordPulse]);
+
+  // Stop any in-flight speech / recording when leaving the screen.
+  useEffect(
+    () => () => {
+      Speech.stop();
+      if (recording) {
+        recording.stopAndUnloadAsync().catch(() => {});
+      }
+    },
+    [recording]
+  );
 
   const speakWord = () => {
+    Haptics.selectionAsync().catch(() => {});
     setIsPlaying(true);
     Speech.speak(sticker.word || recognition.word, {
       language: sticker.language,
       rate: 0.8,
       onDone: () => setIsPlaying(false),
+      onStopped: () => setIsPlaying(false),
       onError: () => setIsPlaying(false),
     });
   };
@@ -80,6 +128,7 @@ export default function StickerResultScreen({ route, navigation }) {
       );
       setRecording(newRecording);
       setIsRecording(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } catch (error) {
       console.error('Failed to start recording', error);
     }
@@ -87,102 +136,133 @@ export default function StickerResultScreen({ route, navigation }) {
 
   const stopRecording = async () => {
     if (!recording) return;
-    
-    setIsRecording(false);
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    setRecordedUri(uri);
-    setRecording(null);
 
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-    });
+    setIsRecording(false);
+    try {
+      await recording.stopAndUnloadAsync();
+      setRecordedUri(recording.getURI());
+    } catch (error) {
+      console.error('Failed to stop recording', error);
+    } finally {
+      setRecording(null);
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+    }
   };
 
   const playRecording = async () => {
     if (!recordedUri) return;
-    
-    const { sound } = await Audio.Sound.createAsync({ uri: recordedUri });
-    await sound.playAsync();
+    try {
+      const { sound } = await Audio.Sound.createAsync({ uri: recordedUri });
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) sound.unloadAsync().catch(() => {});
+      });
+      await sound.playAsync();
+    } catch (error) {
+      console.error('Failed to play recording', error);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Close button */}
-      <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-        <Ionicons name="close" size={28} color={COLORS.text} />
+      <Confetti active={showConfetti} />
+
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => navigation.goBack()}
+        hitSlop={10}
+      >
+        <Ionicons name="close" size={24} color={COLORS.textLight} />
       </TouchableOpacity>
 
-      {/* Sticker Display */}
-      <Animated.View style={[styles.stickerContainer, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.stickerCard}>
-          <Image source={{ uri: sticker.imageUri }} style={styles.stickerImage} />
-          <View style={styles.stickerBadge}>
-            <Text style={styles.stickerEmoji}>✨</Text>
+      {/* Celebration banner */}
+      <Animated.View style={[styles.celebration, { opacity: fadeAnim }]}>
+        <Text style={styles.celebrationEmoji}>{celebration.emoji}</Text>
+        <Text style={styles.celebrationText}>{celebration.text}</Text>
+      </Animated.View>
+
+      {/* Sticker */}
+      <Animated.View
+        style={[styles.stickerContainer, { transform: [{ scale: scaleAnim }] }]}
+      >
+        <LinearGradient
+          colors={GRADIENTS.candy}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.stickerFrame}
+        >
+          <View style={styles.stickerInner}>
+            {sticker.imageUri ? (
+              <Image source={{ uri: sticker.imageUri }} style={styles.stickerImage} />
+            ) : (
+              <View style={styles.stickerFallback}>
+                <Text style={styles.stickerFallbackEmoji}>{categoryStyle.emoji}</Text>
+              </View>
+            )}
           </View>
+        </LinearGradient>
+        <View style={styles.sparkle}>
+          <Text style={styles.sparkleText}>✨</Text>
         </View>
       </Animated.View>
 
-      {/* Word Info */}
+      {/* Word info */}
       <Animated.View style={[styles.wordContainer, { opacity: fadeAnim }]}>
         <Text style={styles.wordText}>{recognition.word}</Text>
-        <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
-        <Text style={styles.englishText}>{recognition.english}</Text>
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{recognition.category}</Text>
-        </View>
+        {recognition.pronunciation ? (
+          <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
+        ) : null}
+        {recognition.english ? (
+          <Text style={styles.englishText}>{recognition.english}</Text>
+        ) : null}
+        <Pill
+          label={recognition.category || 'other'}
+          emoji={categoryStyle.emoji}
+          color={categoryStyle.color}
+          style={styles.categoryPill}
+        />
       </Animated.View>
 
-      {/* Action Buttons */}
+      {/* Actions */}
       <Animated.View style={[styles.actionsContainer, { opacity: fadeAnim }]}>
-        {/* Listen Button */}
-        <TouchableOpacity
-          style={[styles.actionButton, styles.listenButton]}
+        <GradientButton
+          label={isPlaying ? 'Playing…' : 'Listen'}
+          icon={isPlaying ? 'volume-high' : 'volume-medium-outline'}
+          gradient={GRADIENTS.primary}
           onPress={speakWord}
           disabled={isPlaying}
-        >
-          <Ionicons 
-            name={isPlaying ? "volume-high" : "volume-medium-outline"} 
-            size={28} 
-            color="#fff" 
-          />
-          <Text style={styles.actionButtonText}>
-            {isPlaying ? 'Playing...' : 'Listen'}
-          </Text>
-        </TouchableOpacity>
+          size="lg"
+        />
 
-        {/* Record Button - Press and hold */}
         <TouchableOpacity
-          style={[styles.actionButton, styles.recordButton, isRecording && styles.recordingActive]}
           onPressIn={startRecording}
           onPressOut={stopRecording}
-          activeOpacity={0.8}
+          activeOpacity={0.9}
         >
-          <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
-            <Ionicons 
-              name={isRecording ? "mic" : "mic-outline"} 
-              size={28} 
-              color="#fff" 
-            />
-          </Animated.View>
-          <Text style={styles.actionButtonText}>
-            {isRecording ? 'Recording...' : 'Hold to Record'}
-          </Text>
+          <LinearGradient
+            colors={isRecording ? ['#FB7185', '#E11D48'] : GRADIENTS.sunset}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.recordButton, SHADOW.glow]}
+          >
+            <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
+              <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color="#fff" />
+            </Animated.View>
+            <Text style={styles.recordText}>
+              {isRecording ? 'Listening… release to stop' : 'Hold to practice'}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
 
-        {/* Play Recording Button */}
-        {recordedUri && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.playbackButton]}
+        {recordedUri ? (
+          <GradientButton
+            label="Play my voice"
+            icon="play"
+            gradient={GRADIENTS.mint}
             onPress={playRecording}
-          >
-            <Ionicons name="play-outline" size={28} color="#fff" />
-            <Text style={styles.actionButtonText}>Play My Voice</Text>
-          </TouchableOpacity>
-        )}
+          />
+        ) : null}
       </Animated.View>
 
-      {/* Done Button */}
       <TouchableOpacity style={styles.doneButton} onPress={() => navigation.goBack()}>
         <Text style={styles.doneButtonText}>Done</Text>
       </TouchableOpacity>
@@ -190,130 +270,133 @@ export default function StickerResultScreen({ route, navigation }) {
   );
 }
 
+const STICKER_SIZE = SCREEN_WIDTH * 0.52;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 58,
   },
   closeButton: {
     position: 'absolute',
-    top: 55,
-    right: 20,
+    top: 54,
+    right: 18,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
     padding: 8,
     zIndex: 10,
+    ...SHADOW.soft,
+  },
+  celebration: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: RADIUS.pill,
+    gap: 7,
+    marginBottom: 6,
+    ...SHADOW.soft,
+  },
+  celebrationEmoji: {
+    fontSize: 17,
+  },
+  celebrationText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primary,
   },
   stickerContainer: {
-    marginTop: 20,
-    marginBottom: 24,
+    marginTop: 18,
+    marginBottom: 20,
   },
-  stickerCard: {
-    width: SCREEN_WIDTH * 0.55,
-    height: SCREEN_WIDTH * 0.55,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
+  stickerFrame: {
+    width: STICKER_SIZE,
+    height: STICKER_SIZE,
+    borderRadius: RADIUS.xl,
+    padding: 5,
+    ...SHADOW.glow,
+  },
+  stickerInner: {
+    flex: 1,
+    borderRadius: RADIUS.xl - 4,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   stickerImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
-  stickerBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+  stickerFallback: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.surfaceAlt,
   },
-  stickerEmoji: {
-    fontSize: 24,
+  stickerFallbackEmoji: {
+    fontSize: 56,
+  },
+  sparkle: {
+    position: 'absolute',
+    top: -8,
+    right: -6,
+  },
+  sparkleText: {
+    fontSize: 30,
   },
   wordContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
+    paddingHorizontal: 24,
   },
   wordText: {
     fontSize: 36,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: COLORS.text,
-    marginBottom: 6,
+    textAlign: 'center',
   },
   pronunciationText: {
-    fontSize: 18,
+    fontSize: 17,
     color: COLORS.textLight,
-    marginBottom: 4,
+    marginTop: 5,
   },
   englishText: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.textMuted,
-    marginBottom: 10,
+    marginTop: 3,
   },
-  categoryBadge: {
-    backgroundColor: COLORS.primaryLight + '20',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryText: {
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+  categoryPill: {
+    marginTop: 11,
   },
   actionsContainer: {
     width: '100%',
-    paddingHorizontal: 30,
+    paddingHorizontal: 28,
     gap: 12,
   },
-  actionButton: {
+  recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    borderRadius: 16,
-    gap: 10,
+    borderRadius: RADIUS.pill,
+    gap: 9,
   },
-  listenButton: {
-    backgroundColor: COLORS.primary,
-  },
-  recordButton: {
-    backgroundColor: COLORS.secondary,
-  },
-  recordingActive: {
-    backgroundColor: '#E74C3C',
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-  },
-  playbackButton: {
-    backgroundColor: COLORS.accent,
-  },
-  actionButtonText: {
+  recordText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   doneButton: {
     position: 'absolute',
-    bottom: 50,
-    backgroundColor: COLORS.text,
-    paddingHorizontal: 40,
-    paddingVertical: 14,
-    borderRadius: 25,
+    bottom: 42,
+    paddingHorizontal: 36,
+    paddingVertical: 12,
   },
   doneButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: COLORS.textLight,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

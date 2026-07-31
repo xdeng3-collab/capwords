@@ -41,12 +41,46 @@ With a selling price of $0.01/word, we maintain a 4x margin to cover:
 
 ## Tech Stack
 
-- **Frontend**: React Native + Expo
+- **Frontend**: React Native + Expo (SDK 52)
 - **AI**: DeepSeek V4 Flash (image recognition, translation)
 - **TTS**: expo-speech (native text-to-speech)
 - **Audio**: expo-av (recording)
+- **Visuals**: expo-linear-gradient + Animated API
+- **Feedback**: expo-haptics
 - **Storage**: AsyncStorage (local), expandable to cloud backend
 - **Navigation**: React Navigation
+
+## Design System
+
+Shared design tokens live in `src/config.js` and reusable components in
+`src/components/`:
+
+- `COLORS` / `GRADIENTS` — pastel-forward palette with playful gradient pairs
+- `RADIUS` / `SPACING` / `SHADOW` — rounded, soft-shadow geometry
+- `CATEGORY_STYLES` — an emoji + colour per sticker category
+- `UI.js` — `GradientButton`, `Card`, `Pill`, `EmptyState`, `ProgressBar`
+- `Confetti.js` — celebratory burst when a new word is learned
+
+## Troubleshooting
+
+### iOS build fails with a `fmt` / `consteval` error
+
+On Xcode 26+, the `fmt` library bundled with React Native 0.76 fails to
+compile:
+
+```
+Pods/fmt/include/fmt/format-inl.h:59:24: error: call to consteval function
+'fmt::basic_format_string<...>' is not a constant expression
+```
+
+This is handled automatically by the `plugins/withFmtConstevalFix.js` config
+plugin (registered in `app.json`), which patches the generated Podfile on every
+`prebuild` / `pod install`. See [expo/expo#44229](https://github.com/expo/expo/issues/44229).
+
+### "No bundle URL present" red screen
+
+The app launched but the Metro bundler isn't running. Start it with
+`npx expo start`, then reload the app (⌘R in the simulator).
 
 ## Supported Languages
 
@@ -73,14 +107,20 @@ npx expo start --android
 ```
 capwords/
 ├── App.js                        # Entry point
+├── plugins/
+│   └── withFmtConstevalFix.js    # iOS build fix for fmt on Xcode 26+
 ├── src/
-│   ├── config.js                 # App configuration, API keys, pricing
+│   ├── config.js                 # Design tokens, API keys, pricing
+│   ├── components/
+│   │   ├── UI.js                 # Buttons, cards, pills, empty states
+│   │   └── Confetti.js           # Celebration animation
 │   ├── navigation/
-│   │   └── AppNavigator.js       # Navigation setup
+│   │   └── AppNavigator.js       # Floating tab bar + stacks
 │   ├── screens/
 │   │   ├── CameraScreen.js       # Photo capture screen
 │   │   ├── StickerResultScreen.js # Word result + pronunciation
 │   │   ├── CollectionScreen.js   # Sticker collection by date
+│   │   ├── StickerDetailScreen.js # Single sticker detail
 │   │   ├── FriendsScreen.js      # Friends list & search
 │   │   ├── FriendProfileScreen.js # View friend's collection
 │   │   ├── ProfileScreen.js      # User profile & settings

@@ -1,6 +1,6 @@
 {
   "name": "capwords",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
@@ -16,11 +16,11 @@
     "@react-navigation/stack": "^6.3.20",
     "date-fns": "^3.6.0",
     "expo": "~52.0.0",
-    "expo-asset": "^57.0.8",
+    "expo-asset": "~11.0.5",
     "expo-av": "~15.0.0",
     "expo-camera": "~16.0.0",
-    "expo-constants": "^57.0.8",
-    "expo-file-system": "~18.0.0",
+    "expo-constants": "~17.0.8",
+    "expo-file-system": "~18.0.12",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.0",
     "expo-image-picker": "~16.0.0",

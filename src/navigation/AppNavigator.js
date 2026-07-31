@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../config';
+import { Platform, StyleSheet, View } from 'react-native';
+import { COLORS, RADIUS } from '../config';
 
 // Screens
 import CameraScreen from '../screens/CameraScreen';
@@ -63,65 +64,99 @@ function ProfileStack() {
   );
 }
 
+const ICONS = {
+  Camera: ['camera', 'camera-outline'],
+  Collection: ['grid', 'grid-outline'],
+  Friends: ['people', 'people-outline'],
+  Profile: ['happy', 'happy-outline'],
+};
+
 function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === 'Camera') {
-            iconName = focused ? 'camera' : 'camera-outline';
-          } else if (route.name === 'Collection') {
-            iconName = focused ? 'grid' : 'grid-outline';
-          } else if (route.name === 'Friends') {
-            iconName = focused ? 'people' : 'people-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-          return <Ionicons name={iconName} size={size} color={color} />;
+          const [active, inactive] = ICONS[route.name] || ICONS.Camera;
+          return (
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons
+                name={focused ? active : inactive}
+                size={focused ? size + 1 : size}
+                color={color}
+              />
+            </View>
+          );
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 0,
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 8,
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 25,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
+        tabBarStyle: styles.tabBar,
+        tabBarItemStyle: styles.tabBarItem,
+        tabBarLabelStyle: styles.tabBarLabel,
       })}
     >
-      <Tab.Screen 
-        name="Camera" 
+      <Tab.Screen
+        name="Camera"
         component={CameraStack}
         options={{ tabBarLabel: 'Capture' }}
       />
-      <Tab.Screen 
-        name="Collection" 
+      <Tab.Screen
+        name="Collection"
         component={CollectionStack}
-        options={{ tabBarLabel: 'Collection' }}
+        options={{ tabBarLabel: 'Stickers' }}
       />
-      <Tab.Screen 
-        name="Friends" 
+      <Tab.Screen
+        name="Friends"
         component={FriendsStack}
+        options={{ tabBarLabel: 'Friends' }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileStack}
+        options={{ tabBarLabel: 'Me' }}
       />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: Platform.OS === 'ios' ? 26 : 16,
+    height: 68,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 6,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.xl,
+    borderTopWidth: 0,
+    shadowColor: 'rgba(91,75,214,0.28)',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  tabBarItem: {
+    borderRadius: RADIUS.lg,
+  },
+  tabBarLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  iconWrap: {
+    width: 40,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADIUS.pill,
+  },
+  iconWrapActive: {
+    backgroundColor: `${COLORS.primary}16`,
+  },
+});
 
 export default function AppNavigator() {
   return (
