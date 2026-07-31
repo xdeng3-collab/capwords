@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "CapWords",
+    "slug": "capwords",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6C63FF"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.capwords.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CapWords needs camera access to take photos of objects for word learning.",
+        "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6C63FF"
+      },
+      "package": "com.capwords.app",
+      "permissions": ["CAMERA", "RECORD_AUDIO"]
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-av"
+    ]
+  }
+}
