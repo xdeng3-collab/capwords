@@ -8,8 +8,15 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Alert,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  useAudioRecorder,
+  createAudioPlayer,
+  setAudioModeAsync,
+  requestRecordingPermissionsAsync,
+  RecordingPresets,
+} from 'expo-audio';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,9 +38,12 @@ export default function StickerResultScreen({ route, navigation }) {
   const { sticker, recognition } = route.params;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState(null);
   const [recordedUri, setRecordedUri] = useState(null);
   const [showConfetti, setShowConfetti] = useState(true);
+
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Keeps a handle on the currently playing back player so we can release it.
+  const playerRef = useRef(null);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -90,15 +100,14 @@ export default function StickerResultScreen({ route, navigation }) {
     }
   }, [isRecording, recordPulse]);
 
-  // Stop any in-flight speech / recording when leaving the screen.
+  // Release audio resources when leaving the screen.
   useEffect(
     () => () => {
       Speech.stop();
-      if (recording) {
-        recording.stopAndUnloadAsync().catch(() => {});
-      }
+      playerRef.current?.remove();
+      playerRef.current = null;
     },
-    [recording]
+    []
   );
 
   const speakWord = () => {
@@ -115,48 +124,53 @@ export default function StickerResultScreen({ route, navigation }) {
 
   const startRecording = async () => {
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) return;
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) {
+        Alert.alert(
+          'Microphone needed 🎙️',
+          'Enable microphone access in Settings to practice your pronunciation.'
+        );
+        return;
+      }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(newRecording);
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setIsRecording(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } catch (error) {
       console.error('Failed to start recording', error);
+      setIsRecording(false);
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
+    if (!isRecording) return;
 
     setIsRecording(false);
     try {
-      await recording.stopAndUnloadAsync();
-      setRecordedUri(recording.getURI());
+      await audioRecorder.stop();
+      // `uri` is populated once the recorder has stopped.
+      setRecordedUri(audioRecorder.uri);
     } catch (error) {
       console.error('Failed to stop recording', error);
     } finally {
-      setRecording(null);
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+      await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
     }
   };
 
-  const playRecording = async () => {
+  const playRecording = () => {
     if (!recordedUri) return;
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri: recordedUri });
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) sound.unloadAsync().catch(() => {});
-      });
-      await sound.playAsync();
+      // Release any previous player before creating a new one.
+      playerRef.current?.remove();
+      const player = createAudioPlayer({ uri: recordedUri });
+      playerRef.current = player;
+      player.play();
     } catch (error) {
       console.error('Failed to play recording', error);
     }

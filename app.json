@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#7C6BFF"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.capwords.app",
@@ -26,11 +28,14 @@
         "backgroundColor": "#7C6BFF"
       },
       "package": "com.capwords.app",
-      "permissions": ["CAMERA", "RECORD_AUDIO"]
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-camera",
-      "expo-av",
+      "expo-audio",
       "./plugins/withFmtConstevalFix"
     ]
   }

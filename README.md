@@ -44,7 +44,7 @@ With a selling price of $0.01/word, we maintain a 4x margin to cover:
 - **Frontend**: React Native + Expo (SDK 52)
 - **AI**: DeepSeek V4 Flash (image recognition, translation)
 - **TTS**: expo-speech (native text-to-speech)
-- **Audio**: expo-av (recording)
+- **Audio**: expo-audio (recording & playback)
 - **Visuals**: expo-linear-gradient + Animated API
 - **Feedback**: expo-haptics
 - **Storage**: AsyncStorage (local), expandable to cloud backend
