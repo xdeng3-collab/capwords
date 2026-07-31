@@ -44,6 +44,49 @@ With a selling price of $0.01/word, we maintain a 4x margin to cover:
 - App maintenance
 - Customer support
 
+## Running the App
+
+The easiest way is the included scripts. From a Terminal opened in the project
+folder:
+
+### Start
+
+```bash
+./start.sh
+```
+
+This builds (first time only, takes a few minutes), installs, and launches
+CapWords on the iOS Simulator, and starts the Metro bundler. The app opens
+automatically. On first launch you name your pixel pet, then land on the Buddy
+home screen.
+
+Equivalent npm command: `npm run go`
+
+### Stop
+
+```bash
+./stop.sh
+```
+
+This stops the Metro bundler and any running dev server. (The Simulator app
+stays open; close it yourself whenever you like.)
+
+Equivalent npm command: `npm run stop`
+
+### While the app is running
+- **Reload after code changes**: press `Cmd+R` in the Simulator.
+- **Open the dev menu**: press `Ctrl+Cmd+Z` in the Simulator.
+- **Camera note**: the iOS Simulator has no real camera, so use the gallery /
+  photo picker button on the Snap screen. Real camera capture needs a physical
+  device.
+
+### Notes
+- The scripts automatically locate Node.js. If Node is not installed, install it
+  from https://nodejs.org (or `brew install node`) and rerun `./start.sh`.
+- AI photo recognition needs a `.env` file at the project root containing
+  `EXPO_PUBLIC_DEEPSEEK_API_KEY=your_key`. The app still runs without it, but
+  recognition calls will fail.
+
 ## Tech Stack
 
 - **Frontend**: React Native + Expo (SDK 52)
