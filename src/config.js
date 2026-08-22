@@ -56,6 +56,7 @@ export const PET = {
 export const PET_SPECIES = [
   { id: 'cat', name: 'Cat' },
   { id: 'dog', name: 'Dog' },
+  { id: 'bunny', name: 'Bunny' },
 ];
 
 // ==================== Coins & Outfits ====================
