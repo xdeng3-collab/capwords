@@ -143,6 +143,10 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', '.c.c.', 'ccccc', '..c..', 'c.c.c'],
     map: { c: 'C' },
   },
+  coin: {
+    grid: ['.ccc.', 'ccccc', 'ccLcc', 'ccLcc', 'ccccc', '.ccc.'],
+    map: { c: 'C', L: 'L' },
+  },
 };
 
 export default function PixelIcon({

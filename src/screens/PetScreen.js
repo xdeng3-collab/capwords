@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { COLORS, PET, PET_MOODS, RADIUS, SHADOW } from '../config';
+import { COLORS, PET, PET_MOODS, PET_SPECIES, RADIUS, SHADOW } from '../config';
 import { PixelPanel, PixelButton, ProgressBar } from '../components/UI';
 import PetSprite from '../components/PetSprite';
 import PixelIcon from '../components/PixelIcon';
@@ -20,10 +20,12 @@ export default function PetScreen({ navigation }) {
   const [state, setState] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState('');
+  const [speciesInput, setSpeciesInput] = useState(PET.defaultSpecies);
 
   const load = useCallback(async () => {
     const petState = await getPetState();
     setState(petState);
+    setSpeciesInput(petState.species);
     // First launch: prompt the user to name their new companion.
     if (!petState.named) {
       setNameInput('');
@@ -41,7 +43,7 @@ export default function PetScreen({ navigation }) {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    await namePet(trimmed);
+    await namePet(trimmed, state?.named ? undefined : speciesInput);
     setRenaming(false);
     load();
   };
@@ -62,22 +64,33 @@ export default function PetScreen({ navigation }) {
         {/* Title bar */}
         <View style={styles.titleBar}>
           <Text style={styles.title}>MY BUDDY</Text>
-          <TouchableOpacity
-            style={styles.renameChip}
-            onPress={() => {
-              setNameInput(state.name);
-              setRenaming(true);
-            }}
-          >
-            <PixelIcon name="gear" size={14} color={COLORS.textLight} />
-            <Text style={styles.renameChipText}>RENAME</Text>
-          </TouchableOpacity>
+          <View style={styles.titleActions}>
+            <View style={styles.coinChip}>
+              <PixelIcon name="coin" size={14} color={COLORS.sun} light={COLORS.surface} />
+              <Text style={styles.coinChipText}>{state.coins}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.renameChip}
+              onPress={() => {
+                setNameInput(state.name);
+                setRenaming(true);
+              }}
+            >
+              <PixelIcon name="gear" size={14} color={COLORS.textLight} />
+              <Text style={styles.renameChipText}>RENAME</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Pet stage */}
         <PixelPanel tone="panel" style={styles.stage}>
           <View style={styles.skyStrip} />
-          <PetSprite mood={state.mood} pixelSize={12} />
+          <PetSprite
+            mood={state.mood}
+            species={state.species}
+            outfit={state.equippedOutfit}
+            pixelSize={12}
+          />
           <Text style={styles.petName}>{state.name}</Text>
           <Text style={styles.petMood}>{state.name} {mood.label}</Text>
 
@@ -125,21 +138,52 @@ export default function PetScreen({ navigation }) {
           style={styles.cta}
           onPress={() => navigation.navigate('Camera')}
         />
+        <PixelButton
+          label="Wardrobe"
+          icon="shirt"
+          color={COLORS.berry}
+          style={styles.wardrobeBtn}
+          onPress={() => navigation.navigate('Wardrobe')}
+        />
       </ScrollView>
 
       {/* Name / rename modal */}
       <Modal visible={renaming} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
           <PixelPanel style={styles.modalCard}>
-            <View style={styles.modalPet}>
-              <PetSprite mood="content" pixelSize={7} animate={false} />
-            </View>
+            {state.named ? (
+              <View style={styles.modalPet}>
+                <PetSprite mood="content" species={state.species} pixelSize={7} animate={false} />
+              </View>
+            ) : null}
             <Text style={styles.modalTitle}>
-              {state.named ? 'RENAME YOUR BUDDY' : 'NAME YOUR NEW BUDDY'}
+              {state.named ? 'RENAME YOUR BUDDY' : 'CHOOSE YOUR NEW BUDDY'}
             </Text>
             <Text style={styles.modalSubtitle}>
-              Give your pixel pal a name to begin your journey together.
+              {state.named
+                ? 'Give your pixel pal a new name.'
+                : 'Pick a companion and give it a name to begin your journey together.'}
             </Text>
+            {!state.named ? (
+              <View style={styles.speciesRow}>
+                {PET_SPECIES.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[
+                      styles.speciesOption,
+                      speciesInput === s.id && styles.speciesOptionSelected,
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setSpeciesInput(s.id);
+                    }}
+                  >
+                    <PetSprite mood="content" species={s.id} pixelSize={4} animate={false} />
+                    <Text style={styles.speciesOptionLabel}>{s.name.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
             <TextInput
               style={styles.input}
               value={nameInput}
@@ -197,6 +241,27 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.text,
     letterSpacing: 2,
+  },
+  titleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  coinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    backgroundColor: COLORS.surface,
+  },
+  coinChipText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.text,
   },
   renameChip: {
     flexDirection: 'row',
@@ -311,6 +376,35 @@ const styles = StyleSheet.create({
   },
   cta: {
     marginTop: 2,
+  },
+  wardrobeBtn: {
+    marginTop: 12,
+  },
+  speciesRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+    width: '100%',
+  },
+  speciesOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+  },
+  speciesOptionSelected: {
+    borderColor: COLORS.primaryDark,
+    backgroundColor: `${COLORS.sun}33`,
+  },
+  speciesOptionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: 1,
+    marginTop: 6,
   },
   modalBackdrop: {
     flex: 1,

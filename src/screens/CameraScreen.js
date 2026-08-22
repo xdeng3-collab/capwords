@@ -39,6 +39,7 @@ export default function CameraScreen({ navigation }) {
   const [wordsToday, setWordsToday] = useState(0);
   const [dailyGoal, setDailyGoal] = useState(5);
   const [petName, setPetName] = useState('your buddy');
+  const [pet, setPet] = useState(null);
 
   const cameraRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -54,6 +55,7 @@ export default function CameraScreen({ navigation }) {
     setDailyGoal(profile.dailyGoal);
     setWordsToday(count);
     setPetName(pet.name);
+    setPet(pet);
   }, []);
 
   useFocusEffect(
@@ -186,7 +188,12 @@ export default function CameraScreen({ navigation }) {
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <PetSprite mood="neutral" pixelSize={8} />
+        <PetSprite
+          mood="neutral"
+          species={pet?.species}
+          outfit={pet?.equippedOutfit}
+          pixelSize={8}
+        />
         <Text style={styles.permissionTitle}>LET'S SEE THE WORLD</Text>
         <Text style={styles.permissionText}>
           CapWords uses your camera to turn everyday objects into pixel vocabulary stickers.

@@ -23,6 +23,7 @@ import { COLORS, RADIUS, SHADOW, CELEBRATIONS, getCategoryStyle } from '../confi
 import { PixelButton, Pill } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
+import { getPet } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STICKER_SIZE = SCREEN_WIDTH * 0.52;
@@ -32,6 +33,11 @@ export default function StickerResultScreen({ route, navigation }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUri, setRecordedUri] = useState(null);
+  const [pet, setPet] = useState(null);
+
+  useEffect(() => {
+    getPet().then(setPet).catch(() => {});
+  }, []);
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const playerRef = useRef(null);
@@ -153,7 +159,12 @@ export default function StickerResultScreen({ route, navigation }) {
 
       {/* Celebration + happy pet */}
       <Animated.View style={[styles.celebrationRow, { opacity: fadeAnim }]}>
-        <PetSprite mood="happy" pixelSize={5} />
+        <PetSprite
+          mood="happy"
+          species={pet?.species}
+          outfit={pet?.equippedOutfit}
+          pixelSize={5}
+        />
         <View style={styles.celebrationBubble}>
           <Text style={styles.celebrationText}>{celebration}</Text>
         </View>

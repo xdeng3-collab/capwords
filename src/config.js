@@ -48,7 +48,37 @@ export const GOAL_CHANGE_COOLDOWN_DAYS = 7; // Can change goal once a week
 export const PET = {
   defaultName: 'Biscuit',
   maxNameLength: 12,
+  defaultSpecies: 'cat',
 };
+
+// Available pet species. Users pick one when naming their buddy and can
+// switch for free in the Wardrobe.
+export const PET_SPECIES = [
+  { id: 'cat', name: 'Cat' },
+  { id: 'dog', name: 'Dog' },
+];
+
+// ==================== Coins & Outfits ====================
+// Coins are earned by learning words and spent on pet outfits.
+// Coin packs can also be purchased with real money (App Store / Play billing).
+export const COINS = {
+  perWord: 2, // coins earned per word learned
+  goalBonus: 10, // bonus for hitting the daily goal
+  packs: [
+    { id: 'coins_small', coins: 50, price: 0.99 },
+    { id: 'coins_medium', coins: 150, price: 2.49 },
+    { id: 'coins_large', coins: 400, price: 4.99 },
+  ],
+};
+
+// Outfit catalog. Sprites are defined in components/PetSprite.js.
+export const OUTFITS = [
+  { id: 'none', name: 'Nothing', price: 0, description: 'Just natural fluff.' },
+  { id: 'bow', name: 'Ribbon Bow', price: 25, description: 'A sweet little bow.' },
+  { id: 'scarf', name: 'Cozy Scarf', price: 40, description: 'Warm and stylish.' },
+  { id: 'cap', name: 'Snap Cap', price: 60, description: 'For sporty buddies.' },
+  { id: 'crown', name: 'Royal Crown', price: 150, description: 'Word royalty only.' },
+];
 
 // Mood levels, worst -> best. Drives pet expression and copy.
 export const PET_MOODS = {

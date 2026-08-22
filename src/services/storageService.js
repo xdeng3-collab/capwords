@@ -4,6 +4,8 @@ import {
   GOAL_CHANGE_COOLDOWN_DAYS,
   PRICING,
   PET,
+  COINS,
+  OUTFITS,
 } from '../config';
 
 const STORAGE_KEYS = {
@@ -15,6 +17,7 @@ const STORAGE_KEYS = {
   SUBSCRIPTION: 'capwords_subscription',
   DAILY_WORDS: 'capwords_daily_words',
   PET: 'capwords_pet',
+  COINS: 'capwords_coins',
 };
 
 // ==================== Stickers ====================
@@ -153,6 +156,12 @@ async function incrementDailyWords() {
   dailyData[today] = (dailyData[today] || 0) + 1;
   await AsyncStorage.setItem(STORAGE_KEYS.DAILY_WORDS, JSON.stringify(dailyData));
   
+  // Earn coins for learning; bonus when the daily goal is first reached.
+  const profile = await getUserProfile();
+  let earned = COINS.perWord;
+  if (dailyData[today] === profile.dailyGoal) earned += COINS.goalBonus;
+  await addCoins(earned);
+
   // Check and update streak
   await updateStreak();
 }
@@ -260,13 +269,45 @@ export async function updateSettings(updates) {
   return updated;
 }
 
+// ==================== Coins ====================
+
+export async function getCoins() {
+  const data = await AsyncStorage.getItem(STORAGE_KEYS.COINS);
+  return data ? JSON.parse(data) : { balance: 0, lifetime: 0 };
+}
+
+export async function addCoins(amount) {
+  const coins = await getCoins();
+  coins.balance += amount;
+  coins.lifetime += Math.max(amount, 0);
+  await AsyncStorage.setItem(STORAGE_KEYS.COINS, JSON.stringify(coins));
+  return coins;
+}
+
+/** Returns the updated coins object, or null if the balance is insufficient. */
+export async function spendCoins(amount) {
+  const coins = await getCoins();
+  if (coins.balance < amount) return null;
+  coins.balance -= amount;
+  await AsyncStorage.setItem(STORAGE_KEYS.COINS, JSON.stringify(coins));
+  return coins;
+}
+
 // ==================== Pet ====================
+
+const PET_DEFAULTS = {
+  species: PET.defaultSpecies, // 'cat' | 'dog'
+  ownedOutfits: ['none'],
+  equippedOutfit: 'none',
+};
 
 export async function getPet() {
   const data = await AsyncStorage.getItem(STORAGE_KEYS.PET);
-  if (data) return JSON.parse(data);
+  // Spread defaults first so pets saved before species/outfits existed migrate cleanly.
+  if (data) return { ...PET_DEFAULTS, ...JSON.parse(data) };
 
   const defaultPet = {
+    ...PET_DEFAULTS,
     name: PET.defaultName,
     named: false, // whether the user has chosen a name yet
     createdAt: new Date().toISOString(),
@@ -282,10 +323,45 @@ export async function updatePet(updates) {
   return updated;
 }
 
-export async function namePet(name) {
+export async function namePet(name, species) {
   const trimmed = (name || '').trim().slice(0, PET.maxNameLength);
   if (!trimmed) return getPet();
-  return updatePet({ name: trimmed, named: true });
+  const updates = { name: trimmed, named: true };
+  if (species) updates.species = species;
+  return updatePet(updates);
+}
+
+/** Switch between cat and dog (free, anytime). */
+export async function setPetSpecies(species) {
+  return updatePet({ species });
+}
+
+/**
+ * Buy an outfit with coins. Returns { ok, reason, pet, coins }.
+ * On success the outfit is also equipped.
+ */
+export async function buyOutfit(outfitId) {
+  const outfit = OUTFITS.find((o) => o.id === outfitId);
+  if (!outfit) return { ok: false, reason: 'unknown_outfit' };
+
+  const pet = await getPet();
+  if (pet.ownedOutfits.includes(outfitId)) return { ok: false, reason: 'owned', pet };
+
+  const coins = await spendCoins(outfit.price);
+  if (!coins) return { ok: false, reason: 'insufficient_coins', pet };
+
+  const updated = await updatePet({
+    ownedOutfits: [...pet.ownedOutfits, outfitId],
+    equippedOutfit: outfitId,
+  });
+  return { ok: true, pet: updated, coins };
+}
+
+/** Equip an owned outfit ('none' to undress). */
+export async function equipOutfit(outfitId) {
+  const pet = await getPet();
+  if (!pet.ownedOutfits.includes(outfitId)) return pet;
+  return updatePet({ equippedOutfit: outfitId });
 }
 
 /**
@@ -300,11 +376,12 @@ export async function namePet(name) {
  *  - sad     : had a streak but missed a day (streak broken / at risk)
  */
 export async function getPetState() {
-  const [pet, profile, streak, wordsToday] = await Promise.all([
+  const [pet, profile, streak, wordsToday, coins] = await Promise.all([
     getPet(),
     getUserProfile(),
     getStreak(),
     getDailyWordCount(),
+    getCoins(),
   ]);
 
   const dailyGoal = profile.dailyGoal || DEFAULT_DAILY_GOAL;
@@ -337,6 +414,10 @@ export async function getPetState() {
     mood,
     name: pet.name,
     named: pet.named,
+    species: pet.species,
+    equippedOutfit: pet.equippedOutfit,
+    ownedOutfits: pet.ownedOutfits,
+    coins: coins.balance,
     wordsToday,
     dailyGoal,
     goalReached,

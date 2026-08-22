@@ -18,6 +18,7 @@ import LanguageSelectScreen from '../screens/LanguageSelectScreen';
 import FriendProfileScreen from '../screens/FriendProfileScreen';
 import GoalSettingScreen from '../screens/GoalSettingScreen';
 import StickerDetailScreen from '../screens/StickerDetailScreen';
+import WardrobeScreen from '../screens/WardrobeScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -26,6 +27,7 @@ function PetStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PetMain" component={PetScreen} />
+      <Stack.Screen name="Wardrobe" component={WardrobeScreen} />
     </Stack.Navigator>
   );
 }
