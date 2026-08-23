@@ -19,6 +19,7 @@ import {
   getStickers,
   canChangeGoal,
   getPet,
+  seedDemoData,
 } from '../services/storageService';
 
 const PLAN_LABELS = {
@@ -173,6 +174,21 @@ export default function ProfileScreen({ navigation }) {
         <MenuRow icon="gear" label="App settings" onPress={() => showComingSoon('App settings')} />
         <MenuRow icon="chat" label="Help & support" onPress={() => showComingSoon('Help & support')} />
         <MenuRow icon="lock" label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} />
+        {__DEV__ ? (
+          <MenuRow
+            icon="star"
+            label="Load demo data"
+            hint="DEV ONLY"
+            onPress={async () => {
+              await seedDemoData();
+              await loadData();
+              Alert.alert(
+                'Demo data loaded',
+                'Sample stickers, friends, a streak, and 60 coins were added. Check the Book and Pals tabs.'
+              );
+            }}
+          />
+        ) : null}
       </View>
 
       <Text style={styles.footer}>MADE FOR CURIOUS MINDS</Text>

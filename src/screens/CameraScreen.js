@@ -22,6 +22,7 @@ import { recognizeAndTranslate } from '../services/aiService';
 import {
   saveSticker,
   getUserProfile,
+  updateUserProfile,
   canLearnWord,
   consumeWord,
   getDailyWordCount,
@@ -222,7 +223,10 @@ export default function CameraScreen({ navigation }) {
             onPress={() =>
               navigation.navigate('LanguageSelect', {
                 current: targetLanguage,
-                onSelect: (code) => setTargetLanguage(code),
+                onSelect: async (code) => {
+                  setTargetLanguage(code);
+                  await updateUserProfile({ targetLanguage: code });
+                },
               })
             }
           >

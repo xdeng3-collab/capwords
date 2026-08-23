@@ -269,6 +269,86 @@ export async function updateSettings(updates) {
   return updated;
 }
 
+// ==================== Demo data (dev only) ====================
+
+const DEMO_STICKERS = [
+  // [word, english, pronunciation, category, daysAgo]
+  ['Manzana', 'Apple', 'man-SAH-nah', 'food', 0],
+  ['Taza', 'Cup', 'TAH-sah', 'object', 0],
+  ['Flor', 'Flower', 'flor', 'nature', 0],
+  ['Perro', 'Dog', 'PEH-rroh', 'animal', 1],
+  ['Silla', 'Chair', 'SEE-yah', 'object', 1],
+  ['Café', 'Coffee', 'kah-FEH', 'drink', 1],
+  ['Zapato', 'Shoe', 'sah-PAH-toh', 'clothing', 3],
+  ['Árbol', 'Tree', 'AR-bol', 'nature', 3],
+  ['Gato', 'Cat', 'GAH-toh', 'animal', 5],
+  ['Libro', 'Book', 'LEE-broh', 'object', 5],
+  ['Bicicleta', 'Bicycle', 'bee-see-KLEH-tah', 'vehicle', 7],
+  ['Pan', 'Bread', 'pahn', 'food', 7],
+];
+
+const DEMO_FRIENDS = [
+  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8 },
+  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5 },
+  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3 },
+];
+
+/**
+ * Populate the Book (stickers) and Pals (friends) with sample data so the
+ * screens can be tested without capturing real photos. Safe to run more than
+ * once — demo entries are not duplicated. Dev/testing use only.
+ */
+export async function seedDemoData() {
+  // Stickers spread over the past week, rendered with category-icon fallbacks.
+  const stickers = await getStickers();
+  const dailyRaw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_WORDS);
+  const dailyData = dailyRaw ? JSON.parse(dailyRaw) : {};
+
+  DEMO_STICKERS.forEach(([word, english, pronunciation, category, daysAgo], i) => {
+    const id = `demo_${i}`;
+    if (stickers.some((s) => s.id === id)) return;
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    stickers.push({
+      id,
+      imageUri: null,
+      word,
+      english,
+      pronunciation,
+      description: `A common word you will hear every day: "${word}" means ${english.toLowerCase()}.`,
+      category,
+      language: 'es',
+      createdAt: date.toISOString(),
+    });
+    const day = date.toISOString().split('T')[0];
+    dailyData[day] = (dailyData[day] || 0) + 1;
+  });
+
+  stickers.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(stickers));
+  await AsyncStorage.setItem(STORAGE_KEYS.DAILY_WORDS, JSON.stringify(dailyData));
+
+  // Friends for the Pals tab.
+  const friends = await getFriends();
+  for (const friend of DEMO_FRIENDS) {
+    if (!friends.some((f) => f.id === friend.id)) {
+      friends.push({ ...friend, addedAt: new Date().toISOString() });
+    }
+  }
+  await AsyncStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
+
+  // A little streak history and pocket money so pet + wardrobe feel alive.
+  const streak = await getStreak();
+  if (streak.current === 0) {
+    const today = new Date().toISOString().split('T')[0];
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.STREAK,
+      JSON.stringify({ current: 3, longest: 5, lastActiveDate: today })
+    );
+  }
+  await addCoins(60);
+}
+
 // ==================== Coins ====================
 
 export async function getCoins() {
