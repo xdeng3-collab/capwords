@@ -13,9 +13,11 @@ import PixelIcon from '../components/PixelIcon';
 export default function LanguageSelectScreen({ route, navigation }) {
   const { current, onSelect } = route.params;
 
-  const handleSelect = (code) => {
+  const handleSelect = async (code) => {
     Haptics.selectionAsync().catch(() => {});
-    onSelect?.(code);
+    // Wait for the selection to persist before leaving, so screens that
+    // reload their profile on focus don't read the old value.
+    await onSelect?.(code);
     navigation.goBack();
   };
 
