@@ -14,7 +14,12 @@ import { COLORS, RADIUS, SHADOW } from '../config';
 import { EmptyState } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
-import { getFriends, addFriend } from '../services/storageService';
+import {
+  getFriends,
+  addFriend,
+  getTodayCheers,
+  cheerFriend,
+} from '../services/storageService';
 
 // Mock friend data for demo purposes
 const MOCK_FRIENDS_SEARCH = [
@@ -32,8 +37,9 @@ export default function FriendsScreen({ navigation }) {
   const [cheered, setCheered] = useState({});
 
   const loadFriends = async () => {
-    const data = await getFriends();
+    const [data, cheers] = await Promise.all([getFriends(), getTodayCheers()]);
     setFriends(data);
+    setCheered(cheers.ids);
   };
 
   useFocusEffect(
@@ -69,11 +75,12 @@ export default function FriendsScreen({ navigation }) {
     Alert.alert('Friend Added', `${friend.name} has been added to your friends.`);
   };
 
-  // Duolingo-style congrats: cheer a friend's streak once per visit.
-  const handleCheer = (friend) => {
+  // Duolingo-style congrats: cheer each friend once per day (resets at midnight).
+  const handleCheer = async (friend) => {
     if (cheered[friend.id]) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setCheered((c) => ({ ...c, [friend.id]: true }));
+    await cheerFriend(friend.id);
   };
 
   const getAvatarInitials = (name) =>

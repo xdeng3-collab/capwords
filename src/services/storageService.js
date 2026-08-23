@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
   DAILY_WORDS: 'capwords_daily_words',
   PET: 'capwords_pet',
   COINS: 'capwords_coins',
+  CHEERS: 'capwords_cheers',
 };
 
 // ==================== Stickers ====================
@@ -196,6 +197,25 @@ export async function removeFriend(friendId) {
   const friends = await getFriends();
   const filtered = friends.filter(f => f.id !== friendId);
   await AsyncStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(filtered));
+}
+
+// ==================== Cheers ====================
+// Friend congrats reset daily (Duolingo-style): you can cheer each friend
+// once per day, and the "sent" state survives app restarts.
+
+export async function getTodayCheers() {
+  const today = new Date().toISOString().split('T')[0];
+  const data = await AsyncStorage.getItem(STORAGE_KEYS.CHEERS);
+  const parsed = data ? JSON.parse(data) : null;
+  if (!parsed || parsed.date !== today) return { date: today, ids: {} };
+  return parsed;
+}
+
+export async function cheerFriend(friendId) {
+  const cheers = await getTodayCheers();
+  cheers.ids[friendId] = true;
+  await AsyncStorage.setItem(STORAGE_KEYS.CHEERS, JSON.stringify(cheers));
+  return cheers;
 }
 
 // ==================== Subscription ====================
