@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import {
   DEFAULT_DAILY_GOAL,
   GOAL_CHANGE_COOLDOWN_DAYS,
@@ -23,11 +24,34 @@ const STORAGE_KEYS = {
 
 // ==================== Stickers ====================
 
+const STICKER_IMAGE_DIR = `${FileSystem.documentDirectory || ''}stickers/`;
+
+/**
+ * Copy a freshly captured photo from the camera's temporary cache into the
+ * app's permanent documents folder. Photos live only on the user's device —
+ * nothing is uploaded, so there is no server storage cost. Cache URIs can be
+ * purged by iOS at any time, which is why we copy them out.
+ */
+async function persistStickerImage(imageUri, id) {
+  if (!imageUri || !FileSystem.documentDirectory) return imageUri;
+  try {
+    await FileSystem.makeDirectoryAsync(STICKER_IMAGE_DIR, { intermediates: true }).catch(() => {});
+    const dest = `${STICKER_IMAGE_DIR}${id}.jpg`;
+    await FileSystem.copyAsync({ from: imageUri, to: dest });
+    return dest;
+  } catch (e) {
+    return imageUri; // fall back to the original URI
+  }
+}
+
 export async function saveSticker(sticker) {
   const stickers = await getStickers();
+  const id = Date.now().toString();
+  const imageUri = await persistStickerImage(sticker.imageUri, id);
   const newSticker = {
     ...sticker,
-    id: Date.now().toString(),
+    imageUri,
+    id,
     createdAt: new Date().toISOString(),
   };
   stickers.unshift(newSticker);
@@ -63,8 +87,13 @@ export async function getStickersByDate() {
 
 export async function deleteSticker(id) {
   const stickers = await getStickers();
+  const sticker = stickers.find((s) => s.id === id);
   const filtered = stickers.filter(s => s.id !== id);
   await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(filtered));
+  // Clean up the stored photo (best effort).
+  if (sticker?.imageUri?.startsWith(STICKER_IMAGE_DIR)) {
+    FileSystem.deleteAsync(sticker.imageUri, { idempotent: true }).catch(() => {});
+  }
 }
 
 // ==================== User Profile ====================
@@ -292,19 +321,19 @@ export async function updateSettings(updates) {
 // ==================== Demo data (dev only) ====================
 
 const DEMO_STICKERS = [
-  // [word, english, pronunciation, category, daysAgo]
-  ['Manzana', 'Apple', 'man-SAH-nah', 'food', 0],
-  ['Taza', 'Cup', 'TAH-sah', 'object', 0],
-  ['Flor', 'Flower', 'flor', 'nature', 0],
-  ['Perro', 'Dog', 'PEH-rroh', 'animal', 1],
-  ['Silla', 'Chair', 'SEE-yah', 'object', 1],
-  ['Café', 'Coffee', 'kah-FEH', 'drink', 1],
-  ['Zapato', 'Shoe', 'sah-PAH-toh', 'clothing', 3],
-  ['Árbol', 'Tree', 'AR-bol', 'nature', 3],
-  ['Gato', 'Cat', 'GAH-toh', 'animal', 5],
-  ['Libro', 'Book', 'LEE-broh', 'object', 5],
-  ['Bicicleta', 'Bicycle', 'bee-see-KLEH-tah', 'vehicle', 7],
-  ['Pan', 'Bread', 'pahn', 'food', 7],
+  // [word, english, pronunciation, category, daysAgo, place]
+  ['Manzana', 'Apple', 'man-SAH-nah', 'food', 0, 'Palo Alto, CA'],
+  ['Taza', 'Cup', 'TAH-sah', 'object', 0, 'Palo Alto, CA'],
+  ['Flor', 'Flower', 'flor', 'nature', 0, 'Menlo Park, CA'],
+  ['Perro', 'Dog', 'PEH-rroh', 'animal', 1, 'San Francisco, CA'],
+  ['Silla', 'Chair', 'SEE-yah', 'object', 1, 'San Francisco, CA'],
+  ['Café', 'Coffee', 'kah-FEH', 'drink', 1, 'San Francisco, CA'],
+  ['Zapato', 'Shoe', 'sah-PAH-toh', 'clothing', 3, 'Mountain View, CA'],
+  ['Árbol', 'Tree', 'AR-bol', 'nature', 3, 'Mountain View, CA'],
+  ['Gato', 'Cat', 'GAH-toh', 'animal', 5, 'Berkeley, CA'],
+  ['Libro', 'Book', 'LEE-broh', 'object', 5, 'Berkeley, CA'],
+  ['Bicicleta', 'Bicycle', 'bee-see-KLEH-tah', 'vehicle', 7, 'Santa Cruz, CA'],
+  ['Pan', 'Bread', 'pahn', 'food', 7, 'Santa Cruz, CA'],
 ];
 
 const DEMO_FRIENDS = [
@@ -324,9 +353,15 @@ export async function seedDemoData() {
   const dailyRaw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_WORDS);
   const dailyData = dailyRaw ? JSON.parse(dailyRaw) : {};
 
-  DEMO_STICKERS.forEach(([word, english, pronunciation, category, daysAgo], i) => {
+  DEMO_STICKERS.forEach(([word, english, pronunciation, category, daysAgo, place], i) => {
     const id = `demo_${i}`;
-    if (stickers.some((s) => s.id === id)) return;
+    const existing = stickers.find((s) => s.id === id);
+    if (existing) {
+      if (!existing.location && place) {
+        existing.location = { latitude: null, longitude: null, place };
+      }
+      return;
+    }
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
     stickers.push({
@@ -338,6 +373,7 @@ export async function seedDemoData() {
       description: `A common word you will hear every day: "${word}" means ${english.toLowerCase()}.`,
       category,
       language: 'es',
+      location: place ? { latitude: null, longitude: null, place } : null,
       createdAt: date.toISOString(),
     });
     const day = date.toISOString().split('T')[0];

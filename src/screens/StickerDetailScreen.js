@@ -11,7 +11,7 @@ import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
-import { PixelPanel, PixelButton, Pill } from '../components/UI';
+import { PixelPanel, PixelButton } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 
 export default function StickerDetailScreen({ route, navigation }) {
@@ -24,12 +24,12 @@ export default function StickerDetailScreen({ route, navigation }) {
   };
 
   const details = [
-    sticker.category && { label: 'Category', value: sticker.category },
     sticker.language && { label: 'Language', value: sticker.language.toUpperCase() },
     sticker.createdAt && {
       label: 'Learned on',
       value: format(new Date(sticker.createdAt), 'MMM d, yyyy'),
     },
+    sticker.location?.place && { label: 'Learned at', value: sticker.location.place },
   ].filter(Boolean);
 
   return (
@@ -61,12 +61,6 @@ export default function StickerDetailScreen({ route, navigation }) {
             <Text style={styles.pronunciation}>/{sticker.pronunciation}/</Text>
           ) : null}
           {sticker.english ? <Text style={styles.english}>{sticker.english}</Text> : null}
-          <Pill
-            label={sticker.category || 'other'}
-            icon={categoryStyle.icon}
-            color={categoryStyle.color}
-            style={styles.pill}
-          />
         </View>
 
         <PixelButton

@@ -112,6 +112,11 @@ export default function CollectionScreen({ navigation }) {
             {item.english}
           </Text>
         ) : null}
+        {item.location?.place ? (
+          <Text style={styles.stickerPlace} numberOfLines={1}>
+            {item.location.place}
+          </Text>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -342,5 +347,12 @@ const styles = StyleSheet.create({
     marginTop: 1,
     textAlign: 'center',
     fontWeight: '700',
+  },
+  stickerPlace: {
+    fontSize: 9,
+    color: COLORS.textMuted,
+    marginTop: 1,
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });

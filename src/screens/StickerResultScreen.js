@@ -20,7 +20,7 @@ import {
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW, CELEBRATIONS, getCategoryStyle } from '../config';
-import { PixelButton, Pill } from '../components/UI';
+import { PixelButton } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import StreakCelebration from '../components/StreakCelebration';
@@ -192,12 +192,6 @@ export default function StickerResultScreen({ route, navigation }) {
           <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
         ) : null}
         {recognition.english ? <Text style={styles.englishText}>{recognition.english}</Text> : null}
-        <Pill
-          label={recognition.category || 'other'}
-          icon={categoryStyle.icon}
-          color={categoryStyle.color}
-          style={styles.categoryPill}
-        />
       </Animated.View>
 
       {/* Actions */}
@@ -310,7 +304,7 @@ const styles = StyleSheet.create({
   },
   pronunciationText: { fontSize: 17, color: COLORS.textLight, marginTop: 5, fontWeight: '700' },
   englishText: { fontSize: 15, color: COLORS.textMuted, marginTop: 3, fontWeight: '700' },
-  categoryPill: { marginTop: 12 },
+
   actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 12 },
   recordButton: {
     flexDirection: 'row',

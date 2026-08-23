@@ -19,7 +19,8 @@
       "bundleIdentifier": "com.capwords.app",
       "infoPlist": {
         "NSCameraUsageDescription": "CapWords needs camera access to take photos of objects for word learning.",
-        "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation."
+        "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation.",
+        "NSLocationWhenInUseUsageDescription": "CapWords uses your location to remember where you learned each word."
       }
     },
     "android": {

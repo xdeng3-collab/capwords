@@ -13,6 +13,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, LANGUAGES, RADIUS, SHADOW } from '../config';
 import { PixelButton } from '../components/UI';
@@ -32,6 +33,37 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FRAME_SIZE = SCREEN_WIDTH * 0.68;
+
+/**
+ * Best-effort capture of where the photo was taken. Returns
+ * { latitude, longitude, place } or null if permission is denied or
+ * anything fails — a missing location never blocks saving the word.
+ */
+async function captureLocation() {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    const position =
+      (await Location.getLastKnownPositionAsync()) ||
+      (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }));
+    if (!position) return null;
+    const { latitude, longitude } = position.coords;
+    let place = null;
+    try {
+      const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (geo) {
+        place = [geo.city || geo.subregion || geo.district, geo.region || geo.country]
+          .filter(Boolean)
+          .join(', ');
+      }
+    } catch (e) {
+      // Reverse geocoding is optional; keep the raw coordinates.
+    }
+    return { latitude, longitude, place };
+  } catch (e) {
+    return null;
+  }
+}
 
 export default function CameraScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -106,7 +138,11 @@ export default function CameraScreen({ navigation }) {
     try {
       const langName =
         LANGUAGES.find((l) => l.code === targetLanguage)?.name || targetLanguage;
-      const recognition = await recognizeAndTranslate(base64, langName);
+      // Recognize the word and grab the location at the same time.
+      const [recognition, location] = await Promise.all([
+        recognizeAndTranslate(base64, langName),
+        captureLocation(),
+      ]);
 
       const sticker = await saveSticker({
         imageUri: uri,
@@ -116,6 +152,7 @@ export default function CameraScreen({ navigation }) {
         description: recognition.description,
         category: recognition.category,
         language: targetLanguage,
+        location,
       });
 
       await consumeWord();
