@@ -27,6 +27,7 @@ import {
   consumeWord,
   getDailyWordCount,
   getPet,
+  getStreak,
 } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -120,7 +121,20 @@ export default function CameraScreen({ navigation }) {
       await consumeWord();
       await loadProfile();
 
-      navigation.navigate('StickerResult', { sticker, recognition });
+      // Celebrate when this word is the one that completes the daily goal.
+      const [profile, count, streakData] = await Promise.all([
+        getUserProfile(),
+        getDailyWordCount(),
+        getStreak(),
+      ]);
+      const goalJustReached = count === profile.dailyGoal;
+
+      navigation.navigate('StickerResult', {
+        sticker,
+        recognition,
+        goalJustReached,
+        streak: streakData.current,
+      });
     } catch (error) {
       console.error(error);
       Alert.alert(

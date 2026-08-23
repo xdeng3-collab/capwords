@@ -9,17 +9,19 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW } from '../config';
 import { EmptyState } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
-import { getFriends, addFriend, removeFriend } from '../services/storageService';
+import PetSprite from '../components/PetSprite';
+import { getFriends, addFriend } from '../services/storageService';
 
 // Mock friend data for demo purposes
 const MOCK_FRIENDS_SEARCH = [
-  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8 },
-  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5 },
-  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3 },
-  { id: '104', name: 'Priya Sharma', avatar: null, streak: 23, wordsToday: 10 },
+  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8, pet: { name: 'Mochi', species: 'bunny', outfit: 'bow' } },
+  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5, pet: { name: 'Rocky', species: 'dog', outfit: 'cap' } },
+  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3, pet: { name: 'Tofu', species: 'cat', outfit: 'none' } },
+  { id: '104', name: 'Priya Sharma', avatar: null, streak: 23, wordsToday: 10, pet: { name: 'Laddu', species: 'cat', outfit: 'crown' } },
 ];
 
 export default function FriendsScreen({ navigation }) {
@@ -27,6 +29,7 @@ export default function FriendsScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [cheered, setCheered] = useState({});
 
   const loadFriends = async () => {
     const data = await getFriends();
@@ -66,18 +69,11 @@ export default function FriendsScreen({ navigation }) {
     Alert.alert('Friend Added', `${friend.name} has been added to your friends.`);
   };
 
-  const handleRemoveFriend = (friend) => {
-    Alert.alert('Remove Friend', `Are you sure you want to remove ${friend.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          await removeFriend(friend.id);
-          await loadFriends();
-        },
-      },
-    ]);
+  // Duolingo-style congrats: cheer a friend's streak once per visit.
+  const handleCheer = (friend) => {
+    if (cheered[friend.id]) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setCheered((c) => ({ ...c, [friend.id]: true }));
   };
 
   const getAvatarInitials = (name) =>
@@ -88,21 +84,44 @@ export default function FriendsScreen({ navigation }) {
       style={styles.friendCard}
       onPress={() => navigation.navigate('FriendProfile', { friend: item })}
     >
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
-      </View>
+      {item.pet ? (
+        <View style={styles.petAvatar}>
+          <PetSprite
+            mood="content"
+            species={item.pet.species}
+            outfit={item.pet.outfit}
+            pixelSize={2.4}
+            animate={false}
+          />
+        </View>
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
+        </View>
+      )}
 
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
         <View style={styles.friendStats}>
           <PixelIcon name="flame" size={12} color={COLORS.streak} light={COLORS.sun} />
-          <Text style={styles.statText}>{item.streak || 0}</Text>
+          <Text style={styles.statText}>{item.streak || 0} day streak</Text>
           <Text style={styles.statLabel}>· {item.wordsToday || 0} today</Text>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.moreButton} onPress={() => handleRemoveFriend(item)} hitSlop={8}>
-        <PixelIcon name="close" size={14} color={COLORS.textLight} />
+      <TouchableOpacity
+        style={[styles.cheerButton, cheered[item.id] && styles.cheerButtonDone]}
+        onPress={() => handleCheer(item)}
+        hitSlop={8}
+      >
+        <PixelIcon
+          name={cheered[item.id] ? 'check' : 'heart'}
+          size={14}
+          color={cheered[item.id] ? COLORS.leafDark : COLORS.secondary}
+        />
+        <Text style={[styles.cheerText, cheered[item.id] && styles.cheerTextDone]}>
+          {cheered[item.id] ? 'SENT' : 'CHEER'}
+        </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -286,5 +305,37 @@ const styles = StyleSheet.create({
   friendStats: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 },
   statText: { fontSize: 12, color: COLORS.text, fontWeight: '800' },
   statLabel: { fontSize: 12, color: COLORS.textLight, fontWeight: '600' },
-  moreButton: { padding: 8 },
+  petAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: RADIUS.sm,
+    backgroundColor: `${COLORS.sky}44`,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  cheerButton: {
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    backgroundColor: `${COLORS.secondary}22`,
+  },
+  cheerButtonDone: {
+    backgroundColor: `${COLORS.leaf}22`,
+  },
+  cheerText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: COLORS.secondary,
+    letterSpacing: 0.5,
+  },
+  cheerTextDone: {
+    color: COLORS.leafDark,
+  },
 });

@@ -23,15 +23,17 @@ import { COLORS, RADIUS, SHADOW, CELEBRATIONS, getCategoryStyle } from '../confi
 import { PixelButton, Pill } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
+import StreakCelebration from '../components/StreakCelebration';
 import { getPet } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STICKER_SIZE = SCREEN_WIDTH * 0.52;
 
 export default function StickerResultScreen({ route, navigation }) {
-  const { sticker, recognition } = route.params;
+  const { sticker, recognition, goalJustReached, streak } = route.params;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [celebrating, setCelebrating] = useState(!!goalJustReached);
   const [recordedUri, setRecordedUri] = useState(null);
   const [pet, setPet] = useState(null);
 
@@ -234,6 +236,10 @@ export default function StickerResultScreen({ route, navigation }) {
       <TouchableOpacity style={styles.doneButton} onPress={() => navigation.goBack()}>
         <Text style={styles.doneButtonText}>DONE</Text>
       </TouchableOpacity>
+
+      {celebrating ? (
+        <StreakCelebration streak={streak} onDone={() => setCelebrating(false)} />
+      ) : null}
     </View>
   );
 }

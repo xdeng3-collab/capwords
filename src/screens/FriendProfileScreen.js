@@ -6,14 +6,29 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
+  Alert,
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
+import { PixelButton } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
+import PetSprite from '../components/PetSprite';
+import { removeFriend } from '../services/storageService';
+
+// Fallback buddies for friends added before pets existed.
+const FALLBACK_PETS = [
+  { name: 'Pip', species: 'cat', outfit: 'none' },
+  { name: 'Biscuit', species: 'dog', outfit: 'none' },
+  { name: 'Clover', species: 'bunny', outfit: 'none' },
+];
 
 export default function FriendProfileScreen({ route, navigation }) {
   const { friend } = route.params;
+  const [fed, setFed] = useState(false);
+
+  const pet =
+    friend.pet || FALLBACK_PETS[Number(friend.id || 0) % FALLBACK_PETS.length];
 
   const [friendStickers] = useState([
     { id: '1', word: 'Manzana', english: 'Apple', language: 'es', category: 'food' },
@@ -28,8 +43,25 @@ export default function FriendProfileScreen({ route, navigation }) {
     Speech.speak(word, { language, rate: 0.8 });
   };
 
-  const getInitials = (name) =>
-    name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+  const handleFeed = () => {
+    if (fed) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setFed(true);
+  };
+
+  const handleRemove = () => {
+    Alert.alert('Remove friend', `Are you sure you want to remove ${friend.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await removeFriend(friend.id);
+          navigation.goBack();
+        },
+      },
+    ]);
+  };
 
   const renderSticker = ({ item }) => {
     const categoryStyle = getCategoryStyle(item.category);
@@ -65,25 +97,53 @@ export default function FriendProfileScreen({ route, navigation }) {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
+      {/* Header: friend name sits next to the back button */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
-          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            hitSlop={10}
+          >
+            <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerName} numberOfLines={1}>
+            {friend.name}
+          </Text>
+        </View>
 
-        <View style={styles.profileSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(friend.name)}</Text>
-          </View>
-          <Text style={styles.name}>{friend.name}</Text>
+        {/* Pet show: their buddy is the star of the profile */}
+        <View style={styles.petStage}>
+          <View style={styles.skyStrip} />
+          <PetSprite
+            mood={fed ? 'happy' : 'content'}
+            species={pet.species}
+            outfit={pet.outfit}
+            pixelSize={9}
+          />
+          <Text style={styles.petName}>{pet.name}</Text>
+          <Text style={styles.petCaption}>
+            {fed
+              ? `${pet.name} loved the snack you shared!`
+              : `${friend.name.split(' ')[0]}'s buddy`}
+          </Text>
+          <PixelButton
+            label={fed ? 'Fed today' : `Help feed ${pet.name}`}
+            icon={fed ? 'check' : 'apple'}
+            color={fed ? COLORS.textMuted : COLORS.leaf}
+            style={styles.feedButton}
+            onPress={handleFeed}
+            disabled={fed}
+          />
+        </View>
 
-          <View style={styles.statsRow}>
-            {stats.map((stat) => (
-              <View key={stat.label} style={styles.stat}>
-                <Text style={styles.statNumber}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
-          </View>
+        <View style={styles.statsRow}>
+          {stats.map((stat) => (
+            <View key={stat.label} style={styles.stat}>
+              <Text style={styles.statNumber}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -98,6 +158,11 @@ export default function FriendProfileScreen({ route, navigation }) {
           scrollEnabled={false}
         />
       </View>
+
+      {/* Quiet footer action, out of the way of everyday browsing */}
+      <TouchableOpacity style={styles.removeLink} onPress={handleRemove} hitSlop={8}>
+        <Text style={styles.removeLinkText}>Remove {friend.name.split(' ')[0]} from friends</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -108,37 +173,73 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 56,
     paddingBottom: 22,
+    paddingHorizontal: 20,
     backgroundColor: COLORS.panel,
     borderBottomWidth: 3,
     borderBottomColor: COLORS.outline,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   backButton: {
-    marginLeft: 20,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: COLORS.outline,
     padding: 8,
-    alignSelf: 'flex-start',
   },
-  profileSection: { alignItems: 'center', marginTop: 10, paddingHorizontal: 20 },
-  avatar: {
-    width: 70,
-    height: 70,
+  headerName: {
+    flex: 1,
+    fontSize: 19,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: 0.5,
+  },
+  petStage: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 18,
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.sun,
     borderWidth: 3,
     borderColor: COLORS.outline,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
+    ...SHADOW.soft,
   },
-  avatarText: { fontSize: 24, fontWeight: '900', color: COLORS.primaryDark },
-  name: { fontSize: 21, fontWeight: '900', color: COLORS.text, marginTop: 12, letterSpacing: 0.5 },
+  skyStrip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '52%',
+    backgroundColor: COLORS.sky,
+    opacity: 0.35,
+  },
+  petName: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: COLORS.text,
+    marginTop: 10,
+    letterSpacing: 1,
+  },
+  petCaption: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    marginTop: 2,
+    fontWeight: '700',
+  },
+  feedButton: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    marginHorizontal: 18,
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignSelf: 'stretch',
-    marginTop: 18,
+    marginTop: 14,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     borderWidth: 3,
@@ -181,5 +282,16 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: COLORS.outline,
+  },
+  removeLink: {
+    alignSelf: 'center',
+    marginTop: 6,
+    padding: 10,
+  },
+  removeLinkText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

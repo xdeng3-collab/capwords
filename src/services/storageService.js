@@ -288,9 +288,9 @@ const DEMO_STICKERS = [
 ];
 
 const DEMO_FRIENDS = [
-  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8 },
-  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5 },
-  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3 },
+  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8, pet: { name: 'Mochi', species: 'bunny', outfit: 'bow' } },
+  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5, pet: { name: 'Rocky', species: 'dog', outfit: 'cap' } },
+  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3, pet: { name: 'Tofu', species: 'cat', outfit: 'none' } },
 ];
 
 /**
@@ -331,7 +331,10 @@ export async function seedDemoData() {
   // Friends for the Pals tab.
   const friends = await getFriends();
   for (const friend of DEMO_FRIENDS) {
-    if (!friends.some((f) => f.id === friend.id)) {
+    const existing = friends.find((f) => f.id === friend.id);
+    if (existing) {
+      if (!existing.pet) existing.pet = friend.pet;
+    } else {
       friends.push({ ...friend, addedAt: new Date().toISOString() });
     }
   }

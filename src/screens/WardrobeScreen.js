@@ -23,9 +23,13 @@ import {
 
 export default function WardrobeScreen({ navigation }) {
   const [state, setState] = useState(null);
+  // The outfit currently shown on the stage — lets users try before buying.
+  const [preview, setPreview] = useState(null);
 
   const load = useCallback(async () => {
-    setState(await getPetState());
+    const petState = await getPetState();
+    setState(petState);
+    setPreview((p) => p ?? petState.equippedOutfit);
   }, []);
 
   useFocusEffect(
@@ -38,6 +42,11 @@ export default function WardrobeScreen({ navigation }) {
     return <View style={styles.container} />;
   }
 
+  const previewId = preview ?? state.equippedOutfit;
+  const previewOutfit = OUTFITS.find((o) => o.id === previewId) || OUTFITS[0];
+  const previewOwned = state.ownedOutfits.includes(previewId);
+  const previewEquipped = state.equippedOutfit === previewId;
+
   const handleSpecies = async (species) => {
     if (species === state.species) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -45,27 +54,44 @@ export default function WardrobeScreen({ navigation }) {
     load();
   };
 
-  const handleOutfit = async (outfit) => {
-    const owned = state.ownedOutfits.includes(outfit.id);
-    if (owned) {
-      if (state.equippedOutfit !== outfit.id) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-        await equipOutfit(outfit.id);
-        load();
-      }
-      return;
-    }
+  // Tapping a card only tries the outfit on; wearing/buying happens
+  // via the explicit stage button below.
+  const handleTryOn = (outfit) => {
+    Haptics.selectionAsync().catch(() => {});
+    setPreview(outfit.id);
+  };
 
-    const result = await buyOutfit(outfit.id);
-    if (result.ok) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      load();
-    } else if (result.reason === 'insufficient_coins') {
+  const handleWear = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    await equipOutfit(previewId);
+    load();
+  };
+
+  const handleBuy = () => {
+    if (state.coins < previewOutfit.price) {
       Alert.alert(
         'Not enough coins',
-        `You need ${outfit.price} coins for the ${outfit.name}. Learn more words or grab a coin pack below!`
+        `You need ${previewOutfit.price} coins for the ${previewOutfit.name} but only have ${state.coins}. Learn more words or grab a coin pack below!`
       );
+      return;
     }
+    Alert.alert(
+      `Buy ${previewOutfit.name}?`,
+      `${state.name} will wear it right away. This costs ${previewOutfit.price} coins (you have ${state.coins}).`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: `Buy for ${previewOutfit.price} coins`,
+          onPress: async () => {
+            const result = await buyOutfit(previewId);
+            if (result.ok) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+              load();
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleCoinPack = async (pack) => {
@@ -102,16 +128,40 @@ export default function WardrobeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Preview stage */}
+        {/* Try-on stage */}
         <PixelPanel tone="panel" style={styles.stage}>
           <View style={styles.skyStrip} />
           <PetSprite
             mood="content"
             species={state.species}
-            outfit={state.equippedOutfit}
+            outfit={previewId}
             pixelSize={10}
           />
           <Text style={styles.petName}>{state.name}</Text>
+          {previewId !== 'none' ? (
+            <Text style={styles.tryingText}>
+              {previewEquipped ? 'WEARING' : 'TRYING ON'}: {previewOutfit.name.toUpperCase()}
+            </Text>
+          ) : null}
+          {!previewEquipped ? (
+            previewOwned ? (
+              <PixelButton
+                label={previewId === 'none' ? 'Take outfit off' : 'Wear it'}
+                icon="check"
+                color={COLORS.leaf}
+                style={styles.stageBtn}
+                onPress={handleWear}
+              />
+            ) : (
+              <PixelButton
+                label={`Buy for ${previewOutfit.price} coins`}
+                icon="coin"
+                color={COLORS.primary}
+                style={styles.stageBtn}
+                onPress={handleBuy}
+              />
+            )
+          ) : null}
         </PixelPanel>
 
         {/* Species picker */}
@@ -140,11 +190,12 @@ export default function WardrobeScreen({ navigation }) {
           {OUTFITS.map((outfit) => {
             const owned = state.ownedOutfits.includes(outfit.id);
             const equipped = state.equippedOutfit === outfit.id;
+            const trying = previewId === outfit.id;
             return (
               <TouchableOpacity
                 key={outfit.id}
-                style={[styles.outfitCard, equipped && styles.cardSelected]}
-                onPress={() => handleOutfit(outfit)}
+                style={[styles.outfitCard, trying && styles.cardSelected]}
+                onPress={() => handleTryOn(outfit)}
               >
                 <PetSprite
                   mood="content"
@@ -157,7 +208,7 @@ export default function WardrobeScreen({ navigation }) {
                 {equipped ? (
                   <Text style={styles.outfitStatus}>WEARING</Text>
                 ) : owned ? (
-                  <Text style={styles.outfitStatus}>TAP TO WEAR</Text>
+                  <Text style={styles.outfitStatus}>OWNED</Text>
                 ) : (
                   <View style={styles.priceTag}>
                     <PixelIcon name="coin" size={12} color={COLORS.sun} light={COLORS.surface} />
@@ -269,6 +320,18 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginTop: 12,
     letterSpacing: 1,
+  },
+  tryingText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.textLight,
+    letterSpacing: 0.8,
+    marginTop: 4,
+  },
+  stageBtn: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    marginHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 12,
