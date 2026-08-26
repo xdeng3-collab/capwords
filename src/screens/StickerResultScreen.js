@@ -96,9 +96,12 @@ export default function StickerResultScreen({ route, navigation }) {
     []
   );
 
-  const speakWord = () => {
+  const speakWord = async () => {
     Haptics.selectionAsync().catch(() => {});
     setIsPlaying(true);
+    // Make sure the audio session is in playback mode (recording practice or
+    // the silent switch can otherwise mute text-to-speech).
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     Speech.speak(sticker.word || recognition.word, {
       language: sticker.language,
       rate: 0.8,

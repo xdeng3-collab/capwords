@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
+import { setAudioModeAsync } from 'expo-audio';
 import { format } from 'date-fns';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
 import { PixelPanel, PixelButton } from '../components/UI';
@@ -18,8 +19,10 @@ export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
   const categoryStyle = getCategoryStyle(sticker.category);
 
-  const speakWord = () => {
+  const speakWord = async () => {
     Haptics.selectionAsync().catch(() => {});
+    // Playback mode so TTS is audible even after recording / on silent mode.
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     Speech.speak(sticker.word, { language: sticker.language, rate: 0.8 });
   };
 

@@ -9,7 +9,13 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
 } from 'react-native';
+import {
+  GestureHandlerRootView,
+  GestureDetector,
+  Gesture,
+} from 'react-native-gesture-handler';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -74,6 +80,10 @@ export default function CameraScreen({ navigation }) {
   const [dailyGoal, setDailyGoal] = useState(5);
   const [petName, setPetName] = useState('your buddy');
   const [pet, setPet] = useState(null);
+  // The frozen photo shown while recognition runs.
+  const [capturedUri, setCapturedUri] = useState(null);
+  const [zoom, setZoom] = useState(0);
+  const zoomStart = useRef(0);
 
   const cameraRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -135,6 +145,7 @@ export default function CameraScreen({ navigation }) {
 
   const processImage = async ({ uri, base64 }) => {
     setIsProcessing(true);
+    setCapturedUri(uri);
     try {
       const langName =
         LANGUAGES.find((l) => l.code === targetLanguage)?.name || targetLanguage;
@@ -183,8 +194,25 @@ export default function CameraScreen({ navigation }) {
       );
     } finally {
       setIsProcessing(false);
+      setCapturedUri(null);
     }
   };
+
+  const clampZoom = (z) => Math.min(Math.max(z, 0), 0.6);
+  const nudgeZoom = (delta) => {
+    Haptics.selectionAsync().catch(() => {});
+    setZoom((z) => clampZoom(z + delta));
+  };
+
+  // Pinch anywhere on the viewfinder to zoom, like the native camera.
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      zoomStart.current = zoom;
+    })
+    .onUpdate((e) => {
+      setZoom(clampZoom(zoomStart.current + (e.scale - 1) * 0.25));
+    })
+    .runOnJS(true);
 
   const takePicture = async () => {
     if (!cameraRef.current || isProcessing) return;
@@ -268,8 +296,13 @@ export default function CameraScreen({ navigation }) {
   const remaining = Math.max(dailyGoal - wordsToday, 0);
 
   return (
-    <View style={styles.container}>
-      <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={pinchGesture}>
+      <CameraView style={styles.camera} facing={facing} zoom={zoom} ref={cameraRef}>
+        {/* Freeze the shot while we look up the word */}
+        {capturedUri ? (
+          <Image source={{ uri: capturedUri }} style={styles.frozenPhoto} />
+        ) : null}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.langButton}
@@ -328,6 +361,19 @@ export default function CameraScreen({ navigation }) {
           ) : null}
         </View>
 
+        {/* Zoom controls */}
+        {!isProcessing ? (
+          <View style={styles.zoomControls}>
+            <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(0.1)} hitSlop={6}>
+              <Text style={styles.zoomButtonText}>+</Text>
+            </TouchableOpacity>
+            <Text style={styles.zoomLabel}>{(1 + zoom * 5).toFixed(1)}x</Text>
+            <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(-0.1)} hitSlop={6}>
+              <Text style={styles.zoomButtonText}>−</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <View style={styles.bottomBar}>
           <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={isProcessing}>
             <PixelIcon name="images" size={20} color="#FBF3E0" />
@@ -349,13 +395,43 @@ export default function CameraScreen({ navigation }) {
           <View style={styles.spacer} />
         </View>
       </CameraView>
-    </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
+  frozenPhoto: { ...StyleSheet.absoluteFillObject },
+  zoomControls: {
+    position: 'absolute',
+    right: 16,
+    top: '38%',
+    alignItems: 'center',
+    gap: 8,
+  },
+  zoomButton: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(58,42,26,0.72)',
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomButtonText: { color: '#FBF3E0', fontSize: 22, fontWeight: '900', lineHeight: 26 },
+  zoomLabel: {
+    color: '#FBF3E0',
+    fontSize: 11,
+    fontWeight: '900',
+    backgroundColor: 'rgba(58,42,26,0.55)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+  },
   loadingContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
