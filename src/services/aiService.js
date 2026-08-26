@@ -5,6 +5,25 @@ import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MO
  * Also returns a description for sticker generation
  */
 export async function recognizeAndTranslate(imageBase64, targetLanguage) {
+  // The model occasionally returns an empty/unparseable answer; one retry
+  // makes that invisible to the user.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await requestRecognition(imageBase64, targetLanguage);
+    if (result) return result;
+  }
+  return {
+    word: 'Unknown',
+    pronunciation: '',
+    english: '',
+    description: 'Object',
+    category: 'other',
+    exampleSentence: '',
+    sentenceTranslation: '',
+    funFact: '',
+  };
+}
+
+async function requestRecognition(imageBase64, targetLanguage) {
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -65,28 +84,19 @@ Rules:
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices?.[0]?.message?.content || '';
   
   try {
     // Try to parse JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.word) return parsed;
     }
-    throw new Error('No JSON found in response');
   } catch (e) {
-    // Fallback parsing
-    return {
-      word: content.split('\n')[0] || 'Unknown',
-      pronunciation: '',
-      english: '',
-      description: 'Object',
-      category: 'other',
-      exampleSentence: '',
-      sentenceTranslation: '',
-      funFact: '',
-    };
+    // fall through to retry
   }
+  return null;
 }
 
 /**

@@ -20,6 +20,8 @@ const STORAGE_KEYS = {
   PET: 'capwords_pet',
   COINS: 'capwords_coins',
   CHEERS: 'capwords_cheers',
+  LAST_CHECK_IN: 'capwords_last_check_in',
+  PRACTICED_STICKERS: 'capwords_practiced_stickers',
 };
 
 // ==================== Stickers ====================
@@ -57,10 +59,10 @@ export async function saveSticker(sticker) {
   stickers.unshift(newSticker);
   await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(stickers));
   
-  // Update daily word count
-  await incrementDailyWords();
+  // Update daily word count (also awards learning coins)
+  const coinsEarned = await incrementDailyWords();
   
-  return newSticker;
+  return { ...newSticker, coinsEarned };
 }
 
 export async function getStickers() {
@@ -194,6 +196,8 @@ async function incrementDailyWords() {
 
   // Check and update streak
   await updateStreak();
+
+  return earned;
 }
 
 export async function getDailyWordCount(date) {
@@ -445,6 +449,40 @@ export async function addCoins(amount) {
   coins.lifetime += Math.max(amount, 0);
   await AsyncStorage.setItem(STORAGE_KEYS.COINS, JSON.stringify(coins));
   return coins;
+}
+
+/**
+ * Daily check-in gift: claimable once per day from the Buddy screen.
+ * Returns { claimed, earned } — claimed=false when already taken today.
+ */
+export async function claimDailyGift() {
+  const today = new Date().toISOString().split('T')[0];
+  const last = await AsyncStorage.getItem(STORAGE_KEYS.LAST_CHECK_IN);
+  if (last === today) return { claimed: false, earned: 0 };
+  await AsyncStorage.setItem(STORAGE_KEYS.LAST_CHECK_IN, today);
+  const coins = await addCoins(COINS.checkInBonus);
+  return { claimed: true, earned: COINS.checkInBonus, coins };
+}
+
+export async function isDailyGiftAvailable() {
+  const today = new Date().toISOString().split('T')[0];
+  const last = await AsyncStorage.getItem(STORAGE_KEYS.LAST_CHECK_IN);
+  return last !== today;
+}
+
+/**
+ * Award the pronunciation-practice bonus once per sticker.
+ * Returns the coins earned (0 if this sticker was already practiced).
+ */
+export async function awardPracticeBonus(stickerId) {
+  if (!stickerId) return 0;
+  const raw = await AsyncStorage.getItem(STORAGE_KEYS.PRACTICED_STICKERS);
+  const practiced = raw ? JSON.parse(raw) : [];
+  if (practiced.includes(stickerId)) return 0;
+  practiced.push(stickerId);
+  await AsyncStorage.setItem(STORAGE_KEYS.PRACTICED_STICKERS, JSON.stringify(practiced));
+  await addCoins(COINS.practiceBonus);
+  return COINS.practiceBonus;
 }
 
 /** Returns the updated coins object, or null if the balance is insufficient. */

@@ -2,7 +2,11 @@
 // API key should be set via environment variable or .env file
 // Create a .env file with: DEEPSEEK_API_KEY=your_key_here
 export const DEEPSEEK_API_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '';
-export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
+// When EXPO_PUBLIC_API_URL is set, all AI calls go through our backend proxy
+// (server/index.js) which holds the API key server-side. Direct DeepSeek
+// access (key in the app bundle) is a dev-only convenience.
+export const API_PROXY_URL = process.env.EXPO_PUBLIC_API_URL || '';
+export const DEEPSEEK_BASE_URL = API_PROXY_URL ? `${API_PROXY_URL}/v1` : 'https://api.deepseek.com/v1';
 // Vision model for photo recognition (the only DeepSeek model that accepts images)
 export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
 // Text model for pronunciation guides / evaluation
@@ -68,6 +72,9 @@ export const PET_SPECIES = [
 export const COINS = {
   perWord: 2, // coins earned per word learned
   goalBonus: 10, // bonus for hitting the daily goal
+  checkInBonus: 5, // daily gift for visiting your buddy
+  practiceBonus: 1, // practicing pronunciation of a new word
+  cheerBonus: 1, // cheering a pal (per friend, per day)
   packs: [
     { id: 'coins_small', coins: 50, price: 0.99 },
     { id: 'coins_medium', coins: 150, price: 2.49 },

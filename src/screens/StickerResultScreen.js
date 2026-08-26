@@ -24,7 +24,7 @@ import { PixelButton } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import StreakCelebration from '../components/StreakCelebration';
-import { getPet } from '../services/storageService';
+import { getPet, awardPracticeBonus } from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STICKER_SIZE = SCREEN_WIDTH * 0.52;
@@ -36,6 +36,7 @@ export default function StickerResultScreen({ route, navigation }) {
   const [celebrating, setCelebrating] = useState(!!goalJustReached);
   const [recordedUri, setRecordedUri] = useState(null);
   const [pet, setPet] = useState(null);
+  const [practiceCoins, setPracticeCoins] = useState(0);
 
   useEffect(() => {
     getPet().then(setPet).catch(() => {});
@@ -134,6 +135,9 @@ export default function StickerResultScreen({ route, navigation }) {
     try {
       await audioRecorder.stop();
       setRecordedUri(audioRecorder.uri);
+      // Reward the first pronunciation practice of this word.
+      const bonus = await awardPracticeBonus(sticker.id);
+      if (bonus > 0) setPracticeCoins(bonus);
     } catch (error) {
       console.error('Failed to stop recording', error);
     } finally {
@@ -170,6 +174,12 @@ export default function StickerResultScreen({ route, navigation }) {
         <View style={styles.celebrationBubble}>
           <Text style={styles.celebrationText}>{celebration}</Text>
         </View>
+        {sticker.coinsEarned ? (
+          <View style={styles.coinChip}>
+            <PixelIcon name="coin" size={14} color="#B8860B" />
+            <Text style={styles.coinChipText}>+{sticker.coinsEarned + practiceCoins}</Text>
+          </View>
+        ) : null}
       </Animated.View>
 
       {/* Sticker */}
@@ -234,7 +244,11 @@ export default function StickerResultScreen({ route, navigation }) {
               <PixelIcon name="mic" size={20} color="#FBF3E0" />
             </Animated.View>
             <Text style={styles.recordText}>
-              {isRecording ? 'LISTENING... RELEASE TO STOP' : 'HOLD TO PRACTICE'}
+              {isRecording
+                ? 'LISTENING... RELEASE TO STOP'
+                : practiceCoins > 0
+                  ? 'PRACTICED! +1 COIN'
+                  : 'HOLD TO PRACTICE (+1 COIN)'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -293,6 +307,18 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     letterSpacing: 0.5,
   },
+  coinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3C9',
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  coinChipText: { fontSize: 13, fontWeight: '900', color: '#B8860B' },
   stickerContainer: { marginTop: 8, marginBottom: 20 },
   stickerFrame: {
     width: STICKER_SIZE,

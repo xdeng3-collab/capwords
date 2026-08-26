@@ -10,22 +10,29 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { COLORS, PET, PET_MOODS, PET_SPECIES, RADIUS, SHADOW } from '../config';
+import { COLORS, COINS, PET, PET_MOODS, PET_SPECIES, RADIUS, SHADOW } from '../config';
 import { PixelPanel, PixelButton, ProgressBar } from '../components/UI';
 import PetSprite from '../components/PetSprite';
 import PixelIcon from '../components/PixelIcon';
-import { getPetState, namePet } from '../services/storageService';
+import {
+  getPetState,
+  namePet,
+  isDailyGiftAvailable,
+  claimDailyGift,
+} from '../services/storageService';
 
 export default function PetScreen({ navigation }) {
   const [state, setState] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [speciesInput, setSpeciesInput] = useState(PET.defaultSpecies);
+  const [giftAvailable, setGiftAvailable] = useState(false);
 
   const load = useCallback(async () => {
     const petState = await getPetState();
     setState(petState);
     setSpeciesInput(petState.species);
+    setGiftAvailable(await isDailyGiftAvailable());
     // First launch: prompt the user to name their new companion.
     if (!petState.named) {
       setNameInput('');
@@ -45,6 +52,14 @@ export default function PetScreen({ navigation }) {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     await namePet(trimmed, state?.named ? undefined : speciesInput);
     setRenaming(false);
+    load();
+  };
+
+  const claimGift = async () => {
+    const result = await claimDailyGift();
+    if (result.claimed) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
     load();
   };
 
@@ -98,6 +113,20 @@ export default function PetScreen({ navigation }) {
             <Text style={styles.speechText}>{mood.line}</Text>
           </View>
         </PixelPanel>
+
+        {/* Daily check-in gift */}
+        {giftAvailable ? (
+          <TouchableOpacity style={styles.giftCard} onPress={claimGift} activeOpacity={0.85}>
+            <PixelIcon name="coin" size={20} color={COLORS.sun} light={COLORS.surface} />
+            <View style={styles.giftTextWrap}>
+              <Text style={styles.giftTitle}>DAILY GIFT</Text>
+              <Text style={styles.giftHint}>
+                {state.name} found some coins for you — tap to collect!
+              </Text>
+            </View>
+            <Text style={styles.giftAmount}>+{COINS.checkInBonus}</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Daily goal meter */}
         <PixelPanel style={styles.card}>
@@ -327,6 +356,23 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 14,
   },
+  giftCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFF3C9',
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    ...SHADOW.soft,
+  },
+  giftTextWrap: { flex: 1 },
+  giftTitle: { fontSize: 12, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
+  giftHint: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+  giftAmount: { fontSize: 18, fontWeight: '900', color: '#B8860B' },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',

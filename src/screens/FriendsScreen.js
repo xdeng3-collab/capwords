@@ -19,7 +19,9 @@ import {
   addFriend,
   getTodayCheers,
   cheerFriend,
+  addCoins,
 } from '../services/storageService';
+import { COINS } from '../config';
 
 // Mock friend data for demo purposes
 const MOCK_FRIENDS_SEARCH = [
@@ -76,11 +78,13 @@ export default function FriendsScreen({ navigation }) {
   };
 
   // Duolingo-style congrats: cheer each friend once per day (resets at midnight).
+  // Being a good pal pays — each cheer earns a coin.
   const handleCheer = async (friend) => {
     if (cheered[friend.id]) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setCheered((c) => ({ ...c, [friend.id]: true }));
     await cheerFriend(friend.id);
+    await addCoins(COINS.cheerBonus);
   };
 
   const getAvatarInitials = (name) =>
@@ -127,7 +131,7 @@ export default function FriendsScreen({ navigation }) {
           color={cheered[item.id] ? COLORS.leafDark : COLORS.secondary}
         />
         <Text style={[styles.cheerText, cheered[item.id] && styles.cheerTextDone]}>
-          {cheered[item.id] ? 'SENT' : 'CHEER'}
+          {cheered[item.id] ? '+1 SENT' : 'CHEER'}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
