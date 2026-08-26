@@ -320,6 +320,26 @@ export async function updateSettings(updates) {
 
 // ==================== Demo data (dev only) ====================
 
+// Example sentences + fun facts for a few demo words so the detail screen
+// can be previewed. Real captures get these from the AI.
+const DEMO_LEARN = {
+  Manzana: {
+    exampleSentence: 'Quiero comer una manzana roja.',
+    sentenceTranslation: 'I want to eat a red apple.',
+    funFact: '"Manzana" also means "city block" in Spanish — ask for directions and you might hear it!',
+  },
+  Perro: {
+    exampleSentence: 'Mi perro juega en el parque.',
+    sentenceTranslation: 'My dog plays in the park.',
+    funFact: 'Spanish dogs say "guau guau" instead of "woof woof".',
+  },
+  Café: {
+    exampleSentence: 'Un café con leche, por favor.',
+    sentenceTranslation: 'A coffee with milk, please.',
+    funFact: '"Café" is also the word for the color brown in much of Latin America.',
+  },
+};
+
 const DEMO_STICKERS = [
   // [word, english, pronunciation, category, daysAgo, place]
   ['Manzana', 'Apple', 'man-SAH-nah', 'food', 0, 'Palo Alto, CA'],
@@ -360,6 +380,9 @@ export async function seedDemoData() {
       if (!existing.location && place) {
         existing.location = { latitude: null, longitude: null, place };
       }
+      if (!existing.exampleSentence && DEMO_LEARN[word]) {
+        Object.assign(existing, DEMO_LEARN[word]);
+      }
       return;
     }
     const date = new Date();
@@ -375,6 +398,7 @@ export async function seedDemoData() {
       language: 'es',
       location: place ? { latitude: null, longitude: null, place } : null,
       createdAt: date.toISOString(),
+      ...(DEMO_LEARN[word] || {}),
     });
     const day = date.toISOString().split('T')[0];
     dailyData[day] = (dailyData[day] || 0) + 1;

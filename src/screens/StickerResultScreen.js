@@ -194,6 +194,23 @@ export default function StickerResultScreen({ route, navigation }) {
         {recognition.english ? <Text style={styles.englishText}>{recognition.english}</Text> : null}
       </Animated.View>
 
+      {/* Learn it: example sentence + fun fact */}
+      {recognition.exampleSentence || recognition.funFact ? (
+        <Animated.View style={[styles.learnCard, { opacity: fadeAnim }]}>
+          {recognition.exampleSentence ? (
+            <>
+              <Text style={styles.learnSentence}>"{recognition.exampleSentence}"</Text>
+              {recognition.sentenceTranslation ? (
+                <Text style={styles.learnTranslation}>{recognition.sentenceTranslation}</Text>
+              ) : null}
+            </>
+          ) : null}
+          {recognition.funFact ? (
+            <Text style={styles.learnFact}>★ {recognition.funFact}</Text>
+          ) : null}
+        </Animated.View>
+      ) : null}
+
       {/* Actions */}
       <Animated.View style={[styles.actionsContainer, { opacity: fadeAnim }]}>
         <PixelButton
@@ -304,6 +321,22 @@ const styles = StyleSheet.create({
   },
   pronunciationText: { fontSize: 17, color: COLORS.textLight, marginTop: 5, fontWeight: '700' },
   englishText: { fontSize: 15, color: COLORS.textMuted, marginTop: 3, fontWeight: '700' },
+
+  learnCard: {
+    marginHorizontal: 28,
+    marginBottom: 16,
+    backgroundColor: COLORS.surface,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 4,
+    alignSelf: 'stretch',
+  },
+  learnSentence: { fontSize: 15, fontWeight: '800', color: COLORS.text, lineHeight: 21 },
+  learnTranslation: { fontSize: 13, color: COLORS.textLight, fontWeight: '600', lineHeight: 18 },
+  learnFact: { fontSize: 13, color: COLORS.primaryDark, fontWeight: '700', marginTop: 4, lineHeight: 18 },
 
   actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 12 },
   recordButton: {

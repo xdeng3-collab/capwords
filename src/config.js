@@ -3,7 +3,10 @@
 // Create a .env file with: DEEPSEEK_API_KEY=your_key_here
 export const DEEPSEEK_API_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '';
 export const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
-export const DEEPSEEK_MODEL = 'deepseek-chat'; // Flash model
+// Vision model for photo recognition (the only DeepSeek model that accepts images)
+export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
+// Text model for pronunciation guides / evaluation
+export const DEEPSEEK_MODEL = 'deepseek-v4-flash';
 
 // Supported languages
 export const LANGUAGES = [

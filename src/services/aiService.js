@@ -1,4 +1,4 @@
-import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL } from '../config';
+import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
 
 /**
  * Recognize an object from a photo and return its name in the target language
@@ -12,25 +12,29 @@ export async function recognizeAndTranslate(imageBase64, targetLanguage) {
       'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
     },
     body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
+      model: DEEPSEEK_VISION_MODEL,
       messages: [
         {
           role: 'system',
-          content: `You are a visual object recognition and language learning assistant. 
-When given an image, identify the main object and provide:
-1. The word for this object in ${targetLanguage}
-2. The phonetic pronunciation (IPA or romanization)
-3. A brief sticker-style description of the object (for display purposes)
-4. The word in English (as reference)
+          content: `You are a friendly language tutor inside a photo vocabulary app.
+The user snaps a photo of an object to learn its name in ${targetLanguage}.
 
-Respond in JSON format:
+Identify the single main object in the photo (the most prominent, everyday thing — prefer the concrete noun a beginner would want to learn) and respond with ONLY a JSON object, no other text:
 {
-  "word": "the word in target language",
-  "pronunciation": "phonetic/romanized pronunciation",
-  "english": "english word",
+  "word": "the object's name in ${targetLanguage}",
+  "pronunciation": "phonetic pronunciation (romanization for non-Latin scripts, otherwise IPA)",
+  "english": "the English word",
   "description": "brief visual description for sticker",
-  "category": "food/animal/object/nature/etc"
-}`
+  "category": "food/animal/object/nature/etc",
+  "exampleSentence": "a short, natural, beginner-level sentence in ${targetLanguage} using the word",
+  "sentenceTranslation": "English translation of that sentence",
+  "funFact": "one surprising, memorable fun fact about this object or its name, max 20 words, in English"
+}
+
+Rules:
+- The example sentence must be something a learner could actually say in daily life.
+- The fun fact should create a memory hook (etymology, culture, or a quirky truth) — never generic filler.
+- If the photo is unclear, pick the most likely object; never refuse.`
         },
         {
           role: 'user',
@@ -43,13 +47,16 @@ Respond in JSON format:
             },
             {
               type: 'text',
-              text: `What is this object? Give me the word in ${targetLanguage}.`
+              text: `What is this object? Teach me the word in ${targetLanguage}.`
             }
           ]
         }
       ],
-      temperature: 0.3,
-      max_tokens: 300,
+      temperature: 0.4,
+      // The vision model spends tokens on reasoning before answering, so the
+      // budget must cover thinking + the JSON answer.
+      max_tokens: 2000,
+      response_format: { type: 'json_object' },
     }),
   });
 
@@ -75,6 +82,9 @@ Respond in JSON format:
       english: '',
       description: 'Object',
       category: 'other',
+      exampleSentence: '',
+      sentenceTranslation: '',
+      funFact: '',
     };
   }
 }

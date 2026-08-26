@@ -151,6 +151,9 @@ export default function CameraScreen({ navigation }) {
         english: recognition.english,
         description: recognition.description,
         category: recognition.category,
+        exampleSentence: recognition.exampleSentence,
+        sentenceTranslation: recognition.sentenceTranslation,
+        funFact: recognition.funFact,
         language: targetLanguage,
         location,
       });

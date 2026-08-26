@@ -71,6 +71,20 @@ export default function StickerDetailScreen({ route, navigation }) {
           style={styles.listenButton}
         />
 
+        {sticker.exampleSentence || sticker.funFact ? (
+          <PixelPanel style={styles.learnCard}>
+            {sticker.exampleSentence ? (
+              <>
+                <Text style={styles.learnSentence}>"{sticker.exampleSentence}"</Text>
+                {sticker.sentenceTranslation ? (
+                  <Text style={styles.learnTranslation}>{sticker.sentenceTranslation}</Text>
+                ) : null}
+              </>
+            ) : null}
+            {sticker.funFact ? <Text style={styles.learnFact}>★ {sticker.funFact}</Text> : null}
+          </PixelPanel>
+        ) : null}
+
         {details.length > 0 ? (
           <PixelPanel style={styles.detailsCard}>
             {details.map((detail, index) => (
@@ -140,6 +154,10 @@ const styles = StyleSheet.create({
   english: { fontSize: 15, color: COLORS.textMuted, marginTop: 3, fontWeight: '700' },
   pill: { marginTop: 12 },
   listenButton: { width: '100%', marginBottom: 22 },
+  learnCard: { width: '100%', marginBottom: 18, gap: 4 },
+  learnSentence: { fontSize: 15, fontWeight: '800', color: COLORS.text, lineHeight: 21 },
+  learnTranslation: { fontSize: 13, color: COLORS.textLight, fontWeight: '600', lineHeight: 18 },
+  learnFact: { fontSize: 13, color: COLORS.primaryDark, fontWeight: '700', marginTop: 4, lineHeight: 18 },
   detailsCard: { width: '100%' },
   detailRow: {
     flexDirection: 'row',
