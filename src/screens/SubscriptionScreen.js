@@ -309,11 +309,10 @@ const styles = StyleSheet.create({
   },
   planCardSelected: {
     borderColor: COLORS.primaryDark,
-    backgroundColor: `${COLORS.sun}22`,
+    // Solid tint (translucent backgrounds render shadows oddly on iOS).
+    backgroundColor: '#FAECCD',
   },
-  planCardPopular: {
-    ...SHADOW.card,
-  },
+  planCardPopular: {},
   popularBadge: {
     position: 'absolute',
     top: -12,

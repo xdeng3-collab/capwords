@@ -138,7 +138,8 @@ export default function CameraScreen({ navigation }) {
       `${petName} is getting sleepy. Upgrade for unlimited learning!`,
       [
         { text: 'Maybe later', style: 'cancel' },
-        { text: 'See plans', onPress: () => navigation.navigate('Subscription') },
+        // Subscription lives in the Profile tab's stack, so navigate through it.
+        { text: 'See plans', onPress: () => navigation.navigate('Profile', { screen: 'Subscription' }) },
       ]
     );
   };
