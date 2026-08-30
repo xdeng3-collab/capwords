@@ -1,6 +1,6 @@
-import { ExtensionStorage } from '@bacons/apple-targets';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
+import SharedStore from '../../modules/shared-store';
 import {
   getPet,
   getStickers,
@@ -10,28 +10,15 @@ import {
 } from './storageService';
 
 /**
- * The home screen widget is built and working (see targets/widget/), but it is
- * switched off while we develop on a free Apple account: sharing data with a
- * widget requires the App Groups capability, and free personal teams cannot
- * provision it. Everything below stays in the repo, inert, until then.
- *
- * To turn the widget back on once the account is a paid one:
- *   1. Flip WIDGET_ENABLED to true.
- *   2. app.json -> plugins: add "@bacons/apple-targets".
- *   3. app.json -> ios.entitlements:
- *        { "com.apple.security.application-groups": [APP_GROUP] }
- *   4. Make sure APP_GROUP below matches targets/widget/expo-target.config.js.
- *   5. npx expo prebuild --platform ios --clean && npx expo run:ios
+ * Feeds the home screen widget. App Groups — the usual way to share a
+ * container with an extension — needs a paid Apple Developer membership, so
+ * the snapshot travels through a shared keychain access group instead, which
+ * a free personal team can sign. See modules/shared-store.
  */
-const WIDGET_ENABLED = false;
-
-// Must match the app group in targets/widget/expo-target.config.js.
-export const APP_GROUP = 'group.com.xiangyudeng.capwords';
 const SNAPSHOT_KEY = 'snapshot';
 const WIDGET_NAME = 'CapWordsWidget';
 
-const storage =
-  WIDGET_ENABLED && Platform.OS === 'ios' ? new ExtensionStorage(APP_GROUP) : null;
+const store = Platform.OS === 'ios' ? SharedStore : null;
 
 /**
  * The widget extension runs in its own sandbox and cannot read the app's
@@ -65,7 +52,7 @@ function moodForProgress(wordsToday, dailyGoal) {
  * does nothing off iOS, and never throws into the caller.
  */
 export async function refreshWidget() {
-  if (!storage) return;
+  if (!store) return;
   try {
     const [pet, stickers, streak, profile, wordsToday] = await Promise.all([
       getPet(),
@@ -102,8 +89,8 @@ export async function refreshWidget() {
       })),
     };
 
-    storage.set(SNAPSHOT_KEY, JSON.stringify(snapshot));
-    ExtensionStorage.reloadWidget(WIDGET_NAME);
+    store.set(SNAPSHOT_KEY, JSON.stringify(snapshot));
+    store.reloadWidget(WIDGET_NAME);
   } catch (error) {
     // A widget that fails to update must never break the app.
     console.warn('Widget refresh failed', error);

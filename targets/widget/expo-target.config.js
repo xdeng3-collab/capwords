@@ -4,8 +4,10 @@ module.exports = () => ({
   name: 'CapWordsWidget',
   displayName: 'CapWords',
   // Shared container: the app writes the snapshot here, the widget reads it.
+  // A keychain access group rather than an App Group — App Groups require a
+  // paid Apple Developer membership, this does not.
   entitlements: {
-    'com.apple.security.application-groups': ['group.com.xiangyudeng.capwords'],
+    'keychain-access-groups': ['$(AppIdentifierPrefix)com.capwordsxxx.shared'],
   },
   // containerBackground and the modern widget APIs need iOS 17.
   deploymentTarget: '17.0',

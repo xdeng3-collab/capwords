@@ -22,7 +22,12 @@
         "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation.",
         "NSLocationWhenInUseUsageDescription": "CapWords uses your location to remember where you learned each word."
       },
-      "appleTeamId": "A59BMF9Y7J"
+      "appleTeamId": "A59BMF9Y7J",
+      "entitlements": {
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.capwordsxxx.shared"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,6 +43,7 @@
     "plugins": [
       "expo-camera",
       "expo-audio",
+      "@bacons/apple-targets",
       "./plugins/withFmtConstevalFix"
     ],
     "scheme": "capwords"

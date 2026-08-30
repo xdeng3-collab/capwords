@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import Security
 
 // MARK: - Shared data
 
@@ -49,12 +50,21 @@ struct CapWordsSnapshot: Codable {
         ]
     )
 
+    /// Reads the snapshot the app wrote into the shared keychain access group.
+    /// Must stay in step with modules/shared-store/ios/SharedStoreModule.swift.
     static func load() -> CapWordsSnapshot {
-        guard
-            let defaults = UserDefaults(suiteName: "group.com.xiangyudeng.capwords"),
-            let raw = defaults.string(forKey: "snapshot"),
-            let data = raw.data(using: .utf8),
-            let decoded = try? JSONDecoder().decode(CapWordsSnapshot.self, from: data)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "com.capwordsxxx.shared",
+            kSecAttrAccount as String: "snapshot",
+            kSecAttrAccessGroup as String: "A59BMF9Y7J.com.capwordsxxx.shared",
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data,
+              let decoded = try? JSONDecoder().decode(CapWordsSnapshot.self, from: data)
         else {
             return .placeholder
         }
