@@ -29,19 +29,21 @@ export const LANGUAGES = [
 ];
 
 // Pricing Configuration
-// Cost analysis per word:
-// - Image recognition: ~500 input tokens + ~200 output tokens
-// - Input cost: $0.14/1M * 500 = $0.00007
-// - Output cost: $0.28/1M * 200 = $0.000056
-// - With system prompts, retries, overhead: ~$0.0003 per word
-// - Infrastructure (storage, CDN, servers): ~$0.002 per word
-// - Total cost per word: ~$0.0025
-// - Selling price with margin: $0.01 per word (4x margin)
 export const PRICING = {
-  perWord: 0.01, // $0.01 per word
-  monthly: 4.99, // $4.99/month - unlimited words
-  yearly: 39.99, // $39.99/year - unlimited words (33% discount)
+  perWord: 0.02, // $0.02 per word
+  monthly: 3.99, // $3.99/month - unlimited words
+  yearly: 29.99, // $29.99/year - unlimited words (37% discount)
   freeWordsPerDay: 3, // Free tier: 3 words per day
+};
+
+// Promo codes. Redeeming one grants a plan without going through billing.
+// Keys must be uppercase - user input is trimmed and upper-cased before lookup.
+export const PROMO_CODES = {
+  CAPWORDS2026: {
+    plan: 'unlimited',
+    label: 'Unlimited Pro',
+    message: 'Unlimited words unlocked forever. Go snap everything!',
+  },
 };
 
 // Streak & Goals

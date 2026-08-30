@@ -6,12 +6,12 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW } from '../config';
 import { EmptyState } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import {
@@ -32,6 +32,7 @@ const MOCK_FRIENDS_SEARCH = [
 ];
 
 export default function FriendsScreen({ navigation }) {
+  const showAlert = useAlert();
   const [friends, setFriends] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -67,14 +68,14 @@ export default function FriendsScreen({ navigation }) {
   const handleAddFriend = async (friend) => {
     const existing = friends.find((f) => f.id === friend.id);
     if (existing) {
-      Alert.alert('Already Friends', `You're already friends with ${friend.name}`);
+      showAlert('Already Friends', `You're already friends with ${friend.name}`);
       return;
     }
     await addFriend(friend);
     await loadFriends();
     setSearchQuery('');
     setIsSearching(false);
-    Alert.alert('Friend Added', `${friend.name} has been added to your friends.`);
+    showAlert('Friend Added', `${friend.name} has been added to your friends.`);
   };
 
   // Duolingo-style congrats: cheer each friend once per day (resets at midnight).

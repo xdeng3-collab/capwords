@@ -8,7 +8,7 @@ import {
   Animated,
   Dimensions,
   Easing,
-  Alert,
+  ScrollView,
 } from 'react-native';
 import {
   useAudioRecorder,
@@ -21,6 +21,7 @@ import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW, CELEBRATIONS, getCategoryStyle } from '../config';
 import { PixelButton } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import StreakCelebration from '../components/StreakCelebration';
@@ -31,6 +32,7 @@ const STICKER_SIZE = SCREEN_WIDTH * 0.52;
 
 export default function StickerResultScreen({ route, navigation }) {
   const { sticker, recognition, goalJustReached, streak } = route.params;
+  const showAlert = useAlert();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [celebrating, setCelebrating] = useState(!!goalJustReached);
@@ -44,6 +46,7 @@ export default function StickerResultScreen({ route, navigation }) {
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const playerRef = useRef(null);
+  const recordingRef = useRef(false);
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -92,7 +95,10 @@ export default function StickerResultScreen({ route, navigation }) {
       Speech.stop();
       playerRef.current?.remove();
       playerRef.current = null;
+      // Tap-to-record means a take can still be running if the user leaves.
+      if (recordingRef.current) audioRecorder.stop().catch(() => {});
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -115,7 +121,7 @@ export default function StickerResultScreen({ route, navigation }) {
     try {
       const { granted } = await requestRecordingPermissionsAsync();
       if (!granted) {
-        Alert.alert(
+        showAlert(
           'Microphone needed',
           'Enable microphone access in Settings to practice your pronunciation.'
         );
@@ -124,6 +130,7 @@ export default function StickerResultScreen({ route, navigation }) {
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
+      recordingRef.current = true;
       setIsRecording(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } catch (error) {
@@ -133,7 +140,8 @@ export default function StickerResultScreen({ route, navigation }) {
   };
 
   const stopRecording = async () => {
-    if (!isRecording) return;
+    if (!recordingRef.current) return;
+    recordingRef.current = false;
     setIsRecording(false);
     try {
       await audioRecorder.stop();
@@ -145,6 +153,17 @@ export default function StickerResultScreen({ route, navigation }) {
       console.error('Failed to stop recording', error);
     } finally {
       await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+    }
+  };
+
+  // Tap to start, tap again to stop. Press-and-hold used to lose the gesture to
+  // the surrounding ScrollView on the slightest finger drag, which cut takes
+  // short and made the button feel like a toggle anyway.
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -166,104 +185,103 @@ export default function StickerResultScreen({ route, navigation }) {
         <PixelIcon name="close" size={18} color={COLORS.text} />
       </TouchableOpacity>
 
-      {/* Celebration + happy pet */}
-      <Animated.View style={[styles.celebrationRow, { opacity: fadeAnim }]}>
-        <PetSprite
-          mood="happy"
-          species={pet?.species}
-          outfit={pet?.equippedOutfit}
-          pixelSize={5}
-        />
-        <View style={styles.celebrationBubble}>
-          <Text style={styles.celebrationText}>{celebration}</Text>
-        </View>
-        {sticker.coinsEarned ? (
-          <View style={styles.coinChip}>
-            <PixelIcon name="coin" size={14} color="#B8860B" />
-            <Text style={styles.coinChipText}>+{sticker.coinsEarned + practiceCoins}</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Celebration + happy pet */}
+        <Animated.View style={[styles.celebrationRow, { opacity: fadeAnim }]}>
+          <PetSprite
+            mood="happy"
+            species={pet?.species}
+            outfit={pet?.equippedOutfit}
+            pixelSize={5}
+          />
+          <View style={styles.celebrationBubble}>
+            <Text style={styles.celebrationText}>{celebration}</Text>
           </View>
-        ) : null}
-      </Animated.View>
+        </Animated.View>
 
-      {/* Sticker */}
-      <Animated.View style={[styles.stickerContainer, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.stickerFrame}>
-          {sticker.imageUri ? (
-            <Image source={{ uri: sticker.imageUri }} style={styles.stickerImage} />
-          ) : (
-            <View style={styles.stickerFallback}>
-              <PixelIcon name={categoryStyle.icon} size={64} color={categoryStyle.color} />
-            </View>
-          )}
-        </View>
-      </Animated.View>
+        {/* Sticker */}
+        <Animated.View style={[styles.stickerContainer, { transform: [{ scale: scaleAnim }] }]}>
+          <View style={styles.stickerFrame}>
+            {sticker.imageUri ? (
+              <Image source={{ uri: sticker.imageUri }} style={styles.stickerImage} />
+            ) : (
+              <View style={styles.stickerFallback}>
+                <PixelIcon name={categoryStyle.icon} size={64} color={categoryStyle.color} />
+              </View>
+            )}
+          </View>
+        </Animated.View>
 
-      {/* Word info */}
-      <Animated.View style={[styles.wordContainer, { opacity: fadeAnim }]}>
-        <Text style={styles.wordText}>{recognition.word}</Text>
-        {recognition.pronunciation ? (
-          <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
-        ) : null}
-        {recognition.english ? <Text style={styles.englishText}>{recognition.english}</Text> : null}
-      </Animated.View>
-
-      {/* Learn it: example sentence + fun fact */}
-      {recognition.exampleSentence || recognition.funFact ? (
-        <Animated.View style={[styles.learnCard, { opacity: fadeAnim }]}>
-          {recognition.exampleSentence ? (
-            <>
-              <Text style={styles.learnSentence}>"{recognition.exampleSentence}"</Text>
-              {recognition.sentenceTranslation ? (
-                <Text style={styles.learnTranslation}>{recognition.sentenceTranslation}</Text>
-              ) : null}
-            </>
+        {/* Word info */}
+        <Animated.View style={[styles.wordContainer, { opacity: fadeAnim }]}>
+          <Text style={styles.wordText}>{recognition.word}</Text>
+          {recognition.pronunciation ? (
+            <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
           ) : null}
-          {recognition.funFact ? (
-            <Text style={styles.learnFact}>★ {recognition.funFact}</Text>
+          {recognition.english ? <Text style={styles.englishText}>{recognition.english}</Text> : null}
+        </Animated.View>
+
+        {/* Learn it: example sentence + fun fact */}
+        {recognition.exampleSentence || recognition.funFact ? (
+          <Animated.View style={[styles.learnCard, { opacity: fadeAnim }]}>
+            {recognition.exampleSentence ? (
+              <>
+                <Text style={styles.learnSentence}>"{recognition.exampleSentence}"</Text>
+                {recognition.sentenceTranslation ? (
+                  <Text style={styles.learnTranslation}>{recognition.sentenceTranslation}</Text>
+                ) : null}
+              </>
+            ) : null}
+            {recognition.funFact ? (
+              <Text style={styles.learnFact}>★ {recognition.funFact}</Text>
+            ) : null}
+          </Animated.View>
+        ) : null}
+
+        {/* Actions */}
+        <Animated.View style={[styles.actionsContainer, { opacity: fadeAnim }]}>
+          <PixelButton
+            label={isPlaying ? 'Playing...' : 'Listen'}
+            icon="sound"
+            color={COLORS.primary}
+            onPress={speakWord}
+            disabled={isPlaying}
+            size="lg"
+          />
+
+          <TouchableOpacity onPress={toggleRecording} activeOpacity={0.9}>
+            <View
+              style={[
+                styles.recordButton,
+                { backgroundColor: isRecording ? COLORS.danger : COLORS.secondary },
+                SHADOW.glow,
+              ]}
+            >
+              <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
+                <PixelIcon name={isRecording ? 'check' : 'mic'} size={20} color="#FBF3E0" />
+              </Animated.View>
+              <Text style={styles.recordText}>
+                {isRecording
+                  ? 'RECORDING... TAP TO STOP'
+                  : practiceCoins > 0
+                    ? 'PRACTICED! +1 COIN'
+                    : 'TAP TO PRACTICE (+1 COIN)'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {recordedUri ? (
+            <PixelButton label="Play my voice" icon="play" color={COLORS.accent} onPress={playRecording} />
           ) : null}
         </Animated.View>
-      ) : null}
 
-      {/* Actions */}
-      <Animated.View style={[styles.actionsContainer, { opacity: fadeAnim }]}>
-        <PixelButton
-          label={isPlaying ? 'Playing...' : 'Listen'}
-          icon="sound"
-          color={COLORS.primary}
-          onPress={speakWord}
-          disabled={isPlaying}
-          size="lg"
-        />
-
-        <TouchableOpacity onPressIn={startRecording} onPressOut={stopRecording} activeOpacity={0.9}>
-          <View
-            style={[
-              styles.recordButton,
-              { backgroundColor: isRecording ? COLORS.danger : COLORS.secondary },
-              SHADOW.glow,
-            ]}
-          >
-            <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
-              <PixelIcon name="mic" size={20} color="#FBF3E0" />
-            </Animated.View>
-            <Text style={styles.recordText}>
-              {isRecording
-                ? 'LISTENING... RELEASE TO STOP'
-                : practiceCoins > 0
-                  ? 'PRACTICED! +1 COIN'
-                  : 'HOLD TO PRACTICE (+1 COIN)'}
-            </Text>
-          </View>
+        <TouchableOpacity style={styles.doneButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.doneButtonText}>DONE</Text>
         </TouchableOpacity>
-
-        {recordedUri ? (
-          <PixelButton label="Play my voice" icon="play" color={COLORS.accent} onPress={playRecording} />
-        ) : null}
-      </Animated.View>
-
-      <TouchableOpacity style={styles.doneButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.doneButtonText}>DONE</Text>
-      </TouchableOpacity>
+      </ScrollView>
 
       {celebrating ? (
         <StreakCelebration streak={streak} onDone={() => setCelebrating(false)} />
@@ -276,8 +294,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollContent: {
     alignItems: 'center',
     paddingTop: 58,
+    paddingBottom: 130,
   },
   closeButton: {
     position: 'absolute',
@@ -310,18 +331,6 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
     letterSpacing: 0.5,
   },
-  coinChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF3C9',
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  coinChipText: { fontSize: 13, fontWeight: '900', color: '#B8860B' },
   stickerContainer: { marginTop: 8, marginBottom: 20 },
   stickerFrame: {
     width: STICKER_SIZE,
@@ -379,6 +388,6 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   recordText: { color: '#FBF3E0', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
-  doneButton: { position: 'absolute', bottom: 42, paddingHorizontal: 36, paddingVertical: 12 },
+  doneButton: { marginTop: 22, paddingHorizontal: 36, paddingVertical: 12 },
   doneButtonText: { color: COLORS.textLight, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
 });

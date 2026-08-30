@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, LANGUAGES, RADIUS } from '../config';
 import { PixelPanel } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import {
   getUserProfile,
@@ -27,9 +27,11 @@ const PLAN_LABELS = {
   per_word: { title: 'Pay Per Word', detail: 'Word pack balance', icon: 'star' },
   monthly: { title: 'Monthly Pro', detail: 'Unlimited words', icon: 'trophy' },
   yearly: { title: 'Yearly Pro', detail: 'Unlimited words', icon: 'trophy' },
+  unlimited: { title: 'Unlimited Pro', detail: 'Unlocked with a promo code', icon: 'trophy' },
 };
 
 export default function ProfileScreen({ navigation }) {
+  const showAlert = useAlert();
   const [profile, setProfile] = useState(null);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [subscription, setSubscription] = useState(null);
@@ -61,7 +63,7 @@ export default function ProfileScreen({ navigation }) {
   const handleChangeGoal = async () => {
     const canChange = await canChangeGoal();
     if (!canChange) {
-      Alert.alert(
+      showAlert(
         'Not just yet',
         'You can change your daily goal once a week. This keeps your habit nice and steady.'
       );
@@ -71,7 +73,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const showComingSoon = (feature) =>
-    Alert.alert(feature, 'This is coming in a future update. Thanks for your patience!');
+    showAlert(feature, 'This is coming in a future update. Thanks for your patience!');
 
   if (!profile) {
     return <View style={styles.container} />;
@@ -182,7 +184,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={async () => {
               await seedDemoData();
               await loadData();
-              Alert.alert(
+              showAlert(
                 'Demo data loaded',
                 'Sample stickers, friends, a streak, and 60 coins were added. Check the Book and Pals tabs.'
               );

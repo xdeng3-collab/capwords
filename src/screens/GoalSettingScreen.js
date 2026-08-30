@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ScrollView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, MIN_DAILY_GOAL, MAX_DAILY_GOAL, RADIUS, SHADOW } from '../config';
 import { PixelPanel, PixelButton, ProgressBar } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import { getUserProfile, updateUserProfile, canChangeGoal } from '../services/storageService';
 
@@ -23,6 +23,7 @@ const TIPS = [
 ];
 
 export default function GoalSettingScreen({ navigation }) {
+  const showAlert = useAlert();
   const [goal, setGoal] = useState(5);
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +45,7 @@ export default function GoalSettingScreen({ navigation }) {
   const handleSave = async () => {
     const canChange = await canChangeGoal();
     if (!canChange) {
-      Alert.alert(
+      showAlert(
         'Not just yet',
         'You can change your daily goal once every 7 days. This helps build a steady habit.'
       );

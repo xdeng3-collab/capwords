@@ -1,73 +1,165 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Keyboard,
   Dimensions,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { COLORS, PRICING, RADIUS, SHADOW } from '../config';
 import PixelIcon from '../components/PixelIcon';
-import { updateSubscription } from '../services/storageService';
+import {
+  getSubscription,
+  redeemPromoCode,
+  updateSubscription,
+} from '../services/storageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+const PLANS = [
+  {
+    id: 'per_word',
+    name: 'Pay Per Word',
+    price: `$${PRICING.perWord}`,
+    period: 'per word',
+    description: 'Pay only for what you learn',
+    features: [
+      'No commitment',
+      'Buy word packs (10, 50, 100 words)',
+      'Never expires',
+      'Full features included',
+    ],
+    packs: [
+      { words: 10, price: 0.20 },
+      { words: 50, price: 0.90 },
+      { words: 100, price: 1.60 },
+    ],
+    popular: false,
+  },
+  {
+    id: 'monthly',
+    name: 'Monthly Pro',
+    price: `$${PRICING.monthly}`,
+    period: 'per month',
+    description: 'Best for consistent learners',
+    features: [
+      'Unlimited words',
+      'All languages',
+      'Pronunciation feedback',
+      'Friend collections access',
+      'Priority support',
+    ],
+    popular: true,
+  },
+  {
+    id: 'yearly',
+    name: 'Yearly Pro',
+    price: `$${PRICING.yearly}`,
+    period: 'per year',
+    description: 'Best value - save 37%!',
+    features: [
+      'Everything in Monthly',
+      'Save 37% vs monthly',
+      'Exclusive sticker frames',
+      'Early access to features',
+      'Offline mode',
+    ],
+    popular: false,
+    savings: `Save $${((PRICING.monthly * 12) - PRICING.yearly).toFixed(2)}/year`,
+  },
+];
+
+// Kept in its own component so typing a code only re-renders this card - with
+// the input state on the screen every keystroke re-rendered all three plan
+// cards, which is what made typing and redeeming feel sluggish.
+const PromoCard = React.memo(function PromoCard({ subscription, onRedeemed }) {
+  const [promoCode, setPromoCode] = useState('');
+  const [promoResult, setPromoResult] = useState(null);
+  const [redeeming, setRedeeming] = useState(false);
+
+  const hasUnlimited = subscription?.type === 'unlimited';
+
+  const handleRedeem = async () => {
+    if (redeeming) return;
+    Keyboard.dismiss();
+    setRedeeming(true);
+    try {
+      const result = await redeemPromoCode(promoCode);
+      setPromoResult(result);
+      if (result.ok) {
+        setPromoCode('');
+        onRedeemed(result.subscription);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      }
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  return (
+    <View style={styles.promoCard}>
+      {hasUnlimited ? (
+        <View style={styles.promoActiveRow}>
+          <PixelIcon name="check" size={18} color={COLORS.success} />
+          <View style={styles.promoActiveText}>
+            <Text style={styles.promoActiveTitle}>UNLIMITED PLAN ACTIVE</Text>
+            <Text style={styles.promoActiveDetail}>
+              Redeemed with code {subscription?.promoCode}. Unlimited words, no expiry.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.promoTitle}>HAVE A PROMO CODE?</Text>
+          <View style={styles.promoRow}>
+            <TextInput
+              style={styles.promoInput}
+              value={promoCode}
+              onChangeText={(text) => {
+                setPromoCode(text);
+                if (promoResult) setPromoResult(null);
+              }}
+              placeholder="ENTER CODE"
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              autoComplete="off"
+              returnKeyType="done"
+              onSubmitEditing={handleRedeem}
+              maxLength={24}
+            />
+            <TouchableOpacity
+              style={[styles.promoButton, !promoCode.trim() && styles.promoButtonDisabled]}
+              onPress={handleRedeem}
+              disabled={!promoCode.trim() || redeeming}
+            >
+              <Text style={styles.promoButtonText}>{redeeming ? '...' : 'REDEEM'}</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+      {promoResult ? (
+        <Text style={[styles.promoMessage, promoResult.ok ? styles.promoOk : styles.promoError]}>
+          {promoResult.message}
+        </Text>
+      ) : null}
+    </View>
+  );
+});
+
 export default function SubscriptionScreen({ navigation }) {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
+  const [subscription, setSubscription] = useState(null);
 
-  const plans = [
-    {
-      id: 'per_word',
-      name: 'Pay Per Word',
-      price: `$${PRICING.perWord}`,
-      period: 'per word',
-      description: 'Pay only for what you learn',
-      features: [
-        'No commitment',
-        'Buy word packs (10, 50, 100 words)',
-        'Never expires',
-        'Full features included',
-      ],
-      packs: [
-        { words: 10, price: 0.10 },
-        { words: 50, price: 0.45 },
-        { words: 100, price: 0.80 },
-      ],
-      popular: false,
-    },
-    {
-      id: 'monthly',
-      name: 'Monthly Pro',
-      price: `$${PRICING.monthly}`,
-      period: 'per month',
-      description: 'Best for consistent learners',
-      features: [
-        'Unlimited words',
-        'All languages',
-        'Pronunciation feedback',
-        'Friend collections access',
-        'Priority support',
-      ],
-      popular: true,
-    },
-    {
-      id: 'yearly',
-      name: 'Yearly Pro',
-      price: `$${PRICING.yearly}`,
-      period: 'per year',
-      description: 'Best value - save 33%!',
-      features: [
-        'Everything in Monthly',
-        'Save 33% vs monthly',
-        'Exclusive sticker frames',
-        'Early access to features',
-        'Offline mode',
-      ],
-      popular: false,
-      savings: `Save $${((PRICING.monthly * 12) - PRICING.yearly).toFixed(2)}/year`,
-    },
-  ];
+  useEffect(() => {
+    getSubscription().then(setSubscription).catch(() => {});
+  }, []);
 
   const handlePurchase = async (plan) => {
     // In production, this would integrate with App Store / Google Play billing
@@ -76,6 +168,7 @@ export default function SubscriptionScreen({ navigation }) {
       await updateSubscription({
         type: 'per_word',
         wordBalance: 50, // Default pack
+        promoCode: null,
       });
     } else if (plan.id === 'monthly') {
       const expiresAt = new Date();
@@ -83,6 +176,7 @@ export default function SubscriptionScreen({ navigation }) {
       await updateSubscription({
         type: 'monthly',
         expiresAt: expiresAt.toISOString(),
+        promoCode: null,
       });
     } else if (plan.id === 'yearly') {
       const expiresAt = new Date();
@@ -90,13 +184,14 @@ export default function SubscriptionScreen({ navigation }) {
       await updateSubscription({
         type: 'yearly',
         expiresAt: expiresAt.toISOString(),
+        promoCode: null,
       });
     }
     navigation.goBack();
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
@@ -108,32 +203,11 @@ export default function SubscriptionScreen({ navigation }) {
         </Text>
       </View>
 
-      {/* Cost Breakdown */}
-      <View style={styles.costBreakdown}>
-        <Text style={styles.costTitle}>OUR COST PER WORD</Text>
-        <View style={styles.costRow}>
-          <Text style={styles.costLabel}>AI Image Recognition:</Text>
-          <Text style={styles.costValue}>$0.00007</Text>
-        </View>
-        <View style={styles.costRow}>
-          <Text style={styles.costLabel}>AI Translation + Output:</Text>
-          <Text style={styles.costValue}>$0.00006</Text>
-        </View>
-        <View style={styles.costRow}>
-          <Text style={styles.costLabel}>Infrastructure & Storage:</Text>
-          <Text style={styles.costValue}>$0.00200</Text>
-        </View>
-        <View style={[styles.costRow, styles.costTotal]}>
-          <Text style={styles.costTotalLabel}>Total cost/word:</Text>
-          <Text style={styles.costTotalValue}>~$0.0025</Text>
-        </View>
-        <Text style={styles.costNote}>
-          We charge ${PRICING.perWord}/word to cover costs and continue development.
-        </Text>
-      </View>
+      {/* Promo code */}
+      <PromoCard subscription={subscription} onRedeemed={setSubscription} />
 
       {/* Plans */}
-      {plans.map((plan) => (
+      {PLANS.map((plan) => (
         <TouchableOpacity
           key={plan.id}
           style={[
@@ -193,7 +267,7 @@ export default function SubscriptionScreen({ navigation }) {
       {/* Purchase Button */}
       <TouchableOpacity
         style={styles.purchaseButton}
-        onPress={() => handlePurchase(plans.find(p => p.id === selectedPlan))}
+        onPress={() => handlePurchase(PLANS.find((p) => p.id === selectedPlan))}
       >
         <Text style={styles.purchaseButtonText}>
           {selectedPlan === 'per_word' ? 'Buy Word Pack' : 'Subscribe Now'}
@@ -243,7 +317,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-  costBreakdown: {
+  promoCard: {
     marginHorizontal: 20,
     marginBottom: 20,
     backgroundColor: COLORS.surface,
@@ -253,49 +327,74 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     ...SHADOW.soft,
   },
-  costTitle: {
+  promoTitle: {
     fontSize: 13,
     fontWeight: '900',
     color: COLORS.text,
-    marginBottom: 12,
+    marginBottom: 10,
     letterSpacing: 0.8,
   },
-  costRow: {
+  promoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
+    alignItems: 'stretch',
+    gap: 10,
   },
-  costLabel: {
+  promoInput: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1,
+    color: COLORS.text,
+  },
+  promoButton: {
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+  },
+  promoButtonDisabled: {
+    backgroundColor: COLORS.panel,
+  },
+  promoButtonText: {
+    color: '#FBF3E0',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  promoMessage: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 10,
+    lineHeight: 18,
+  },
+  promoOk: { color: COLORS.success },
+  promoError: { color: COLORS.danger },
+  promoActiveRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  promoActiveText: { flex: 1 },
+  promoActiveTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: 0.8,
+  },
+  promoActiveDetail: {
     fontSize: 13,
     color: COLORS.textLight,
-  },
-  costValue: {
-    fontSize: 13,
-    color: COLORS.text,
-    fontFamily: 'monospace',
-  },
-  costTotal: {
-    borderTopWidth: 2,
-    borderTopColor: COLORS.panel,
-    marginTop: 8,
-    paddingTop: 8,
-  },
-  costTotalLabel: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.text,
-  },
-  costTotalValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.primaryDark,
-  },
-  costNote: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 8,
-    textAlign: 'center',
     fontWeight: '600',
+    marginTop: 3,
+    lineHeight: 18,
   },
   planCard: {
     marginHorizontal: 20,

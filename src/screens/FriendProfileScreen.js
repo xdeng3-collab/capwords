@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
-  Alert,
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
 import { PixelButton } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import { removeFriend } from '../services/storageService';
@@ -25,6 +25,7 @@ const FALLBACK_PETS = [
 
 export default function FriendProfileScreen({ route, navigation }) {
   const { friend } = route.params;
+  const showAlert = useAlert();
   const [fed, setFed] = useState(false);
 
   const pet =
@@ -50,7 +51,7 @@ export default function FriendProfileScreen({ route, navigation }) {
   };
 
   const handleRemove = () => {
-    Alert.alert('Remove friend', `Are you sure you want to remove ${friend.name}?`, [
+    showAlert('Remove friend', `Are you sure you want to remove ${friend.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',

@@ -7,6 +7,7 @@ import {
   PET,
   COINS,
   OUTFITS,
+  PROMO_CODES,
 } from '../config';
 
 const STORAGE_KEYS = {
@@ -33,21 +34,39 @@ const STICKER_IMAGE_DIR = `${FileSystem.documentDirectory || ''}stickers/`;
  * app's permanent documents folder. Photos live only on the user's device —
  * nothing is uploaded, so there is no server storage cost. Cache URIs can be
  * purged by iOS at any time, which is why we copy them out.
+ *
+ * Only the `stickers/<id>.jpg` sub-path is stored, never the absolute URI:
+ * iOS gives the app a fresh container UUID on every reinstall, so an absolute
+ * path saved today points nowhere tomorrow. resolveStickerImage rebuilds the
+ * full URI against the current documents directory at read time.
  */
 async function persistStickerImage(imageUri, id) {
   if (!imageUri || !FileSystem.documentDirectory) return imageUri;
   try {
     await FileSystem.makeDirectoryAsync(STICKER_IMAGE_DIR, { intermediates: true }).catch(() => {});
-    const dest = `${STICKER_IMAGE_DIR}${id}.jpg`;
-    await FileSystem.copyAsync({ from: imageUri, to: dest });
-    return dest;
+    const relative = `stickers/${id}.jpg`;
+    await FileSystem.copyAsync({ from: imageUri, to: `${FileSystem.documentDirectory}${relative}` });
+    return relative;
   } catch (e) {
     return imageUri; // fall back to the original URI
   }
 }
 
+/**
+ * Turn a stored image reference into a URI that works right now. Handles both
+ * the relative paths written today and the absolute ones written by earlier
+ * versions, whose container UUID has since gone stale.
+ */
+export function resolveStickerImage(stored) {
+  if (!stored) return stored;
+  const documents = FileSystem.documentDirectory || '';
+  const match = stored.match(/stickers\/[^/]+$/);
+  if (match) return `${documents}${match[0]}`;
+  return stored; // an unrecognised URI (e.g. a picked photo we could not copy)
+}
+
 export async function saveSticker(sticker) {
-  const stickers = await getStickers();
+  const stickers = await getRawStickers();
   const id = Date.now().toString();
   const imageUri = await persistStickerImage(sticker.imageUri, id);
   const newSticker = {
@@ -61,13 +80,20 @@ export async function saveSticker(sticker) {
   
   // Update daily word count (also awards learning coins)
   const coinsEarned = await incrementDailyWords();
-  
-  return { ...newSticker, coinsEarned };
+
+  return { ...newSticker, imageUri: resolveStickerImage(imageUri), coinsEarned };
+}
+
+/** Stickers exactly as stored. Use this before writing the list back. */
+async function getRawStickers() {
+  const data = await AsyncStorage.getItem(STORAGE_KEYS.STICKERS);
+  return data ? JSON.parse(data) : [];
 }
 
 export async function getStickers() {
-  const data = await AsyncStorage.getItem(STORAGE_KEYS.STICKERS);
-  return data ? JSON.parse(data) : [];
+  const stickers = await getRawStickers();
+  // Resolve on read so every screen gets a URI valid for this install.
+  return stickers.map((s) => ({ ...s, imageUri: resolveStickerImage(s.imageUri) }));
 }
 
 export async function getStickersByDate() {
@@ -88,13 +114,14 @@ export async function getStickersByDate() {
 }
 
 export async function deleteSticker(id) {
-  const stickers = await getStickers();
+  const stickers = await getRawStickers();
   const sticker = stickers.find((s) => s.id === id);
   const filtered = stickers.filter(s => s.id !== id);
   await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(filtered));
   // Clean up the stored photo (best effort).
-  if (sticker?.imageUri?.startsWith(STICKER_IMAGE_DIR)) {
-    FileSystem.deleteAsync(sticker.imageUri, { idempotent: true }).catch(() => {});
+  const resolved = resolveStickerImage(sticker?.imageUri);
+  if (resolved?.startsWith(STICKER_IMAGE_DIR)) {
+    FileSystem.deleteAsync(resolved, { idempotent: true }).catch(() => {});
   }
 }
 
@@ -258,9 +285,10 @@ export async function getSubscription() {
   if (data) return JSON.parse(data);
   
   return {
-    type: 'free', // 'free', 'per_word', 'monthly', 'yearly'
+    type: 'free', // 'free', 'per_word', 'monthly', 'yearly', 'unlimited'
     wordBalance: 0,
     expiresAt: null,
+    promoCode: null,
   };
 }
 
@@ -271,8 +299,40 @@ export async function updateSubscription(subData) {
   return updated;
 }
 
+// Redeem a promo code. Returns { ok, message, subscription } so the caller can
+// show the outcome without needing to know which codes exist.
+export async function redeemPromoCode(rawCode) {
+  const code = (rawCode || '').trim().toUpperCase();
+  if (!code) {
+    return { ok: false, message: 'Enter a promo code first.' };
+  }
+
+  const promo = PROMO_CODES[code];
+  if (!promo) {
+    return { ok: false, message: "That code isn't valid. Check the spelling and try again." };
+  }
+
+  const current = await getSubscription();
+  if (current.promoCode === code) {
+    return { ok: false, message: 'This code is already active on your account.' };
+  }
+
+  const subscription = await updateSubscription({
+    type: promo.plan,
+    // Unlimited plans never expire, so clear any leftover subscription date.
+    expiresAt: null,
+    promoCode: code,
+  });
+
+  return { ok: true, message: promo.message, subscription };
+}
+
 export async function canLearnWord() {
   const sub = await getSubscription();
+  
+  if (sub.type === 'unlimited') {
+    return { allowed: true, reason: 'promo' };
+  }
   
   if (sub.type === 'monthly' || sub.type === 'yearly') {
     if (new Date(sub.expiresAt) > new Date()) {

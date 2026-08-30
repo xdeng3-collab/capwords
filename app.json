@@ -16,12 +16,13 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.capwords.app",
+      "bundleIdentifier": "com.capwordsxxx.app",
       "infoPlist": {
         "NSCameraUsageDescription": "CapWords needs camera access to take photos of objects for word learning.",
         "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation.",
         "NSLocationWhenInUseUsageDescription": "CapWords uses your location to remember where you learned each word."
-      }
+      },
+      "appleTeamId": "A59BMF9Y7J"
     },
     "android": {
       "adaptiveIcon": {
@@ -38,6 +39,7 @@
       "expo-camera",
       "expo-audio",
       "./plugins/withFmtConstevalFix"
-    ]
+    ],
+    "scheme": "capwords"
   }
 }

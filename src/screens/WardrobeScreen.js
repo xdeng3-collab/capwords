@@ -5,12 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, COINS, OUTFITS, PET_SPECIES, RADIUS, SHADOW } from '../config';
 import { PixelPanel, PixelButton } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
+import { refreshWidget } from '../services/widgetService';
 import PetSprite from '../components/PetSprite';
 import PixelIcon from '../components/PixelIcon';
 import {
@@ -22,6 +23,7 @@ import {
 } from '../services/storageService';
 
 export default function WardrobeScreen({ navigation }) {
+  const showAlert = useAlert();
   const [state, setState] = useState(null);
   // The outfit currently shown on the stage — lets users try before buying.
   const [preview, setPreview] = useState(null);
@@ -52,6 +54,7 @@ export default function WardrobeScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     await setPetSpecies(species);
     load();
+    refreshWidget();
   };
 
   // Tapping a card only tries the outfit on; wearing/buying happens
@@ -65,17 +68,18 @@ export default function WardrobeScreen({ navigation }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     await equipOutfit(previewId);
     load();
+    refreshWidget();
   };
 
   const handleBuy = () => {
     if (state.coins < previewOutfit.price) {
-      Alert.alert(
+      showAlert(
         'Not enough coins',
         `You need ${previewOutfit.price} coins for the ${previewOutfit.name} but only have ${state.coins}. Learn more words or grab a coin pack below!`
       );
       return;
     }
-    Alert.alert(
+    showAlert(
       `Buy ${previewOutfit.name}?`,
       `${state.name} will wear it right away. This costs ${previewOutfit.price} coins (you have ${state.coins}).`,
       [
@@ -87,6 +91,7 @@ export default function WardrobeScreen({ navigation }) {
             if (result.ok) {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
               load();
+              refreshWidget();
             }
           },
         },
@@ -96,7 +101,7 @@ export default function WardrobeScreen({ navigation }) {
 
   const handleCoinPack = async (pack) => {
     // In production this would go through App Store / Google Play billing.
-    Alert.alert(
+    showAlert(
       'Buy coins',
       `Get ${pack.coins} coins for $${pack.price.toFixed(2)}?`,
       [

@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Platform, StyleSheet, View, Text } from 'react-native';
@@ -160,9 +161,23 @@ const styles = StyleSheet.create({
   },
 });
 
+// The home screen widget opens capwords://camera, which lands on the Snap tab.
+const linking = {
+  prefixes: [Linking.createURL('/'), 'capwords://'],
+  config: {
+    screens: {
+      Buddy: { screens: { PetMain: 'buddy', Wardrobe: 'wardrobe' } },
+      Camera: { screens: { CameraMain: 'camera' } },
+      Collection: { screens: { CollectionMain: 'book' } },
+      Friends: { screens: { FriendsMain: 'pals' } },
+      Profile: { screens: { ProfileMain: 'me' } },
+    },
+  },
+};
+
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <TabNavigator />
     </NavigationContainer>
   );

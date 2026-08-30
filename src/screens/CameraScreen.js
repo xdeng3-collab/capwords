@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -23,9 +22,12 @@ import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, LANGUAGES, RADIUS, SHADOW } from '../config';
 import { PixelButton } from '../components/UI';
+import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
+import PaywallModal from '../components/PaywallModal';
 import { recognizeAndTranslate } from '../services/aiService';
+import { refreshWidget } from '../services/widgetService';
 import {
   saveSticker,
   getUserProfile,
@@ -72,6 +74,7 @@ async function captureLocation() {
 }
 
 export default function CameraScreen({ navigation }) {
+  const showAlert = useAlert();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState('back');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -82,6 +85,7 @@ export default function CameraScreen({ navigation }) {
   const [pet, setPet] = useState(null);
   // The frozen photo shown while recognition runs.
   const [capturedUri, setCapturedUri] = useState(null);
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const [zoom, setZoom] = useState(0);
   const zoomStart = useRef(0);
 
@@ -132,16 +136,12 @@ export default function CameraScreen({ navigation }) {
     }
   }, [isProcessing, pulseAnim]);
 
-  const promptUpgrade = () => {
-    Alert.alert(
-      'Out of words for today',
-      `${petName} is getting sleepy. Upgrade for unlimited learning!`,
-      [
-        { text: 'Maybe later', style: 'cancel' },
-        // Subscription lives in the Profile tab's stack, so navigate through it.
-        { text: 'See plans', onPress: () => navigation.navigate('Profile', { screen: 'Subscription' }) },
-      ]
-    );
+  const promptUpgrade = () => setPaywallVisible(true);
+
+  const goToPlans = () => {
+    setPaywallVisible(false);
+    // Subscription lives in the Profile tab's stack, so navigate through it.
+    navigation.navigate('Profile', { screen: 'Subscription' });
   };
 
   const processImage = async ({ uri, base64 }) => {
@@ -172,6 +172,8 @@ export default function CameraScreen({ navigation }) {
 
       await consumeWord();
       await loadProfile();
+      // New word, new streak, new buddy mood — push it to the home screen.
+      refreshWidget();
 
       // Celebrate when this word is the one that completes the daily goal.
       const [profile, count, streakData] = await Promise.all([
@@ -189,7 +191,7 @@ export default function CameraScreen({ navigation }) {
       });
     } catch (error) {
       console.error(error);
-      Alert.alert(
+      showAlert(
         'That did not work',
         "We couldn't recognise that one. Try getting closer or finding better light."
       );
@@ -236,7 +238,7 @@ export default function CameraScreen({ navigation }) {
     } catch (error) {
       console.error(error);
       setIsProcessing(false);
-      Alert.alert('Camera error', 'Could not take the photo. Please try again.');
+      showAlert('Camera error', 'Could not take the photo. Please try again.');
     }
   };
 
@@ -397,6 +399,14 @@ export default function CameraScreen({ navigation }) {
         </View>
       </CameraView>
       </GestureDetector>
+
+      <PaywallModal
+        visible={paywallVisible}
+        petName={petName}
+        pet={pet}
+        onClose={() => setPaywallVisible(false)}
+        onSeePlans={goToPlans}
+      />
     </GestureHandlerRootView>
   );
 }
