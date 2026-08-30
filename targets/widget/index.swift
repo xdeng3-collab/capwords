@@ -111,7 +111,7 @@ private struct PixelChip<Content: View>: View {
     var body: some View {
         content
             .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.vertical, 4)
             .background(fill)
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color("WidgetOutline"), lineWidth: 2))
             .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -126,7 +126,7 @@ private struct StreakChip: View {
             HStack(spacing: 4) {
                 PixelFlame(pixel: 2)
                 Text("\(streak)")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundStyle(Color("WidgetStreak"))
                 Text(streak == 1 ? "DAY" : "DAYS")
                     .font(.system(size: 9, weight: .black, design: .rounded))
@@ -136,23 +136,23 @@ private struct StreakChip: View {
     }
 }
 
-/// The buddy on a solid "stage", echoing the pet card on the Buddy screen.
-private struct PetStage: View {
+/// The buddy in its scene, framed like the pet card in the app.
+private struct PetPanel: View {
     let snapshot: CapWordsSnapshot
     var pixel: CGFloat
 
     var body: some View {
-        PixelPet(species: snapshot.species, mood: snapshot.mood,
-                 outfit: snapshot.outfit, pixel: pixel)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color("WidgetPanel"))
+        PixelPetStanding(species: snapshot.species, mood: snapshot.mood,
+                         outfit: snapshot.outfit, pixel: pixel)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(SkyGroundBackground())
             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color("WidgetOutline"), lineWidth: 2))
             .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
-private struct WordThumbnail: View {
+/// The photo, framed like a collected sticker.
+private struct StickerFrame: View {
     let base64: String?
     var side: CGFloat
 
@@ -166,61 +166,76 @@ private struct WordThumbnail: View {
             if let image {
                 Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
             } else {
-                Color("WidgetPanel")
+                ZStack {
+                    Color("WidgetSurfaceAlt")
+                    PixelFlame(pixel: 2.6).opacity(0.35)
+                }
             }
         }
         .frame(width: side, height: side)
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color("WidgetOutline"), lineWidth: 2))
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color("WidgetOutline"), lineWidth: 3))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+        // The hard, blurless drop shadow the app uses on cards.
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color("WidgetOutline").opacity(0.35))
+                .offset(x: 0, y: 3)
+        )
     }
 }
 
 // MARK: - Sizes
 
-/// Small: the buddy, big, with the streak. One idea, filling the tile.
+/// Small: the buddy in its scene, edge to edge, with the name and streak
+/// resting on the ground in front of it.
 private struct SmallView: View {
     let snapshot: CapWordsSnapshot
 
     var body: some View {
-        VStack(spacing: 6) {
-            PetStage(snapshot: snapshot, pixel: 4.4)
-            Text(snapshot.petName.uppercased())
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .foregroundStyle(Color("WidgetText"))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            StreakChip(streak: snapshot.streak)
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            PixelPetStanding(species: snapshot.species, mood: snapshot.mood,
+                             outfit: snapshot.outfit, pixel: 4.2)
+            Spacer(minLength: 0)
+            VStack(spacing: 4) {
+                Text(snapshot.petName.uppercased())
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundStyle(Color("WidgetText"))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                StreakChip(streak: snapshot.streak)
+            }
         }
     }
 }
 
-/// Medium: buddy on the left, the last word filling the rest.
+/// Medium: the buddy's scene on the left, the last word framed as a sticker.
 private struct MediumView: View {
     let snapshot: CapWordsSnapshot
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(spacing: 12) {
             VStack(spacing: 5) {
-                PetStage(snapshot: snapshot, pixel: 2.9)
+                PetPanel(snapshot: snapshot, pixel: 2.8)
                 StreakChip(streak: snapshot.streak)
             }
-            .frame(width: 104)
+            .frame(width: 96)
 
             if let last = snapshot.lastWord {
-                HStack(spacing: 9) {
-                    WordThumbnail(base64: last.thumbnail, side: 72)
-                    // Centred, and the sub-lines are optional: recognition can
-                    // fall back to a bare word with no pronunciation or gloss,
-                    // and the block should still look deliberate.
+                HStack(spacing: 11) {
+                    StickerFrame(base64: last.thumbnail, side: 76)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("LAST WORD")
                             .font(.system(size: 8, weight: .black, design: .rounded))
                             .foregroundStyle(Color("WidgetTextMuted"))
+                            .tracking(0.6)
                         Text(last.word)
-                            .font(.system(size: 23, weight: .black, design: .rounded))
+                            .font(.system(size: 24, weight: .black, design: .rounded))
                             .foregroundStyle(Color("WidgetText"))
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
+                        // Optional: recognition can return a bare word, and the
+                        // block should still look composed without these.
                         if !last.pronunciation.isEmpty {
                             Text("/\(last.pronunciation)/")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -238,10 +253,11 @@ private struct MediumView: View {
                 }
                 .frame(maxHeight: .infinity)
             } else {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text("NO WORDS YET")
                         .font(.system(size: 9, weight: .black, design: .rounded))
                         .foregroundStyle(Color("WidgetTextMuted"))
+                        .tracking(0.6)
                     Text("Tap to snap your first word with \(snapshot.petName).")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(Color("WidgetText"))
@@ -268,7 +284,13 @@ struct CapWordsWidgetEntryView: View {
         }
         // Tapping anywhere opens straight into the camera.
         .widgetURL(URL(string: "capwords://camera"))
-        .containerBackground(Color("WidgetBackground"), for: .widget)
+        .containerBackground(for: .widget) {
+            if family == .systemSmall {
+                SkyGroundBackground(skyFraction: 0.62)
+            } else {
+                Color("WidgetBackground")
+            }
+        }
     }
 }
 

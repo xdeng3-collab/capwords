@@ -26,7 +26,7 @@ import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
 import PaywallModal from '../components/PaywallModal';
-import { recognizeAndTranslate } from '../services/aiService';
+import { recognizeAndTranslate, RecognitionFailedError } from '../services/aiService';
 import { refreshWidget } from '../services/widgetService';
 import {
   saveSticker,
@@ -190,10 +190,16 @@ export default function CameraScreen({ navigation }) {
         streak: streakData.current,
       });
     } catch (error) {
-      console.error(error);
+      // Nothing was saved and consumeWord() never ran, so the user still has
+      // the word. Say so plainly — a failed snap that silently costs a word is
+      // the thing people notice and resent.
+      console.error('Recognition failed', error);
+      const couldNotSee = error instanceof RecognitionFailedError;
       showAlert(
-        'That did not work',
-        "We couldn't recognise that one. Try getting closer or finding better light."
+        couldNotSee ? "Couldn't read that one" : 'Something went wrong',
+        couldNotSee
+          ? "We couldn't work out what's in the photo. Try getting closer, or finding better light.\n\nThis one is free — no word was used."
+          : "We couldn't reach the word service. Check your connection and try again.\n\nThis one is free — no word was used."
       );
     } finally {
       setIsProcessing(false);

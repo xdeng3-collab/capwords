@@ -1,8 +1,21 @@
 import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
 
+/** Thrown when the model answered but we could not get a word out of it. */
+export class RecognitionFailedError extends Error {
+  constructor(message = 'Could not recognise the photo.') {
+    super(message);
+    this.name = 'RecognitionFailedError';
+  }
+}
+
 /**
  * Recognize an object from a photo and return its name in the target language
- * Also returns a description for sticker generation
+ * Also returns a description for sticker generation.
+ *
+ * Throws rather than returning a placeholder: the caller saves the sticker and
+ * spends one of the user's words only after this resolves, so a failure here
+ * must not look like a success. Charging someone for an "Unknown" sticker is
+ * worse than telling them it did not work.
  */
 export async function recognizeAndTranslate(imageBase64, targetLanguage) {
   // The model occasionally returns an empty/unparseable answer; one retry
@@ -11,16 +24,7 @@ export async function recognizeAndTranslate(imageBase64, targetLanguage) {
     const result = await requestRecognition(imageBase64, targetLanguage);
     if (result) return result;
   }
-  return {
-    word: 'Unknown',
-    pronunciation: '',
-    english: '',
-    description: 'Object',
-    category: 'other',
-    exampleSentence: '',
-    sentenceTranslation: '',
-    funFact: '',
-  };
+  throw new RecognitionFailedError();
 }
 
 async function requestRecognition(imageBase64, targetLanguage) {

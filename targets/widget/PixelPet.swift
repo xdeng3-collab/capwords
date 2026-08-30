@@ -157,6 +157,42 @@ struct PixelPet: View {
     }
 }
 
+/// The app's signature backdrop: a sky band over sand, split like the pet stage
+/// on the Buddy screen.
+struct SkyGroundBackground: View {
+    var skyFraction: CGFloat = 0.55
+
+    var body: some View {
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                Color("WidgetSky").opacity(0.42)
+                    .frame(height: geo.size.height * skyFraction)
+                Color("WidgetSand")
+            }
+        }
+    }
+}
+
+/// The buddy with the soft ground shadow it bounces over in the app.
+struct PixelPetStanding: View {
+    let species: String
+    let mood: String
+    let outfit: String
+    var pixel: CGFloat = 4
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PixelPet(species: species, mood: mood, outfit: outfit, pixel: pixel)
+            PixelGrid(
+                grid: ["...ssssssssssss...", ".ssssssssssssssss."],
+                palette: ["s": Color(hex: 0x3A2A1A).opacity(0.16)],
+                pixel: pixel
+            )
+            .offset(y: -pixel)
+        }
+    }
+}
+
 /// The app's flame glyph from PixelIcon.js. Drawn rather than using an emoji:
 /// the widget's rendering context falls back to a tofu box for 🔥.
 struct PixelFlame: View {

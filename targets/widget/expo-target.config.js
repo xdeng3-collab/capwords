@@ -24,5 +24,8 @@ module.exports = () => ({
     WidgetPrimaryDark: '#8C5A22',
     WidgetStreak: '#E0742F',
     WidgetLeaf: '#7CB06A',
+    WidgetSky: '#8FC6E8',
+    WidgetSand: '#E8D6AE',
+    WidgetSurfaceAlt: '#F0E2C4',
   },
 });

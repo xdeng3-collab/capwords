@@ -1,7 +1,8 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Modal,
+  BackHandler,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -64,17 +65,24 @@ export function AlertProvider({ children }) {
   const cancel = alertState?.buttons.find((b) => b.style === 'cancel');
   const translateY = pop.interpolate({ inputRange: [0, 1], outputRange: [30, 0] });
 
+  // Rendered as an in-tree overlay rather than a <Modal>. iOS silently drops a
+  // modal presentation that starts while another sheet is still dismissing, so
+  // an alert raised right after the image picker closes never appeared.
+  useEffect(() => {
+    if (!alertState || Platform.OS !== 'android') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackdrop();
+      return true;
+    });
+    return () => sub.remove();
+  }, [alertState, handleBackdrop]);
+
   return (
     <AlertContext.Provider value={value}>
-      {children}
-      <Modal
-        visible={!!alertState}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={handleBackdrop}
-      >
-        <Pressable style={styles.backdrop} onPress={handleBackdrop}>
+      <View style={styles.root}>
+        {children}
+        {alertState ? (
+        <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={handleBackdrop}>
           {/* Swallow taps on the card so only the backdrop dismisses. */}
           <Pressable onPress={() => {}}>
             <Animated.View
@@ -107,14 +115,17 @@ export function AlertProvider({ children }) {
             </Animated.View>
           </Pressable>
         </Pressable>
-      </Modal>
+        ) : null}
+      </View>
     </AlertContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   backdrop: {
-    flex: 1,
+    zIndex: 1000,
+    elevation: 1000,
     backgroundColor: 'rgba(43, 32, 20, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
