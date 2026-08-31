@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&amp;family=Silkscreen&amp;display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #EADBBB; }
+  a { color: #8C5A22; }
+  a:hover { color: #C98A3B; }
+</style>
+</helmet>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: Nunito, system-ui, sans-serif; color: #4A3826;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 800px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — WIDGETS, ROUND 3 — THE SET</div>
+    <div style="font-size: 30px; font-weight: 900; letter-spacing: -0.4px;">Small (2a) and medium (2c), across all three states</div>
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.55; color: #6F5A41; text-wrap: pretty;">One rule set governs both sizes: the buddy's face carries the mood, the accent colour carries urgency (green done, dark neutral, red at risk), and the streak number is the only number that grows. Confetti and sun rays appear on the goal-hit state only, so the reward stays rare.</div>
+  </div>
+
+  <div id="3a" style="display: flex; flex-direction: column; gap: 26px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">3a</div>
+      <div style="font-size: 18px; font-weight: 900;">Small — speech</div>
+    </div>
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #4E7B45;">GOAL HIT</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+          <div style="position: absolute; left: 22px; top: 92px; width: 5px; height: 5px; background: #D96C6C;"></div>
+          <div style="position: absolute; left: 44px; top: 104px; width: 5px; height: 5px; background: #5BA88C;"></div>
+          <div style="position: absolute; left: 74px; top: 90px; width: 5px; height: 5px; background: #F2C14E;"></div>
+          <div style="position: absolute; left: 106px; top: 100px; width: 5px; height: 5px; background: #B5638F;"></div>
+          <div style="position: absolute; left: 146px; top: 90px; width: 5px; height: 5px; background: #5D8FC4;"></div>
+          <div style="position: absolute; left: 30px; top: 114px; width: 5px; height: 5px; background: #F2C14E;"></div>
+          <div style="position: absolute; left: 126px; top: 114px; width: 5px; height: 5px; background: #D96C6C;"></div>
+          <div style="position: absolute; left: 67px; top: 111px; width: 4px; height: 4px; background: #4E7B45;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #4E7B45; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(78,123,69,0.4);">
+            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+              <div style="width: 13px; height: 16px;">{{ check }}</div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 0.6px; white-space: nowrap; color: #4E7B45;">GOAL HIT 5/5</div>
+            </div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">You hit your goal! I am so proud!</div>
+          </div>
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petHappy34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame6 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #E0742F;">13</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">IN PROGRESS</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #3A2A1A; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(58,42,26,0.35);">
+            <div style="font-size: 9px; font-weight: 900; letter-spacing: 0.6px; white-space: nowrap; color: #6F5A41; margin-bottom: 4px;">2 OF 5 TODAY</div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">Nice! Keep the words coming.</div>
+            <div style="margin-top: 7px; display: flex; gap: 2px; height: 8px;">
+              <div style="flex: 1; background: #F2C14E; border: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #F2C14E; border: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+            </div>
+          </div>
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petContent34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame7 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #E0742F;">12</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #C1584E;">STREAK AT RISK</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E0C9A6;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #C1584E; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(193,88,78,0.4);">
+            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+              <div style="width: 13px; height: 16px;">{{ flame8 }}</div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 0.6px; white-space: nowrap; color: #C1584E;">ENDS TONIGHT</div>
+            </div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">I haven't seen a new word in a while...</div>
+          </div>
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petSad34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #C1584E; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame9 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #C1584E;">12</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: baseline; gap: 12px; padding-top: 6px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">3b</div>
+      <div style="font-size: 18px; font-weight: 900;">Medium — stage</div>
+    </div>
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #4E7B45;">GOAL HIT</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 34% 0; background: rgba(143,198,232,0.55);"></div>
+          <div style="position: absolute; inset: 0 0 34% 0; background: repeating-conic-gradient(from 196deg at 26% 100%, rgba(242,193,78,0.55) 0deg 5deg, rgba(242,193,78,0) 5deg 13deg);"></div>
+          <div style="position: absolute; left: 20px; bottom: 20px;">{{ petHappy52 }}</div>
+          <div style="position: absolute; left: 96px; top: 26px; width: 20px; height: 24px;">{{ starBig }}</div>
+          <div style="position: absolute; left: 22px; top: 44px; width: 13px; height: 16px;">{{ star }}</div>
+          <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; align-items: center; gap: 6px; background: #4E7B45; border: 2px solid #3A2A1A; border-radius: 4px; padding: 4px 8px;">
+              <div style="width: 13px; height: 16px;">{{ checkLight }}</div>
+              <div style="font-size: 10px; font-weight: 900; letter-spacing: 1.4px; color: #F3E9D2;">GOAL HIT — 5 OF 5</div>
+            </div>
+            <div style="display: flex; align-items: flex-end; gap: 10px;">
+              <div style="width: 18px; height: 22px; margin-bottom: 6px;">{{ flame4 }}</div>
+              <div style="font-size: 52px; font-weight: 900; line-height: 0.85; color: #E0742F;">13</div>
+              <div style="font-size: 20px; font-weight: 900; color: #4E7B45; margin-bottom: 7px;">+1</div>
+            </div>
+            <div style="font-size: 15px; font-weight: 900; line-height: 1.15; color: #4A3826;">You hit your goal! I am so proud!</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">IN PROGRESS</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 34% 0; background: rgba(143,198,232,0.42);"></div>
+          <div style="position: absolute; left: 20px; bottom: 20px;">{{ petContent52 }}</div>
+          <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+            <div style="align-self: stretch; display: flex; flex-direction: column; gap: 5px;">
+              <div style="display: flex; gap: 3px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 14px; box-sizing: border-box;">
+                <div style="flex: 1; background: #F2C14E;"></div>
+                <div style="flex: 1; background: #F2C14E;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+              </div>
+              <div style="font-size: 10px; font-weight: 900; letter-spacing: 1.4px; color: #6F5A41;">2 OF 5 WORDS TODAY</div>
+            </div>
+            <div style="display: flex; align-items: flex-end; gap: 10px;">
+              <div style="width: 18px; height: 22px; margin-bottom: 6px;">{{ flame5 }}</div>
+              <div style="font-size: 52px; font-weight: 900; line-height: 0.85; color: #E0742F;">12</div>
+            </div>
+            <div style="font-size: 15px; font-weight: 900; line-height: 1.15; color: #4A3826;">Nice! Keep the words coming.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #C1584E;">STREAK AT RISK</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E0C9A6; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 34% 0; background: rgba(181,99,143,0.30);"></div>
+          <div style="position: absolute; left: 20px; bottom: 20px;">{{ petSad52 }}</div>
+          <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; align-items: center; gap: 6px; background: #C1584E; border: 2px solid #3A2A1A; border-radius: 4px; padding: 4px 8px;">
+              <div style="width: 13px; height: 16px;">{{ flame10 }}</div>
+              <div style="font-size: 10px; font-weight: 900; letter-spacing: 1.4px; color: #F3E9D2;">ENDS TONIGHT</div>
+            </div>
+            <div style="display: flex; align-items: flex-end; gap: 10px;">
+              <div style="width: 18px; height: 22px; margin-bottom: 6px;">{{ flame11 }}</div>
+              <div style="font-size: 52px; font-weight: 900; line-height: 0.85; color: #C1584E;">12</div>
+            </div>
+            <div style="font-size: 15px; font-weight: 900; line-height: 1.15; color: #4A3826;">I haven't seen a new word in a while...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 28px; border-top: 2px solid #E8D6AE; padding-top: 20px;">
+      <div style="max-width: 240px; display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">ACCENT</div>
+        <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41;">#4E7B45 done, #3A2A1A neutral, #C1584E at risk. It drives the bubble border, the chip, the badge and the streak number — nothing else changes colour.</div>
+      </div>
+      <div style="max-width: 240px; display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">GROUND</div>
+        <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Sand #E8D6AE normally, #E0C9A6 with a dusk-purple sky at risk. Same split on both sizes.</div>
+      </div>
+      <div style="max-width: 240px; display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">PROGRESS</div>
+        <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Pips show only while the goal is unfinished. Once it's hit they're replaced by the check badge, so the widget never shows a full bar and a nag at once.</div>
+      </div>
+      <div style="max-width: 240px; display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">TAP</div>
+        <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Whole widget opens capwords://camera, as it does today.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: Nunito, system-ui, sans-serif; color: #4A3826; border-top: 3px solid #D6C4A0;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 760px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — WIDGETS, ROUND 2</div>
+    <div style="font-size: 30px; font-weight: 900; letter-spacing: -0.4px;">The picked pair, plus three tries at the goal-hit moment</div>
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.55; color: #6F5A41; text-wrap: pretty;">Small keeps 1b's speech bubble, medium keeps 1a's stage. Hitting the goal is the one moment worth over-rewarding, so each try pushes it further than the plain green pips.</div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start;">
+    <div id="2a" style="display: flex; flex-direction: column; gap: 14px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">2a</div>
+        <div style="font-size: 16px; font-weight: 900;">Confetti</div>
+      </div>
+      <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+        <div style="position: absolute; left: 22px; top: 92px; width: 5px; height: 5px; background: #D96C6C;"></div>
+        <div style="position: absolute; left: 44px; top: 104px; width: 5px; height: 5px; background: #5BA88C;"></div>
+        <div style="position: absolute; left: 74px; top: 90px; width: 5px; height: 5px; background: #F2C14E;"></div>
+        <div style="position: absolute; left: 106px; top: 100px; width: 5px; height: 5px; background: #B5638F;"></div>
+        <div style="position: absolute; left: 146px; top: 90px; width: 5px; height: 5px; background: #5D8FC4;"></div>
+        <div style="position: absolute; left: 30px; top: 114px; width: 5px; height: 5px; background: #F2C14E;"></div>
+        <div style="position: absolute; left: 126px; top: 114px; width: 5px; height: 5px; background: #D96C6C;"></div>
+        <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #4E7B45; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(78,123,69,0.4);">
+          
+          
+          <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 3px;">
+            <div style="width: 13px; height: 16px;">{{ check }}</div>
+            <div style="font-size: 9px; font-weight: 900; letter-spacing: 0.6px; white-space: nowrap; color: #4E7B45;">GOAL HIT 5/5</div>
+          </div>
+          <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">You hit your goal! I am so proud!</div>
+        </div>
+        <div style="position: absolute; right: 10px; bottom: 12px;">{{ petHappy34 }}</div>
+        <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 3px 7px;">
+          <div style="width: 13px; height: 16px;">{{ flame6 }}</div>
+          <div style="font-size: 14px; font-weight: 900; color: #E0742F;">13</div>
+        </div>
+      <div style="position: absolute; left: 67px; width: 4px; height: 4px; background: #4E7B45; top: 111px"></div></div>
+      <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41; max-width: 170px;">Green bubble, a check, and confetti in the sky. The streak has already ticked to 13 — the reward is visible before you open the app.</div>
+    </div>
+
+    <div id="2b" style="display: flex; flex-direction: column; gap: 14px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">2b</div>
+        <div style="font-size: 16px; font-weight: 900;">Banner</div>
+      </div>
+      <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+        <div style="position: absolute; left: 0; right: 0; top: 0; height: 26px; background: #4E7B45; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <div style="width: 13px; height: 16px;">{{ checkLight }}</div>
+          <div style="font-size: 10px; font-weight: 900; letter-spacing: 1.6px; color: #F3E9D2;">DAY 13 DONE</div>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 52px; background: #E8D6AE;"></div>
+        <div style="position: absolute; left: 12px; right: 12px; top: 36px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #3A2A1A; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(58,42,26,0.35);">
+          <div style="position: absolute; left: 18px; bottom: -6px; width: 12px; height: 6px; background: #3A2A1A;"></div>
+          <div style="position: absolute; left: 18px; bottom: -12px; width: 6px; height: 6px; background: #3A2A1A;"></div>
+          <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">You hit your goal! I am so proud!</div>
+        </div>
+        <div style="position: absolute; right: 8px; bottom: 10px;">{{ petHappy34 }}</div>
+        <div style="position: absolute; left: 14px; bottom: 16px; display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <div style="width: 13px; height: 16px;">{{ flame7 }}</div>
+            <div style="font-size: 20px; font-weight: 900; line-height: 1; color: #E0742F;">13</div>
+          </div>
+          <div style="font-size: 8px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">BEST 14</div>
+        </div>
+      </div>
+      <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41; max-width: 170px;">A green banner claims the top edge, so the widget reads as done from across the home screen. Streak sits big on the ground next to the buddy.</div>
+    </div>
+
+    <div id="2c" style="display: flex; flex-direction: column; gap: 14px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">2c</div>
+        <div style="font-size: 16px; font-weight: 900;">Sunburst medium</div>
+      </div>
+      <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+        <div style="position: absolute; inset: 0 0 34% 0; background: rgba(143,198,232,0.55);"></div>
+        <div style="position: absolute; inset: 0 0 34% 0; background: repeating-conic-gradient(from 196deg at 26% 100%, rgba(242,193,78,0.55) 0deg 5deg, rgba(242,193,78,0) 5deg 13deg);"></div>
+        <div style="position: absolute; left: 20px; bottom: 20px;">{{ petHappy52 }}</div>
+        <div style="position: absolute; left: 96px; top: 26px; width: 20px; height: 24px;">{{ starBig }}</div>
+        <div style="position: absolute; left: 22px; top: 44px; width: 13px; height: 16px;">{{ star }}</div>
+        <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+          <div style="display: flex; align-items: center; gap: 6px; background: #4E7B45; border: 2px solid #3A2A1A; border-radius: 4px; padding: 4px 8px;">
+            <div style="width: 13px; height: 16px;">{{ checkLight }}</div>
+            <div style="font-size: 10px; font-weight: 900; letter-spacing: 1.4px; color: #F3E9D2;">GOAL HIT — 5 OF 5</div>
+          </div>
+          <div style="display: flex; align-items: flex-end; gap: 10px;">
+            <div style="width: 18px; height: 22px; margin-bottom: 6px;">{{ flame4 }}</div>
+            <div style="font-size: 52px; font-weight: 900; line-height: 0.85; color: #E0742F;">13</div>
+            <div style="font-size: 20px; font-weight: 900; color: #4E7B45; margin-bottom: 7px;">+1</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            
+            <div style="font-size: 15px; font-weight: 900; line-height: 1.15; color: #4A3826;">You hit your goal! I am so proud!</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 13px; font-weight: 600; line-height: 1.5; color: #6F5A41; max-width: 364px;">1a's stage with the sky broken into flat sun rays behind the buddy. Pips are gone — the green badge plus a +1 on the streak carry the win, and the mood line finally has room on the medium.</div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 44px; font-family: Nunito, system-ui, sans-serif; color: #4A3826; border-top: 3px solid #D6C4A0;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 760px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — WIDGETS, ROUND 1</div>
+    <div style="font-size: 30px; font-weight: 900; letter-spacing: -0.4px;">Two takes on small + medium, each in three moods</div>
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.55; color: #6F5A41; text-wrap: pretty;">Both directions carry the same job: mood you can read at a glance, a streak you don't want to break, and a tap that opens the camera. Sprites, palette and mood copy are the app's own — moods come from <span style="font-family: Silkscreen, monospace; font-size: 11px;">PET_MOODS</span> in config.js. Sizes are true iOS points: 170×170 and 364×170.</div>
+  </div>
+
+  <div id="1a" style="display: flex; flex-direction: column; gap: 22px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1a</div>
+      <div style="font-size: 18px; font-weight: 900;">Stage</div>
+      <div style="font-size: 14px; font-weight: 600; color: #6F5A41; max-width: 520px;">The buddy stands in its scene, edge to edge. The streak is the loudest thing on the widget; the goal reads as segmented pips on the ground. Mood tints the whole sky.</div>
+    </div>
+
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">GOAL HIT</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 38% 0; background: rgba(143,198,232,0.55);"></div>
+          <div style="position: absolute; left: 13px; top: 12px; display: flex; align-items: center; gap: 6px;">
+            <div style="width: 15px; height: 18px;">{{ flame }}</div>
+            <div style="font-size: 30px; font-weight: 900; line-height: 1; color: #E0742F;">12</div>
+          </div>
+          <div style="position: absolute; left: 15px; top: 45px; font-size: 8px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">DAY STREAK</div>
+          <div style="position: absolute; left: 0; right: 0; bottom: 26px; display: flex; justify-content: center;">{{ petHappy42 }}</div>
+          <div style="position: absolute; left: 13px; right: 13px; bottom: 11px; display: flex; gap: 2px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 12px; box-sizing: border-box;">
+            <div style="flex: 1; background: #7CB06A;"></div>
+            <div style="flex: 1; background: #7CB06A;"></div>
+            <div style="flex: 1; background: #7CB06A;"></div>
+            <div style="flex: 1; background: #7CB06A;"></div>
+            <div style="flex: 1; background: #7CB06A;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">IN PROGRESS</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 38% 0; background: rgba(143,198,232,0.42);"></div>
+          <div style="position: absolute; left: 13px; top: 12px; display: flex; align-items: center; gap: 6px;">
+            <div style="width: 15px; height: 18px;">{{ flame2 }}</div>
+            <div style="font-size: 30px; font-weight: 900; line-height: 1; color: #E0742F;">12</div>
+          </div>
+          <div style="position: absolute; left: 15px; top: 45px; font-size: 8px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">DAY STREAK</div>
+          <div style="position: absolute; left: 0; right: 0; bottom: 26px; display: flex; justify-content: center;">{{ petContent42 }}</div>
+          <div style="position: absolute; left: 13px; right: 13px; bottom: 11px; display: flex; gap: 2px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 12px; box-sizing: border-box;">
+            <div style="flex: 1; background: #F2C14E;"></div>
+            <div style="flex: 1; background: #F2C14E;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">STREAK AT RISK</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E0C9A6; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 38% 0; background: rgba(181,99,143,0.30);"></div>
+          <div style="position: absolute; left: 13px; top: 12px; display: flex; align-items: center; gap: 6px;">
+            <div style="width: 15px; height: 18px;">{{ flame3 }}</div>
+            <div style="font-size: 30px; font-weight: 900; line-height: 1; color: #C1584E;">12</div>
+          </div>
+          <div style="position: absolute; left: 15px; top: 45px; font-size: 8px; font-weight: 900; letter-spacing: 1.2px; color: #C1584E;">ENDS TONIGHT</div>
+          <div style="position: absolute; left: 0; right: 0; bottom: 26px; display: flex; justify-content: center;">{{ petSad42 }}</div>
+          <div style="position: absolute; left: 13px; right: 13px; bottom: 11px; display: flex; gap: 2px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 12px; box-sizing: border-box;">
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+            <div style="flex: 1; background: transparent;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">MEDIUM — GOAL HIT</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 34% 0; background: rgba(143,198,232,0.55);"></div>
+          <div style="position: absolute; left: 20px; bottom: 20px;">{{ petHappy52 }}</div>
+          <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 18px; height: 22px;">{{ flame4 }}</div>
+                <div style="font-size: 44px; font-weight: 900; line-height: 0.9; color: #E0742F;">12</div>
+              </div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.4px; color: #6F5A41;">DAY STREAK — BEST 14</div>
+            </div>
+            <div style="font-size: 16px; font-weight: 900; line-height: 1.2; color: #4A3826;">Goal hit. Biscuit is thrilled.</div>
+            <div style="align-self: stretch; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; gap: 3px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 14px; box-sizing: border-box;">
+                <div style="flex: 1; background: #7CB06A;"></div>
+                <div style="flex: 1; background: #7CB06A;"></div>
+                <div style="flex: 1; background: #7CB06A;"></div>
+                <div style="flex: 1; background: #7CB06A;"></div>
+                <div style="flex: 1; background: #7CB06A;"></div>
+              </div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">5 OF 5 WORDS TODAY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">MEDIUM — STREAK AT RISK</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E0C9A6; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; inset: 0 0 34% 0; background: rgba(181,99,143,0.30);"></div>
+          <div style="position: absolute; left: 20px; bottom: 20px;">{{ petSad52 }}</div>
+          <div style="position: absolute; right: 20px; top: 18px; bottom: 18px; width: 176px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 18px; height: 22px;">{{ flame5 }}</div>
+                <div style="font-size: 44px; font-weight: 900; line-height: 0.9; color: #C1584E;">12</div>
+              </div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.4px; color: #C1584E;">STREAK ENDS TONIGHT</div>
+            </div>
+            <div style="font-size: 16px; font-weight: 900; line-height: 1.2; color: #4A3826;">I haven't seen a new word in a while...</div>
+            <div style="align-self: stretch; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; gap: 3px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 14px; box-sizing: border-box;">
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+              </div>
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">0 OF 5 WORDS TODAY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="1b" style="display: flex; flex-direction: column; gap: 22px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1b</div>
+      <div style="font-size: 18px; font-weight: 900;">Speech</div>
+      <div style="font-size: 14px; font-weight: 600; color: #6F5A41; max-width: 520px;">The buddy talks. Each mood's line comes straight from PET_MOODS, so the widget nags in the app's voice instead of showing another number. Streak sits in a pixel chip; the ground strip keeps the scene.</div>
+    </div>
+
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">GOAL HIT</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #3A2A1A; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(58,42,26,0.35);"><div style="position: absolute; left: 18px; bottom: -6px; width: 12px; height: 6px; background: #3A2A1A;"></div><div style="position: absolute; left: 18px; bottom: -12px; width: 6px; height: 6px; background: #3A2A1A;"></div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">You hit your goal! I am so proud!</div>
+          </div>
+          
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petHappy34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame6 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #E0742F;">12</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">IN PROGRESS</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #3A2A1A; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(58,42,26,0.35);"><div style="position: absolute; left: 18px; bottom: -6px; width: 12px; height: 6px; background: #3A2A1A;"></div><div style="position: absolute; left: 18px; bottom: -12px; width: 6px; height: 6px; background: #3A2A1A;"></div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">Nice! Keep the words coming.</div>
+            <div style="margin-top: 7px; display: flex; gap: 2px; height: 8px;">
+              <div style="flex: 1; background: #F2C14E; border: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #F2C14E; border: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+              <div style="flex: 1; background: transparent; border: 1px solid #A38F6F;"></div>
+            </div>
+          </div>
+          
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petContent34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame7 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #E0742F;">12</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">STREAK AT RISK</div>
+        <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 46px; background: #E8D6AE;"></div>
+          <div style="position: absolute; left: 12px; right: 12px; top: 12px; box-sizing: border-box; background: #FBF3E0; border: 3px solid #C1584E; border-radius: 4px; padding: 8px 9px; box-shadow: 0 3px 0 rgba(193,88,78,0.35);"><div style="position: absolute; left: 18px; bottom: -6px; width: 12px; height: 6px; background: #C1584E;"></div><div style="position: absolute; left: 18px; bottom: -12px; width: 6px; height: 6px; background: #C1584E;"></div>
+            <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #C1584E; margin-bottom: 3px;">STREAK ENDS TONIGHT</div>
+            <div style="font-size: 12px; font-weight: 900; line-height: 1.25; color: #4A3826;">I haven't seen a new word in a while...</div>
+          </div>
+          
+          <div style="position: absolute; right: 10px; bottom: 12px;">{{ petSad34 }}</div>
+          <div style="position: absolute; left: 12px; bottom: 14px; display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #C1584E; border-radius: 4px; padding: 3px 7px;">
+            <div style="width: 13px; height: 16px;">{{ flame8 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #C1584E;">12</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">MEDIUM — IN PROGRESS</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3); display: flex; align-items: stretch; gap: 14px; padding: 14px; box-sizing: border-box;">
+          <div style="width: 116px; border: 2px solid #3A2A1A; border-radius: 6px; overflow: hidden; position: relative; background: #E8D6AE; flex: none;">
+            <div style="position: absolute; inset: 0 0 40% 0; background: rgba(143,198,232,0.42);"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center;">{{ petContent38 }}</div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0;">
+            <div style="background: #FBF3E0; border: 3px solid #3A2A1A; border-radius: 4px; padding: 9px 10px; box-shadow: 0 3px 0 rgba(58,42,26,0.35);">
+              <div style="font-size: 14px; font-weight: 900; line-height: 1.25; color: #4A3826;">Nice! Keep the words coming.</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; gap: 3px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 14px; box-sizing: border-box;">
+                <div style="flex: 1; background: #F2C14E;"></div>
+                <div style="flex: 1; background: #F2C14E;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">2 OF 5 WORDS TODAY</div>
+                <div style="display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 2px 6px;">
+                  <div style="width: 13px; height: 16px;">{{ flame9 }}</div>
+                  <div style="font-size: 13px; font-weight: 900; color: #E0742F;">12</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">MEDIUM — STREAK AT RISK</div>
+        <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3); display: flex; align-items: stretch; gap: 14px; padding: 14px; box-sizing: border-box;">
+          <div style="width: 116px; border: 2px solid #C1584E; border-radius: 6px; overflow: hidden; position: relative; background: #E0C9A6; flex: none;">
+            <div style="position: absolute; inset: 0 0 40% 0; background: rgba(181,99,143,0.30);"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center;">{{ petSad38 }}</div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 2px 0;">
+            <div style="background: #FBF3E0; border: 3px solid #C1584E; border-radius: 4px; padding: 9px 10px; box-shadow: 0 3px 0 rgba(193,88,78,0.35); position: relative;">
+              <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #C1584E; margin-bottom: 3px;">STREAK ENDS TONIGHT</div>
+              <div style="font-size: 14px; font-weight: 900; line-height: 1.25; color: #4A3826;">I haven't seen a new word in a while...</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; gap: 3px; border: 2px solid #3A2A1A; border-radius: 2px; background: #F0E2C4; padding: 2px; height: 14px; box-sizing: border-box;">
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+                <div style="flex: 1; background: transparent;"></div>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: 9px; font-weight: 900; letter-spacing: 1.2px; color: #6F5A41;">0 OF 5 WORDS TODAY</div>
+                <div style="display: flex; align-items: center; gap: 5px; background: #FBF3E0; border: 2px solid #C1584E; border-radius: 4px; padding: 2px 6px;">
+                  <div style="width: 13px; height: 16px;">{{ flame10 }}</div>
+                  <div style="font-size: 13px; font-weight: 900; color: #C1584E;">12</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 12px; letter-spacing: 2px; color: #A38F6F;">FIVE MOOD FACES, SAME SPRITE</div>
+    <div style="display: flex; gap: 30px; align-items: flex-end; background: #E8D6AE; border: 3px solid #3A2A1A; padding: 22px 26px;">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">{{ petHappy50 }}<div style="font-size: 11px; font-weight: 900; letter-spacing: 1px;">HAPPY</div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">{{ petContent50 }}<div style="font-size: 11px; font-weight: 900; letter-spacing: 1px;">CONTENT</div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">{{ petNeutral50 }}<div style="font-size: 11px; font-weight: 900; letter-spacing: 1px;">NEUTRAL</div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">{{ petSad50 }}<div style="font-size: 11px; font-weight: 900; letter-spacing: 1px;">SAD</div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">{{ petSleepy50 }}<div style="font-size: 11px; font-weight: 900; letter-spacing: 1px;">SLEEPY</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 56px 64px 80px; display: flex; flex-direction: column; gap: 26px; font-family: Nunito, system-ui, sans-serif; color: #4A3826; border-top: 3px solid #D6C4A0;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">SHIPPING TODAY — RECREATED FROM targets/widget/index.swift</div>
+    <div style="font-size: 22px; font-weight: 900;">Baseline</div>
+    <div style="font-size: 14px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Placeholder snapshot values, pixel sizes and font weights as written in SmallView and MediumView.</div>
+  </div>
+  <div style="display: flex; gap: 26px; flex-wrap: wrap;">
+    <div style="width: 170px; height: 170px; border-radius: 24px; overflow: hidden; position: relative; background: #E8D6AE; box-shadow: 0 5px 0 rgba(58,42,26,0.3);">
+      <div style="position: absolute; inset: 0 0 38% 0; background: rgba(143,198,232,0.42);"></div>
+      <div style="position: absolute; inset: 11px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+        <div style="flex: 1; display: flex; align-items: center;">{{ petHappyBow42 }}</div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+          <div style="font-size: 11px; font-weight: 900; color: #4A3826;">YOUR BUDDY</div>
+          <div style="display: flex; align-items: center; gap: 4px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 4px 8px;">
+            <div style="width: 10px; height: 12px;">{{ flame11 }}</div>
+            <div style="font-size: 14px; font-weight: 900; color: #E0742F;">3</div>
+            <div style="font-size: 9px; font-weight: 900; color: #A38F6F;">DAYS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 364px; height: 170px; border-radius: 24px; overflow: hidden; background: #F3E9D2; box-shadow: 0 5px 0 rgba(58,42,26,0.3); display: flex; gap: 12px; padding: 11px; box-sizing: border-box;">
+      <div style="width: 96px; flex: none; display: flex; flex-direction: column; gap: 5px;">
+        <div style="flex: 1; border: 2px solid #3A2A1A; border-radius: 6px; overflow: hidden; position: relative; background: #E8D6AE;">
+          <div style="position: absolute; inset: 0 0 45% 0; background: rgba(143,198,232,0.42);"></div>
+          <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;">{{ petHappyBow28 }}</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 4px; background: #FBF3E0; border: 2px solid #3A2A1A; border-radius: 4px; padding: 4px 8px;">
+          <div style="width: 10px; height: 12px;">{{ flame12 }}</div>
+          <div style="font-size: 14px; font-weight: 900; color: #E0742F;">3</div>
+          <div style="font-size: 9px; font-weight: 900; color: #A38F6F;">DAYS</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 11px;">
+        <div style="width: 76px; height: 76px; flex: none; position: relative;">
+          <div style="position: absolute; inset: 0; transform: translateY(3px); background: rgba(58,42,26,0.35); border-radius: 6px;"></div>
+          <div style="position: relative; width: 76px; height: 76px; border: 3px solid #3A2A1A; border-radius: 6px; background: #F0E2C4; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <div style="opacity: 0.35; width: 16px; height: 20px;">{{ flame13 }}</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="font-size: 8px; font-weight: 900; letter-spacing: 0.6px; color: #A38F6F;">LAST WORD</div>
+          <div style="font-size: 24px; font-weight: 900; color: #4A3826;">瀑布</div>
+          <div style="font-size: 11px; font-weight: 800; color: #6F5A41;">/pù bù/</div>
+          <div style="font-size: 11px; font-weight: 600; color: #A38F6F;">waterfall</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const PAL = {
+  o: '#3A2A1A', e: '#2E2018', m: '#3A2A1A', p: '#F2A0AC', n: '#E58A96',
+  z: '#8C5A22', t: '#7FB3D9', b: '#F9C784', h: '#FDEBC8', i: '#F2A0AC',
+  d: '#D99E4E', s: 'rgba(58,42,26,0.16)', r: '#D96C6C', k: '#B54A4A',
+};
+
+const HEAD_CAT = ['....oo......oo....', '...oiio....oiio...', '...obbo....obbo...'];
+
+const FACES = {
+  happy: ['.obhbebbbbbbebbbo.', '.obbbebbbbbbebbbo.', 'obbppbbonnobbppbbo'],
+  content: ['.obhbebbbbbbebbbo.', '.obbbebbbbbbebbbo.', 'obbppbbbmmbbbppbbo'],
+  neutral: ['.obhbebbbbbbebbbo.', '.obbbebbbbbbebbbo.', 'obbbbbbbmmbbbbbbbo'],
+  sad: ['.obhbobbbbbbobbbo.', '.obbbebbbbbbetbbo.', 'obbbbbbbmmbbbbbbbo'],
+  sleepy: ['.obhbbbbbbbbbbbbo.', '.obbbzbbbbbbzbbbo.', 'obbppbbbbbbbbppbbo'],
+};
+
+const SHADOW = ['...ssssssssssss...', '.ssssssssssssssss.'];
+const FLAME = { grid: ['..c..', '.cLc.', 'cLLLc', 'cLLLc', 'cLLLc', '.ccc.'], pal: { c: '#3A2A1A', L: '#E0742F' } };
+const BOW = { x: 6, y: -2, grid: ['rr..rr', 'rrkkrr', 'rr..rr'] };
+
+function bodyGrid(mood) {
+  return [
+    ...HEAD_CAT,
+    '..oooooooooooooo..',
+    '.obhhbbbbbbbbbbbo.',
+    ...(FACES[mood] || FACES.neutral),
+    'obbbbbbbbbbbbbbbbo',
+    'obbbbbbbbbbbbbbbbo',
+    '.oooooooooooooooo.',
+  ];
+}
+
+function gridEl(grid, palette, px, extraStyle) {
+  const cells = [];
+  grid.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === '.' || ch === ' ') continue;
+      const color = palette[ch];
+      if (!color) continue;
+      cells.push(React.createElement('div', {
+        key: x + '-' + y,
+        style: {
+          position: 'absolute', left: x * px, top: y * px,
+          width: px, height: px, background: color,
+        },
+      }));
+    }
+  });
+  const cols = grid.reduce((m, r) => Math.max(m, r.length), 0);
+  return React.createElement('div', {
+    style: Object.assign({ position: 'relative', width: cols * px, height: grid.length * px }, extraStyle || {}),
+  }, cells);
+}
+
+function petEl(mood, px, outfit) {
+  const grid = bodyGrid(mood);
+  const parts = [
+    React.createElement('div', { key: 'body', style: { position: 'relative' } }, gridEl(grid, PAL, px)),
+  ];
+  if (outfit === 'bow') {
+    parts.push(React.createElement('div', {
+      key: 'bow',
+      style: { position: 'absolute', left: BOW.x * px, top: (HEAD_CAT.length + BOW.y) * px },
+    }, gridEl(BOW.grid, PAL, px)));
+  }
+  parts.push(React.createElement('div', {
+    key: 'sh', style: { marginTop: -px },
+  }, gridEl(SHADOW, PAL, px)));
+  return React.createElement('div', {
+    style: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  }, parts);
+}
+
+const GLYPHS = {
+  check: { grid: ['.....', '....c', '...cc', 'c.cc.', 'ccc..', '.c...'], pal: { c: '#4E7B45' } },
+  checkLight: { grid: ['.....', '....c', '...cc', 'c.cc.', 'ccc..', '.c...'], pal: { c: '#FBF3E0' } },
+  star: { grid: ['..c..', '..c..', 'ccccc', '.ccc.', '.c.c.', 'c...c'], pal: { c: '#F2C14E' } },
+  trophy: { grid: ['ccccc', 'cLLLc', 'cLLLc', '.ccc.', '..c..', '.ccc.'], pal: { c: '#3A2A1A', L: '#F2C14E' } },
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    const out = {};
+    Object.entries(GLYPHS).forEach(([k, g]) => {
+      out[k] = gridEl(g.grid, g.pal, 2.6);
+      out[k + 'Big'] = gridEl(g.grid, g.pal, 4);
+    });
+    const FPX = { 1: 3, 2: 3, 3: 3, 4: 3.6, 5: 3.6, 6: 2.6, 7: 2.6, 8: 2.6, 9: 2.6, 10: 2.6, 11: 2.4, 12: 2.4, 13: 3.2 };
+    out.flame = gridEl(FLAME.grid, FLAME.pal, FPX[1]);
+    for (let i = 2; i <= 13; i++) out['flame' + i] = gridEl(FLAME.grid, FLAME.pal, FPX[i]);
+    const name = (m) => m.charAt(0).toUpperCase() + m.slice(1);
+    [['happy', 4.2], ['content', 4.2], ['sad', 4.2],
+     ['happy', 5.2], ['content', 5.2], ['sad', 5.2],
+     ['happy', 3.4], ['content', 3.4], ['sad', 3.4],
+     ['content', 3.8], ['sad', 3.8],
+     ['happy', 5.0], ['content', 5.0], ['neutral', 5.0], ['sad', 5.0], ['sleepy', 5.0],
+    ].forEach(([mood, px]) => {
+      out['pet' + name(mood) + String(px * 10).slice(0, 2)] = petEl(mood, px);
+    });
+    out.petHappyBow42 = petEl('happy', 4.2, 'bow');
+    out.petHappyBow28 = petEl('happy', 2.8, 'bow');
+    return out;
+  }
+}
+
+</script>
+</body>
+</html>

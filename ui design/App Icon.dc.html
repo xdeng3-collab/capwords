@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #EADBBB; }
+  a { color: #8C5A22; }
+  a:hover { color: #C98A3B; }
+</style>
+</helmet>
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: 'DM Sans', system-ui, sans-serif; color: #4A3826;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — APP ICON, ROUND 3</div>
+    <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.4px;">1a's buddy placement, 1c's frame, sky blue</div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start;">
+    <div id="3a" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">3a</div>
+        <div style="font-size: 15px; font-weight: 700;">Buddy in frame, recentred</div>
+      </div>
+      <div style="width: 300px; height: 300px; border-radius: 68px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconF }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconF2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconF3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconF4 }}</div>
+      </div>
+    </div>
+
+    <div id="3b" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">3b</div>
+        <div style="font-size: 15px; font-weight: 700;">Solid dark mouth</div>
+      </div>
+      <div style="width: 300px; height: 300px; border-radius: 68px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconG }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconG2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconG3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconG4 }}</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; justify-content: flex-end; padding-bottom: 24px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 11px; letter-spacing: 2px; color: #A38F6F;">ON A HOME SCREEN</div>
+      <div style="padding: 20px; background: #3A2A1A; border-radius: 24px; display: flex; gap: 18px;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconF5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconG5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: 'DM Sans', system-ui, sans-serif; color: #4A3826; border-top: 3px solid #D6C4A0;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — APP ICON, ROUND 2</div>
+    <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.4px;">1c, with the buddy clear of the frame</div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start;">
+    <div id="2a" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">2a</div>
+        <div style="font-size: 15px; font-weight: 700;">Corners pushed out</div>
+      </div>
+      <div style="width: 240px; height: 240px; border-radius: 54px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconD }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconD2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconD3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconD4 }}</div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.5; color: #6F5A41; max-width: 240px;">Same brackets, moved to the very edge with shorter arms. Nothing touches the buddy; the squircle mask trims the corners slightly, which reads as a natural crop.</div>
+    </div>
+
+    <div id="2b" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">2b</div>
+        <div style="font-size: 15px; font-weight: 700;">Thin full frame</div>
+      </div>
+      <div style="width: 240px; height: 240px; border-radius: 54px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconE }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconE2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconE3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconE4 }}</div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.5; color: #6F5A41; max-width: 240px;">Brackets replaced by a one-pixel cream border, buddy raised a row. Calmest option — the frame becomes trim rather than a competing shape.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px; justify-content: flex-end; padding-bottom: 24px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 11px; letter-spacing: 2px; color: #A38F6F;">ON A HOME SCREEN</div>
+      <div style="padding: 20px; background: #3A2A1A; border-radius: 24px; display: flex; gap: 18px;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconD5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconE5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: 'DM Sans', system-ui, sans-serif; color: #4A3826; border-top: 3px solid #D6C4A0;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 720px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — APP ICON, ROUND 1</div>
+    <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.4px;">Three pixel marks, drawn from the app's own sprites</div>
+    <div style="font-size: 15px; line-height: 1.55; color: #6F5A41; text-wrap: pretty;">Every pixel here comes from <span style="font-family: Silkscreen, monospace; font-size: 12px;">PetSprite.js</span>, <span style="font-family: Silkscreen, monospace; font-size: 12px;">PixelIcon.js</span> and the <span style="font-family: Silkscreen, monospace; font-size: 12px;">COLORS</span> palette in config.js — same 24×24 grid logic the app renders on device. Reply with an id to take one further.</div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start;">
+
+    <div id="1a" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1a</div>
+        <div style="font-size: 15px; font-weight: 700;">Buddy</div>
+      </div>
+      <div style="width: 240px; height: 240px; border-radius: 54px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconA }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconA2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconA3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconA4 }}</div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.5; color: #6F5A41; max-width: 240px;">The mascot alone, cropped large. Reads as a pet game; strongest recall, weakest at explaining the camera.</div>
+    </div>
+
+    <div id="1b" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1b</div>
+        <div style="font-size: 15px; font-weight: 700;">Viewfinder</div>
+      </div>
+      <div style="width: 240px; height: 240px; border-radius: 54px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconB }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconB2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconB3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconB4 }}</div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.5; color: #6F5A41; max-width: 240px;">Framing brackets around the apple sticker. States the core loop — point at a thing, get a word — and stays legible at 40px.</div>
+    </div>
+
+    <div id="1c" style="display: flex; flex-direction: column; gap: 16px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 24px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1c</div>
+        <div style="font-size: 15px; font-weight: 700;">Buddy in frame</div>
+      </div>
+      <div style="width: 240px; height: 240px; border-radius: 54px; overflow: hidden; box-shadow: 0 6px 0 rgba(58,42,26,0.35);">{{ iconC }}</div>
+      <div style="display: flex; align-items: flex-end; gap: 14px;">
+        <div style="width: 88px; height: 88px; border-radius: 20px; overflow: hidden;">{{ iconC2 }}</div>
+        <div style="width: 60px; height: 60px; border-radius: 14px; overflow: hidden;">{{ iconC3 }}</div>
+        <div style="width: 40px; height: 40px; border-radius: 9px; overflow: hidden;">{{ iconC4 }}</div>
+      </div>
+      <div style="font-size: 13px; line-height: 1.5; color: #6F5A41; max-width: 240px;">Both ideas at once: the buddy caught in the viewfinder. Busiest of the three at small sizes.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 18px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 12px; letter-spacing: 2px; color: #A38F6F;">ON A HOME SCREEN</div>
+    <div style="display: flex; gap: 48px; flex-wrap: wrap;">
+      <div style="width: 300px; padding: 24px 20px 28px; background: #3A2A1A; border-radius: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 16px;">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconA5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconB5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+          <div style="width: 54px; height: 54px; border-radius: 13px; overflow: hidden;">{{ iconC5 }}</div>
+          <div style="font-size: 10px; color: #F3E9D2;">CapWords</div>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;"><div style="width: 54px; height: 54px; border-radius: 13px; background: #6B4E33;"></div><div style="font-size: 10px; color: #A38F6F;">—</div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; justify-content: center;">
+        <div style="font-size: 13px; color: #6F5A41; max-width: 280px; line-height: 1.5;">Palette used, straight from config.js:</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div style="width: 34px; height: 34px; background: #C98A3B; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #E8B873; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #5BA88C; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #8FC6E8; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #D96C6C; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #F3E9D2; border: 2px solid #3A2A1A;"></div>
+          <div style="width: 34px; height: 34px; background: #3A2A1A; border: 2px solid #3A2A1A;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+const PAL = {
+  o: '#3A2A1A', e: '#2E2018', p: '#F2A0AC', n: '#E58A96',
+  b: '#F9C784', h: '#FDEBC8', i: '#F2A0AC',
+  s: 'rgba(58,42,26,0.20)',
+  r: '#D96C6C', R: '#B54A4A', g: '#7CB06A', L: '#8C5A22',
+  f: '#FBF3E0', w: '#F3E9D2', k: '#8C5A22', a: '#E8B873',
+};
+
+const PET = [
+  '....oo......oo....',
+  '...oiio....oiio...',
+  '...obbo....obbo...',
+  '..oooooooooooooo..',
+  '.obhhbbbbbbbbbbbo.',
+  '.obhbebbbbbbebbbo.',
+  '.obbbebbbbbbebbbo.',
+  'obbppbbonnobbppbbo',
+  'obbbbbbbbbbbbbbbbo',
+  'obbbbbbbbbbbbbbbbo',
+  '.oooooooooooooooo.',
+];
+const SHADOW = ['...ssssssssssss...', '.ssssssssssssssss.'];
+// PixelIcon 'apple' glyph
+const APPLE = ['..g...', '.rrr..', 'rrrrr.', 'rrrrr.', 'rrrrr.', '.rrr..'];
+
+function blank(w, h) {
+  return Array.from({ length: h }, () => Array(w).fill('.'));
+}
+function stamp(cv, grid, ox, oy, scale) {
+  const sc = scale || 1;
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
+      const ch = grid[y][x];
+      if (ch === '.' || ch === ' ') continue;
+      for (let dy = 0; dy < sc; dy++) {
+        for (let dx = 0; dx < sc; dx++) {
+          const py = oy + y * sc + dy, px = ox + x * sc + dx;
+          if (cv[py] && px >= 0 && px < cv[py].length) cv[py][px] = ch;
+        }
+      }
+    }
+  }
+}
+// Camera framing brackets: corner L's, 2px thick, inset `inset`, arm `arm`.
+function brackets(cv, ch, inset, arm, thick) {
+  const n = cv.length;
+  const put = (x, y) => { if (cv[y] && x >= 0 && x < cv[y].length) cv[y][x] = ch; };
+  for (let t = 0; t < thick; t++) {
+    for (let k = 0; k < arm; k++) {
+      put(inset + k, inset + t); put(inset + t, inset + k);
+      put(n - 1 - inset - k, inset + t); put(n - 1 - inset - t, inset + k);
+      put(inset + k, n - 1 - inset - t); put(inset + t, n - 1 - inset - k);
+      put(n - 1 - inset - k, n - 1 - inset - t); put(n - 1 - inset - t, n - 1 - inset - k);
+    }
+  }
+}
+
+function iconA() {
+  const cv = blank(24, 24);
+  stamp(cv, SHADOW, 3, 18, 1);
+  stamp(cv, PET, 3, 6, 1);
+  return { cv, bg: '#5BA88C' };
+}
+function iconB() {
+  const cv = blank(24, 24);
+  brackets(cv, 'o', 3, 5, 2);
+  stamp(cv, APPLE, 6, 6, 2);
+  return { cv, bg: '#E8B873' };
+}
+function iconC() {
+  const cv = blank(24, 24);
+  brackets(cv, 'f', 2, 6, 2);
+  const pet = PET.map((r) => r.slice(1, 17));
+  stamp(cv, SHADOW.map((r) => r.slice(1, 17)), 4, 19, 1);
+  stamp(cv, pet, 4, 8, 1);
+  return { cv, bg: '#8FC6E8' };
+}
+
+// Round 2: buddy and frame kept clear of each other.
+function iconD() {
+  const cv = blank(24, 24);
+  brackets(cv, 'f', 1, 5, 2);
+  stamp(cv, SHADOW, 3, 19, 1);
+  stamp(cv, PET, 3, 8, 1);
+  return { cv, bg: '#8FC6E8' };
+}
+function iconE() {
+  const cv = blank(24, 24);
+  const n = 24;
+  for (let k = 1; k < n - 1; k++) {
+    cv[1][k] = 'f'; cv[n - 2][k] = 'f'; cv[k][1] = 'f'; cv[k][n - 2] = 'f';
+  }
+  stamp(cv, SHADOW, 3, 18, 1);
+  stamp(cv, PET, 3, 7, 1);
+  return { cv, bg: '#8FC6E8' };
+}
+
+// Round 3: 1a's buddy placement, 1c's frame, sky blue.
+function iconF() {
+  const cv = blank(24, 24);
+  brackets(cv, 'f', 2, 6, 2);
+  stamp(cv, SHADOW, 3, 18, 1);
+  stamp(cv, PET, 3, 6, 1);
+  return { cv, bg: '#8FC6E8' };
+}
+// 3b: mouth solid dark instead of the pink tongue.
+const PET_DARK_MOUTH = PET.map((r) => r.replace('onno', 'oooo'));
+function iconG() {
+  const cv = blank(24, 24);
+  brackets(cv, 'f', 2, 6, 2);
+  stamp(cv, SHADOW, 3, 18, 1);
+  stamp(cv, PET_DARK_MOUTH, 3, 6, 1);
+  return { cv, bg: '#8FC6E8' };
+}
+
+class Component extends DCLogic {
+  renderVals() {
+    const render = ({ cv, bg }) => {
+      const n = cv.length;
+      const cells = [];
+      for (let y = 0; y < n; y++) {
+        for (let x = 0; x < cv[y].length; x++) {
+          const ch = cv[y][x];
+          if (ch === '.') continue;
+          cells.push(React.createElement('div', {
+            key: x + '-' + y,
+            style: {
+              position: 'absolute',
+              left: (x / n) * 100 + '%',
+              top: (y / n) * 100 + '%',
+              width: 100 / n + 1 / n + '%',
+              height: 100 / n + 1 / n + '%',
+              background: PAL[ch] || '#000',
+            },
+          }));
+        }
+      }
+      return React.createElement('div', {
+        style: { position: 'relative', width: '100%', height: '100%', background: bg },
+      }, cells);
+    };
+    const a = iconA(), b = iconB(), c = iconC();
+    const out = {};
+    const d = iconD(), e = iconE(), f = iconF(), g = iconG();
+    [['A', a], ['B', b], ['C', c], ['D', d], ['E', e], ['F', f], ['G', g]].forEach(([k, spec]) => {
+      out['icon' + k] = render(spec);
+      for (let i = 2; i <= 5; i++) out['icon' + k + i] = render(spec);
+    });
+    return out;
+  }
+}
+
+</script>
+</body>
+</html>

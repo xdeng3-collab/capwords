@@ -38,3 +38,6 @@ coverage/
 targets/*/Info.plist
 targets/*/generated.entitlements
 targets/*/Assets.xcassets/
+
+# Design handoffs dropped into the repo root
+widgets.zip
