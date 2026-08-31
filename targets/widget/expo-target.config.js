@@ -3,6 +3,8 @@ module.exports = () => ({
   type: 'widget',
   name: 'CapWordsWidget',
   displayName: 'CapWords',
+  // Shown beside the widget in the gallery. Resolved relative to this folder.
+  icon: '../../assets/icon.png',
   // Shared container: the app writes the snapshot here, the widget reads it.
   // A keychain access group rather than an App Group — App Groups require a
   // paid Apple Developer membership, this does not.

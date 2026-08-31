@@ -46,6 +46,9 @@
       "@bacons/apple-targets",
       "./plugins/withFmtConstevalFix"
     ],
-    "scheme": "capwords"
+    "scheme": "capwords",
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
   }
 }
