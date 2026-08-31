@@ -14,10 +14,38 @@ import { format } from 'date-fns';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../config';
 import { PixelPanel, PixelButton } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
+import { useAlert } from '../components/PixelAlert';
+import { deleteSticker } from '../services/storageService';
+import { refreshWidget } from '../services/widgetService';
 
 export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
   const categoryStyle = getCategoryStyle(sticker.category);
+  const showAlert = useAlert();
+
+  // Deleting only removes the sticker and its photo. The word still counted
+  // toward the day it was learned, so streaks and coins already earned stay
+  // put — losing a streak by tidying up the collection would be a nasty
+  // surprise.
+  const confirmDelete = () => {
+    showAlert(
+      'Delete this sticker?',
+      `"${sticker.word}" and its photo will be removed from your collection. This cannot be undone.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteSticker(sticker.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+            refreshWidget();
+            navigation.goBack();
+          },
+        },
+      ]
+    );
+  };
 
   const speakWord = async () => {
     Haptics.selectionAsync().catch(() => {});
@@ -101,6 +129,14 @@ export default function StickerDetailScreen({ route, navigation }) {
             ))}
           </PixelPanel>
         ) : null}
+
+        <PixelButton
+          label="Delete sticker"
+          icon="close"
+          color={COLORS.danger}
+          onPress={confirmDelete}
+          style={styles.deleteButton}
+        />
       </View>
     </ScrollView>
   );
@@ -108,6 +144,7 @@ export default function StickerDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  deleteButton: { alignSelf: 'stretch', marginTop: 4 },
   scrollContent: { paddingBottom: 120 },
   header: {
     flexDirection: 'row',

@@ -44,7 +44,7 @@ function moodForProgress(wordsToday, dailyGoal, streak = 0) {
   if (wordsToday >= dailyGoal) return 'happy';
   if (wordsToday > 0) return 'content';
   if (streak > 0) return 'sad'; // streak on the line
-  return 'neutral';
+  return 'sleepy'; // nothing yet — matches the Buddy screen
 }
 
 /**

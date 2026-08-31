@@ -71,10 +71,13 @@ enum WidgetState {
     case goalHit
     case inProgress
     case atRisk
+    /// Nothing today and no streak to protect: a fresh install, or a lapsed one.
+    /// Uses the Buddy screen's sleepy copy instead of nagging about a zero.
+    case asleep
 
     static func from(_ s: CapWordsSnapshot) -> WidgetState {
         if s.wordsToday >= s.dailyGoal && s.dailyGoal > 0 { return .goalHit }
-        if s.wordsToday == 0 && s.streak > 0 { return .atRisk }
+        if s.wordsToday == 0 { return s.streak > 0 ? .atRisk : .asleep }
         return .inProgress
     }
 
@@ -84,11 +87,16 @@ enum WidgetState {
         case .goalHit: return Color(hex: 0x4E7B45)
         case .inProgress: return Color(hex: 0x3A2A1A)
         case .atRisk: return Color(hex: 0xC1584E)
+        case .asleep: return Color(hex: 0x8C7A5E)
         }
     }
 
     var streakColor: Color {
-        self == .atRisk ? Color(hex: 0xC1584E) : Color(hex: 0xE0742F)
+        switch self {
+        case .atRisk: return Color(hex: 0xC1584E)
+        case .asleep: return Color(hex: 0x8C7A5E)
+        default: return Color(hex: 0xE0742F)
+        }
     }
 
     var petMood: String {
@@ -96,6 +104,7 @@ enum WidgetState {
         case .goalHit: return "happy"
         case .inProgress: return "content"
         case .atRisk: return "sad"
+        case .asleep: return "sleepy"
         }
     }
 
@@ -105,11 +114,16 @@ enum WidgetState {
         case .goalHit: return "You hit your goal! I am so proud!"
         case .inProgress: return "Nice! Keep the words coming."
         case .atRisk: return "I haven't seen a new word in a while..."
+        case .asleep: return "Zzz… wake me with a new word."
         }
     }
 
     var sand: Color {
-        self == .atRisk ? Color(hex: 0xE0C9A6) : Color(hex: 0xE8D6AE)
+        switch self {
+        case .atRisk: return Color(hex: 0xE0C9A6)
+        case .asleep: return Color(hex: 0xE4D3AF)
+        default: return Color(hex: 0xE8D6AE)
+        }
     }
 
     /// Sky wash over the sand on the medium stage.
@@ -118,6 +132,7 @@ enum WidgetState {
         case .goalHit: return Color(hex: 0x8FC6E8).opacity(0.55)
         case .inProgress: return Color(hex: 0x8FC6E8).opacity(0.42)
         case .atRisk: return Color(hex: 0xB5638F).opacity(0.30)
+        case .asleep: return Color(hex: 0x8C7A5E).opacity(0.20)
         }
     }
 }
@@ -165,6 +180,17 @@ struct PixelCheck: View {
     }
 }
 
+/// Sleep glyph — a pixel "z".
+struct PixelZzz: View {
+    var pixel: CGFloat = 2.6
+    var body: some View {
+        WidgetPixelGrid(
+            grid: ["..ccc", "...c.", "..c..", ".ccc.", "c....", "ccc.."],
+            palette: ["c": Color(hex: 0x8C7A5E)], pixel: pixel
+        )
+    }
+}
+
 /// PixelIcon.js 'star'.
 struct PixelStar: View {
     var pixel: CGFloat = 2.6
@@ -208,13 +234,21 @@ struct StreakChip: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            PixelFlame(pixel: 2.6)
-            Text("\(streak)")
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundStyle(state.streakColor)
+            if state == .asleep {
+                // No streak to show yet — say what to do instead.
+                Text("TAP TO SNAP")
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(state.accent)
+            } else {
+                PixelFlame(pixel: 2.6)
+                Text("\(streak)")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundStyle(state.streakColor)
+            }
         }
         .padding(.horizontal, 7)
-        .padding(.vertical, 3)
+        .padding(.vertical, state == .asleep ? 4 : 3)
         .background(surface)
         .overlay(RoundedRectangle(cornerRadius: 4).stroke(state.accent, lineWidth: 2))
         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -307,6 +341,15 @@ struct SmallView: View {
                             .foregroundStyle(Color(hex: 0xC1584E))
                             .lineLimit(1)
                     }
+                case .asleep:
+                    HStack(spacing: 5) {
+                        PixelZzz()
+                        Text("NO WORDS YET")
+                            .font(.system(size: 9, weight: .black, design: .rounded))
+                            .tracking(0.6)
+                            .foregroundStyle(Color(hex: 0x8C7A5E))
+                            .lineLimit(1)
+                    }
                 }
 
                 Text(state.line)
@@ -384,16 +427,28 @@ struct MediumView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header
                     Spacer(minLength: 6)
-                    HStack(alignment: .bottom, spacing: 10) {
-                        PixelFlame(pixel: 3.6).padding(.bottom, 6)
-                        Text("\(snapshot.streak)")
-                            .font(.system(size: 52, weight: .black, design: .rounded))
-                            .foregroundStyle(state.streakColor)
-                        if state == .goalHit {
-                            Text("+1")
-                                .font(.system(size: 20, weight: .black, design: .rounded))
-                                .foregroundStyle(Color(hex: 0x4E7B45))
-                                .padding(.bottom, 7)
+                    if state == .asleep {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Day 1")
+                                .font(.system(size: 32, weight: .black, design: .rounded))
+                                .foregroundStyle(textMain)
+                            Text("ONE WORD STARTS A STREAK")
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .tracking(1.2)
+                                .foregroundStyle(textLight)
+                        }
+                    } else {
+                        HStack(alignment: .bottom, spacing: 10) {
+                            PixelFlame(pixel: 3.6).padding(.bottom, 6)
+                            Text("\(snapshot.streak)")
+                                .font(.system(size: 52, weight: .black, design: .rounded))
+                                .foregroundStyle(state.streakColor)
+                            if state == .goalHit {
+                                Text("+1")
+                                    .font(.system(size: 20, weight: .black, design: .rounded))
+                                    .foregroundStyle(Color(hex: 0x4E7B45))
+                                    .padding(.bottom, 7)
+                            }
                         }
                     }
                     Spacer(minLength: 6)
@@ -432,6 +487,19 @@ struct MediumView: View {
                     .tracking(1.4)
                     .foregroundStyle(textLight)
             }
+        case .asleep:
+            HStack(spacing: 6) {
+                PixelZzz()
+                Text("NO WORDS YET")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .tracking(1.4)
+                    .foregroundStyle(Color(hex: 0x8C7A5E))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(surface)
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(hex: 0x8C7A5E), lineWidth: 2))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
         case .atRisk:
             HStack(spacing: 6) {
                 PixelFlame(pixel: 2.6)
@@ -494,7 +562,7 @@ struct CapWordsWidgetEntryView: View {
         .widgetURL(URL(string: "capwords://camera"))
         .containerBackground(for: .widget) {
             if family == .systemSmall {
-                parchment
+                state == .asleep ? Color(hex: 0xEFE4CC) : parchment
             } else {
                 ZStack(alignment: .top) {
                     state.sand

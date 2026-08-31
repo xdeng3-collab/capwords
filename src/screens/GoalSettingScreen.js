@@ -12,6 +12,7 @@ import { PixelPanel, PixelButton, ProgressBar } from '../components/UI';
 import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import { getUserProfile, updateUserProfile, canChangeGoal } from '../services/storageService';
+import { refreshWidget } from '../services/widgetService';
 
 const PRESETS = [3, 5, 10, 15, 20];
 
@@ -58,6 +59,10 @@ export default function GoalSettingScreen({ navigation }) {
       lastGoalChange: new Date().toISOString(),
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // The widget draws its pips and its whole state off the goal, so it goes
+    // stale the moment the goal changes. Nothing else takes the user out of the
+    // app here, so the foreground refresh in App.js would not fire on its own.
+    refreshWidget();
     setLoading(false);
     navigation.goBack();
   };
