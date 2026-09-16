@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,90 +6,141 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { COLORS, RADIUS, SHADOW } from '../config';
-import { EmptyState } from '../components/UI';
+import { COLORS, COINS, RADIUS, SHADOW } from '../config';
+import { EmptyState, PixelButton } from '../components/UI';
 import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite from '../components/PetSprite';
+import { useSession } from '../navigation/session';
+import { addCoins } from '../services/storageService';
+import { isSupabaseConfigured } from '../services/accountService';
 import {
-  getFriends,
-  addFriend,
-  getTodayCheers,
-  cheerFriend,
-  addCoins,
-} from '../services/storageService';
-import { COINS } from '../config';
+  cheer,
+  listFriends,
+  respondToRequest,
+  searchUsers,
+  sendFriendRequest,
+} from '../services/friendService';
 
-// Mock friend data for demo purposes
-const MOCK_FRIENDS_SEARCH = [
-  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8, pet: { name: 'Mochi', species: 'bunny', outfit: 'bow' } },
-  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5, pet: { name: 'Rocky', species: 'dog', outfit: 'cap' } },
-  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3, pet: { name: 'Tofu', species: 'cat', outfit: 'none' } },
-  { id: '104', name: 'Priya Sharma', avatar: null, streak: 23, wordsToday: 10, pet: { name: 'Laddu', species: 'cat', outfit: 'crown' } },
-];
+// Long enough that typing "sarah" is one query rather than four, short enough
+// that the results still feel like they are keeping up.
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function FriendsScreen({ navigation }) {
   const showAlert = useAlert();
+  const { user } = useSession();
+
   const [friends, setFriends] = useState([]);
+  const [incoming, setIncoming] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchBusy, setSearchBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  // Cheers are recorded server-side; this only holds the optimistic tick so
+  // the button responds under the finger instead of after a round trip.
   const [cheered, setCheered] = useState({});
 
-  const loadFriends = async () => {
-    const [data, cheers] = await Promise.all([getFriends(), getTodayCheers()]);
-    setFriends(data);
-    setCheered(cheers.ids);
-  };
+  const loadFriends = useCallback(async () => {
+    if (!user) {
+      setFriends([]);
+      setIncoming([]);
+      return;
+    }
+    const result = await listFriends();
+    setFriends(result.friends);
+    setIncoming(result.incoming);
+    setCheered(
+      Object.fromEntries(result.friends.filter((f) => f.cheeredToday).map((f) => [f.id, true]))
+    );
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
       loadFriends();
-    }, [])
+    }, [loadFriends])
   );
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query.length > 1) {
-      setIsSearching(true);
-      const results = MOCK_FRIENDS_SEARCH.filter((f) =>
-        f.name.toLowerCase().includes(query.toLowerCase())
-      );
-      setSearchResults(results);
-    } else {
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadFriends();
+    setRefreshing(false);
+  };
+
+  // Search runs on the server, so it is debounced rather than fired per
+  // keystroke. The ref guards against a slow early query landing after a
+  // faster later one and overwriting fresher results.
+  const searchSeq = useRef(0);
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
       setIsSearching(false);
       setSearchResults([]);
+      return undefined;
     }
-  };
 
-  const handleAddFriend = async (friend) => {
-    const existing = friends.find((f) => f.id === friend.id);
-    if (existing) {
-      showAlert('Already Friends', `You're already friends with ${friend.name}`);
+    setIsSearching(true);
+    setSearchBusy(true);
+    const seq = ++searchSeq.current;
+    const timer = setTimeout(async () => {
+      const result = await searchUsers(query);
+      if (seq !== searchSeq.current) return;
+      setSearchResults(result.results);
+      setSearchBusy(false);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleAddFriend = async (person) => {
+    Haptics.selectionAsync().catch(() => {});
+    const result = await sendFriendRequest(person.username);
+    if (!result.ok) {
+      showAlert('Could not ask', result.error);
       return;
     }
-    await addFriend(friend);
-    await loadFriends();
+
+    // The server auto-accepts when they had already asked you first.
+    if (result.status === 'friends') {
+      showAlert('You are pals!', `${person.name} had already asked you. You are both in.`);
+    } else {
+      showAlert('Request sent', `${person.name} will see your request next time they look.`);
+    }
+
     setSearchQuery('');
-    setIsSearching(false);
-    showAlert('Friend Added', `${friend.name} has been added to your friends.`);
+    await loadFriends();
   };
 
-  // Duolingo-style congrats: cheer each friend once per day (resets at midnight).
-  // Being a good pal pays — each cheer earns a coin.
+  const handleRespond = async (person, accept) => {
+    Haptics.selectionAsync().catch(() => {});
+    const result = await respondToRequest(person.friendshipId, accept);
+    if (!result.ok) showAlert('Could not answer', result.error);
+    await loadFriends();
+  };
+
+  // Duolingo-style congrats: cheer each friend once per day. The database
+  // decides whether it counted, so the coin is only awarded when it did —
+  // that is what stops a reinstall from farming the bonus.
   const handleCheer = async (friend) => {
     if (cheered[friend.id]) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setCheered((c) => ({ ...c, [friend.id]: true }));
-    await cheerFriend(friend.id);
-    await addCoins(COINS.cheerBonus);
+
+    const result = await cheer(friend.id);
+    if (result.awarded) {
+      await addCoins(COINS.cheerBonus);
+    } else if (!result.ok) {
+      setCheered((c) => ({ ...c, [friend.id]: false }));
+    }
   };
 
   const getAvatarInitials = (name) =>
-    name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+    (name || '?').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
   const renderFriend = ({ item }) => (
     <TouchableOpacity
@@ -138,6 +189,8 @@ export default function FriendsScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  // The trailing control depends on where the two of you already stand, so
+  // nobody sends a second request to someone who is already a pal.
   const renderSearchResult = ({ item }) => (
     <View style={styles.searchResultCard}>
       <View style={styles.avatarPlaceholder}>
@@ -145,13 +198,70 @@ export default function FriendsScreen({ navigation }) {
       </View>
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.searchSubtext}>{item.streak} day streak</Text>
+        <Text style={styles.searchSubtext}>
+          @{item.username} · {item.streak} day streak
+        </Text>
       </View>
-      <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
-        <PixelIcon name="add" size={16} color={COLORS.primaryDark} />
+
+      {item.status === 'friends' ? (
+        <Text style={styles.resultTag}>PAL</Text>
+      ) : item.status === 'pending_out' ? (
+        <Text style={styles.resultTag}>ASKED</Text>
+      ) : item.status === 'pending_in' ? (
+        <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
+          <PixelIcon name="check" size={16} color={COLORS.primaryDark} />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
+          <PixelIcon name="add" size={16} color={COLORS.primaryDark} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  const renderRequest = (item) => (
+    <View key={item.friendshipId} style={styles.searchResultCard}>
+      <View style={styles.avatarPlaceholder}>
+        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
+      </View>
+      <View style={styles.friendInfo}>
+        <Text style={styles.friendName}>{item.name}</Text>
+        <Text style={styles.searchSubtext}>@{item.username} wants to be pals</Text>
+      </View>
+      <TouchableOpacity style={styles.addButton} onPress={() => handleRespond(item, true)}>
+        <PixelIcon name="check" size={16} color={COLORS.primaryDark} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.declineButton} onPress={() => handleRespond(item, false)}>
+        <PixelIcon name="close" size={14} color={COLORS.textLight} />
       </TouchableOpacity>
     </View>
   );
+
+  // Pals are the one part of CapWords that genuinely cannot work on-device:
+  // there is no one to be pals with until there is an account.
+  if (isSupabaseConfigured && !user) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>FRIENDS</Text>
+          <Text style={styles.subtitle}>LEARN ALONGSIDE YOUR PALS</Text>
+        </View>
+        <EmptyState
+          mood="neutral"
+          title="SIGN IN TO FIND PALS"
+          subtitle="An account lets you add friends, cheer their streaks, and keep them if you change phones. Your words and photos stay on this phone either way."
+          action={
+            <PixelButton
+              label="SIGN IN"
+              size="lg"
+              style={styles.signInButton}
+              onPress={() => navigation.navigate('Auth')}
+            />
+          }
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -167,20 +277,17 @@ export default function FriendsScreen({ navigation }) {
           <PixelIcon name="search" size={16} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search friends by name"
+            placeholder="Find pals by username"
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={setSearchQuery}
             placeholderTextColor={COLORS.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
             returnKeyType="search"
           />
+          {searchBusy ? <ActivityIndicator size="small" color={COLORS.textMuted} /> : null}
           {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                setIsSearching(false);
-              }}
-              hitSlop={8}
-            >
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
               <PixelIcon name="close" size={14} color={COLORS.textMuted} />
             </TouchableOpacity>
           )}
@@ -190,22 +297,23 @@ export default function FriendsScreen({ navigation }) {
       {isSearching ? (
         <View style={styles.searchResults}>
           <Text style={styles.sectionTitle}>SEARCH RESULTS</Text>
-          {searchResults.length === 0 ? (
-            <Text style={styles.noResultsText}>No one found with that name</Text>
+          {searchResults.length === 0 && !searchBusy ? (
+            <Text style={styles.noResultsText}>No one is using that username yet</Text>
           ) : (
             <FlatList
               data={searchResults}
               renderItem={renderSearchResult}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
             />
           )}
         </View>
-      ) : friends.length === 0 ? (
+      ) : friends.length === 0 && incoming.length === 0 ? (
         <EmptyState
           mood="neutral"
-          title="NO FRIENDS YET"
-          subtitle="Search for friends to peek at their sticker collections and cheer on their streaks."
+          title="NO PALS YET"
+          subtitle="Search for a username above to send your first request, and cheer each other's streaks."
         />
       ) : (
         <FlatList
@@ -214,6 +322,17 @@ export default function FriendsScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />
+          }
+          ListHeaderComponent={
+            incoming.length ? (
+              <View style={styles.requestsBlock}>
+                <Text style={styles.requestsTitle}>WAITING FOR YOU</Text>
+                {incoming.map(renderRequest)}
+              </View>
+            ) : null
+          }
         />
       )}
     </View>
@@ -281,6 +400,29 @@ const styles = StyleSheet.create({
     ...SHADOW.soft,
   },
   searchSubtext: { fontSize: 12, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
+  resultTag: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    color: COLORS.textMuted,
+    paddingHorizontal: 8,
+  },
+  declineButton: {
+    backgroundColor: COLORS.surfaceAlt,
+    padding: 10,
+    borderRadius: RADIUS.sm,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+  },
+  requestsBlock: { marginBottom: 8 },
+  requestsTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.textLight,
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  signInButton: { marginTop: 18, alignSelf: 'stretch' },
   addButton: {
     backgroundColor: COLORS.sun,
     padding: 10,
