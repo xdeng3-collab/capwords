@@ -31,8 +31,9 @@ if (fs.existsSync(envPath)) {
 const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY;
 const PORT = process.env.PORT || 3210;
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
-// Only these models may be requested through the proxy.
-const ALLOWED_MODELS = new Set(['deepseek-v4-flash', 'deepseek-v4-flash-vision-exp']);
+// Only these models may be requested through the proxy. These are the two ids
+// DeepSeek actually publishes (GET /v1/models); keep in sync with src/config.js.
+const ALLOWED_MODELS = new Set(['deepseek-flash', 'deepseek-v4-pro']);
 
 if (!API_KEY) {
   console.error('Missing DEEPSEEK_API_KEY (set it in the environment or in capwords/.env)');

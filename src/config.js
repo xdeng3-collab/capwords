@@ -1,16 +1,32 @@
 // DeepSeek API Configuration
-// API key should be set via environment variable or .env file
-// Create a .env file with: DEEPSEEK_API_KEY=your_key_here
+//
+// EXPO_PUBLIC_* variables are inlined into the JavaScript bundle at build time,
+// so anything set here is readable by anyone who unpacks the installed app. A
+// real key therefore belongs ONLY in the proxy's environment (server/index.js,
+// which reads the un-prefixed DEEPSEEK_API_KEY) - never here.
+//
+// This value stays supported purely as a local development shortcut for running
+// against DeepSeek directly without the proxy. Leave it unset for any build you
+// hand to another person.
 export const DEEPSEEK_API_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '';
 // When EXPO_PUBLIC_API_URL is set, all AI calls go through our backend proxy
 // (server/index.js) which holds the API key server-side. Direct DeepSeek
 // access (key in the app bundle) is a dev-only convenience.
 export const API_PROXY_URL = process.env.EXPO_PUBLIC_API_URL || '';
 export const DEEPSEEK_BASE_URL = API_PROXY_URL ? `${API_PROXY_URL}/v1` : 'https://api.deepseek.com/v1';
-// Vision model for photo recognition (the only DeepSeek model that accepts images)
-export const DEEPSEEK_VISION_MODEL = 'deepseek-v4-flash-vision-exp';
-// Text model for pronunciation guides / evaluation
-export const DEEPSEEK_MODEL = 'deepseek-v4-flash';
+// DeepSeek publishes exactly two model ids: 'deepseek-flash' and
+// 'deepseek-v4-pro' (GET /v1/models). deepseek-flash is multimodal - it accepts
+// image_url content blocks - so it serves both photo recognition and the
+// text-only calls. Do not invent suffixed names like 'deepseek-v4-flash-vision-exp':
+// the API quietly resolves some of them back to deepseek-flash, which hides the
+// mistake until the day it stops resolving.
+//
+// Both models reason before answering, and those reasoning tokens are billed
+// against max_tokens. A budget that is too small returns finish_reason:'length'
+// with an EMPTY content string rather than an error, so every call site below
+// must leave real headroom. See MIN_ANSWER_TOKENS in services/aiService.js.
+export const DEEPSEEK_VISION_MODEL = 'deepseek-flash';
+export const DEEPSEEK_MODEL = 'deepseek-flash';
 
 // Supported languages
 export const LANGUAGES = [

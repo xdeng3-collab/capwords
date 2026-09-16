@@ -16,21 +16,34 @@ A visual language learning app where users photograph objects to learn vocabular
 - **Record & practice**: Hold to record your pronunciation, release to stop
 - **Progress tracking**: Daily word count, streak tracking, and goal setting
 
-### Social
-- **Add friends**: Search and add friends (like Duolingo)
-- **Streak system**: Meet your daily word target to extend your streak
-- **View collections**: See your friends' sticker collections
-- **Listen to friends**: Hear how your friends pronounce words
+### Social — not yet implemented
+There is no backend. Every word, sticker, photo, and friend lives in
+AsyncStorage on the device (`src/services/storageService.js`), so nothing is
+shared between two phones. The Pals screen is a working UI built on local
+records and seeded demo data — treat it as a prototype, not a feature:
+
+- **Add friends** — adds a row to local storage only; there is no user
+  directory to search and no request to send
+- **View collections** — a friend's stickers are not transmitted anywhere,
+  so there is nothing real to show
+- **Listen to friends** — no recordings are uploaded; pronunciation is
+  generated on-device by expo-speech
+
+**Streak system** is real: meeting your daily word target extends your own
+streak, tracked locally.
 
 ### Subscription & Pricing
+The figures below come from `PRICING` in `src/config.js`.
+
 - **Free Tier**: 3 words per day
-- **Pay Per Word**: $0.01/word (buy packs of 10, 50, or 100)
-- **Monthly Pro**: $4.99/month (unlimited)
-- **Yearly Pro**: $39.99/year (unlimited, save 33%)
+- **Pay Per Word**: $0.02/word
+- **Monthly Pro**: $3.99/month (unlimited)
+- **Yearly Pro**: $29.99/year (unlimited, save 37%)
 
 ## Cost Analysis
 
-Using DeepSeek V4 Flash API:
+Using the DeepSeek Flash API. These are rough planning figures, not measured
+billing — recognition is a reasoning call, so real token use varies:
 | Component | Cost per word |
 |-----------|--------------|
 | AI Image Recognition (input) | $0.00007 |
@@ -38,7 +51,7 @@ Using DeepSeek V4 Flash API:
 | Infrastructure & Storage | $0.00200 |
 | **Total** | **~$0.0025** |
 
-With a selling price of $0.01/word, we maintain a 4x margin to cover:
+With a selling price of $0.02/word, the margin covers:
 - Server infrastructure
 - CDN and image storage
 - App maintenance
@@ -83,19 +96,27 @@ Equivalent npm command: `npm run stop`
 ### Notes
 - The scripts automatically locate Node.js. If Node is not installed, install it
   from https://nodejs.org (or `brew install node`) and rerun `./start.sh`.
-- AI photo recognition needs a `.env` file at the project root containing
-  `EXPO_PUBLIC_DEEPSEEK_API_KEY=your_key`. The app still runs without it, but
-  recognition calls will fail.
+- AI photo recognition calls DeepSeek through the small proxy in
+  `server/index.js`, which keeps the API key off the device. Put
+  `DEEPSEEK_API_KEY=your_key` in a `.env` file at the project root, start the
+  proxy with `node server/index.js`, and point the app at it by also setting
+  `EXPO_PUBLIC_API_URL=http://<your-mac-ip>:3210`. The app still runs without
+  this, but recognition will report that AI is not configured.
+- Do **not** ship a build with `EXPO_PUBLIC_DEEPSEEK_API_KEY` set. Expo inlines
+  every `EXPO_PUBLIC_*` variable into the JavaScript bundle, so that key would
+  be readable by anyone who unpacks the installed app. It is a local-development
+  shortcut only.
 
 ## Tech Stack
 
 - **Frontend**: React Native + Expo (SDK 52)
-- **AI**: DeepSeek V4 Flash (image recognition, translation)
+- **AI**: DeepSeek Flash (`deepseek-flash`) for both photo recognition and
+  text, called via the proxy in `server/index.js`
 - **TTS**: expo-speech (native text-to-speech)
 - **Audio**: expo-audio (recording & playback)
 - **Visuals**: hand-authored pixel art (Views) + Animated API
 - **Feedback**: expo-haptics
-- **Storage**: AsyncStorage (local), expandable to cloud backend
+- **Storage**: AsyncStorage on-device only (no cloud sync yet)
 - **Navigation**: React Navigation
 
 ## Design System
@@ -185,6 +206,8 @@ capwords/
 │   └── services/
 │       ├── aiService.js          # DeepSeek API integration
 │       └── storageService.js     # Local data + pet state
+├── server/
+│   └── index.js                  # API proxy - holds the DeepSeek key
 ├── package.json
 ├── app.json                      # Expo configuration
 └── babel.config.js
@@ -199,7 +222,9 @@ capwords/
 
 ## Future Enhancements
 
-- Cloud sync backend (Firebase/Supabase)
+- A backend for accounts and the friend graph, which is what would make the
+  social features above real
+- Syncing stickers and words, so a friend's collection can actually be viewed
 - Spaced repetition review system
 - Leaderboards
 - AR mode (see translations overlaid on objects)

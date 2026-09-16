@@ -1,4 +1,29 @@
-import { DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
+import { API_PROXY_URL, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
+
+/**
+ * Floor for max_tokens on every call.
+ *
+ * DeepSeek's models think before they answer, and the reasoning tokens are
+ * charged against max_tokens. When the budget runs out mid-thought the API
+ * still returns HTTP 200 - with finish_reason 'length' and an empty content
+ * string - so a budget that is too small looks exactly like a model that had
+ * nothing to say. Measured reasoning for the prompts below runs 200-550 tokens,
+ * so 1500 leaves room for the thinking plus the answer.
+ */
+const MIN_ANSWER_TOKENS = 1500;
+
+/**
+ * Without a proxy URL the app would call DeepSeek directly, and without a key
+ * that call goes out with an empty Authorization header and comes back 401.
+ * Say so plainly rather than letting it look like a recognition failure.
+ */
+function assertConfigured() {
+  if (!API_PROXY_URL && !DEEPSEEK_API_KEY) {
+    throw new Error(
+      'AI is not configured: set EXPO_PUBLIC_API_URL to the proxy (see server/index.js).'
+    );
+  }
+}
 
 /** Thrown when the model answered but we could not get a word out of it. */
 export class RecognitionFailedError extends Error {
@@ -28,6 +53,7 @@ export async function recognizeAndTranslate(imageBase64, targetLanguage) {
 }
 
 async function requestRecognition(imageBase64, targetLanguage) {
+  assertConfigured();
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -76,20 +102,30 @@ Rules:
         }
       ],
       temperature: 0.4,
-      // The vision model spends tokens on reasoning before answering, so the
-      // budget must cover thinking + the JSON answer.
+      // The model spends tokens on reasoning before answering, so the budget
+      // must cover thinking + the JSON answer. See MIN_ANSWER_TOKENS.
       max_tokens: 2000,
       response_format: { type: 'json_object' },
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.status}`);
+    throw new Error(await describeError(response));
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-  
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content || '';
+
+  // An empty answer with finish_reason 'length' means the reasoning tokens ate
+  // the whole budget. Retrying with the same budget would fail identically, so
+  // say what actually went wrong instead of burning a second call.
+  if (!content && choice?.finish_reason === 'length') {
+    throw new RecognitionFailedError(
+      'The model ran out of room before answering. Raise max_tokens for this request.'
+    );
+  }
+
   try {
     // Try to parse JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -101,6 +137,25 @@ Rules:
     // fall through to retry
   }
   return null;
+}
+
+/**
+ * Turn a failed response into a message worth reading. DeepSeek puts the useful
+ * part (an unknown model id, an expired key) in the body, not the status line.
+ */
+async function describeError(response) {
+  let detail = '';
+  try {
+    const body = await response.json();
+    detail = body?.error?.message || '';
+  } catch (e) {
+    // no JSON body to quote
+  }
+  if (response.status === 401) {
+    detail = detail || 'The API key was rejected.';
+    return `API Error 401: ${detail} Check DEEPSEEK_API_KEY on the proxy.`;
+  }
+  return detail ? `API Error ${response.status}: ${detail}` : `API Error: ${response.status}`;
 }
 
 /**
@@ -130,7 +185,7 @@ Respond in JSON: {"ipa": "...", "syllables": "...", "tips": "..."}`
         }
       ],
       temperature: 0.3,
-      max_tokens: 200,
+      max_tokens: MIN_ANSWER_TOKENS,
     }),
   });
 
@@ -179,7 +234,7 @@ Respond in JSON: {"stars": 4, "feedback": "..."}`
         }
       ],
       temperature: 0.5,
-      max_tokens: 150,
+      max_tokens: MIN_ANSWER_TOKENS,
     }),
   });
 
