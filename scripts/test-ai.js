@@ -10,7 +10,8 @@
  *   node scripts/test-ai.js                 # test all sample images, Spanish
  *   node scripts/test-ai.js path/to/img.jpg Japanese
  *
- * Requires EXPO_PUBLIC_DEEPSEEK_API_KEY in .env (loaded automatically).
+ * Requires either EXPO_PUBLIC_API_URL (the proxy) or EXPO_PUBLIC_DEEPSEEK_API_KEY
+ * in .env (loaded automatically).
  */
 const fs = require('fs');
 const path = require('path');
@@ -63,10 +64,14 @@ async function main() {
   const { recognizeAndTranslate } = loadAppModule('src/services/aiService.js');
   const config = loadAppModule('src/config.js');
 
-  if (!config.DEEPSEEK_API_KEY) {
-    console.error('FAIL: EXPO_PUBLIC_DEEPSEEK_API_KEY is not set (.env missing?)');
+  // Either route works: through the proxy (no key on this side) or straight to
+  // DeepSeek with a key. Only the case where neither is configured is an error.
+  if (!config.API_PROXY_URL && !config.DEEPSEEK_API_KEY) {
+    console.error('FAIL: set EXPO_PUBLIC_API_URL to the proxy, or');
+    console.error('EXPO_PUBLIC_DEEPSEEK_API_KEY to call DeepSeek directly.');
     process.exit(1);
   }
+  console.log(config.API_PROXY_URL ? `Via proxy: ${config.API_PROXY_URL}` : 'Direct to DeepSeek');
   console.log(`Vision model: ${config.DEEPSEEK_VISION_MODEL}`);
 
   const [customImage, language = 'Spanish'] = process.argv.slice(2);
