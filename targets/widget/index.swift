@@ -103,7 +103,10 @@ enum WidgetState {
         switch self {
         case .goalHit: return "happy"
         case .inProgress: return "content"
-        case .atRisk: return "sad"
+        // The day hasn't started either way, so the buddy is still asleep. The
+        // red accent and "ends tonight" carry the urgency; a sad face on top of
+        // them is just piling on.
+        case .atRisk: return "sleepy"
         case .asleep: return "sleepy"
         }
     }
@@ -240,6 +243,13 @@ struct StreakChip: View {
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(state.accent)
+            } else if streak == 0 {
+                // Studying, but the streak only starts once today's goal is in.
+                // "Day 1" reads as a beginning; a flame next to 0 reads as a bug.
+                Text("DAY 1")
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(state.accent)
             } else {
                 PixelFlame(pixel: 2.6)
                 Text("\(streak)")
@@ -248,7 +258,7 @@ struct StreakChip: View {
             }
         }
         .padding(.horizontal, 7)
-        .padding(.vertical, state == .asleep ? 4 : 3)
+        .padding(.vertical, streak == 0 ? 4 : 3)
         .background(surface)
         .overlay(RoundedRectangle(cornerRadius: 4).stroke(state.accent, lineWidth: 2))
         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -427,12 +437,16 @@ struct MediumView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     header
                     Spacer(minLength: 6)
-                    if state == .asleep {
+                    // Before the first streak day is banked there is no number
+                    // worth showing, so both the sleeping and the studying day
+                    // one say "Day 1" rather than a discouraging zero.
+                    if snapshot.streak == 0 {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Day 1")
                                 .font(.system(size: 32, weight: .black, design: .rounded))
                                 .foregroundStyle(textMain)
-                            Text("ONE WORD STARTS A STREAK")
+                            Text(state == .asleep ? "ONE WORD STARTS A STREAK"
+                                                  : "HIT TODAY'S GOAL TO START")
                                 .font(.system(size: 9, weight: .black, design: .rounded))
                                 .tracking(1.2)
                                 .foregroundStyle(textLight)
