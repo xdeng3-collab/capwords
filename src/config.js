@@ -28,6 +28,27 @@ export const DEEPSEEK_BASE_URL = API_PROXY_URL ? `${API_PROXY_URL}/v1` : 'https:
 export const DEEPSEEK_VISION_MODEL = 'deepseek-flash';
 export const DEEPSEEK_MODEL = 'deepseek-flash';
 
+// ==================== Supabase ====================
+// Accounts, the progress mirror friends can see, and the friend graph.
+// The publishable key is designed to ship inside the app bundle - Row Level
+// Security (see supabase/migrations/0001_accounts.sql) is what actually keeps
+// one person out of another's rows, not the secrecy of this string.
+// Both empty means "no backend": the app stays fully usable on-device and the
+// account screens hide themselves.
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Whether to offer "Sign in with Apple".
+//
+// Off by default, and it has to stay off until the Apple Developer Program
+// membership is paid for. Two reasons it cannot just be detected at runtime:
+// AppleAuthentication.isAvailableAsync() reports on the *device* (true on any
+// iOS 13+ phone), not on whether this build carries the entitlement; and
+// adding that entitlement to app.json breaks signing outright on a free
+// personal team. So it is a deliberate switch, flipped alongside the other
+// three steps in supabase/README.md.
+export const APPLE_SIGN_IN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGN_IN === 'true';
+
 // Supported languages
 export const LANGUAGES = [
   { code: 'en', name: 'English', short: 'EN' },
@@ -50,6 +71,20 @@ export const PRICING = {
   monthly: 3.99, // $3.99/month - unlimited words
   yearly: 29.99, // $29.99/year - unlimited words (37% discount)
   freeWordsPerDay: 3, // Free tier: 3 words per day
+};
+
+// App Store product identifiers for the auto-renewing plans. These must match
+// the products in storekit/CapWords.storekit during development, and the ones
+// created in App Store Connect once the membership is paid.
+export const IAP_PRODUCTS = {
+  monthly: 'com.capwordsxxx.app.pro.monthly',
+  yearly: 'com.capwordsxxx.app.pro.yearly',
+};
+
+// Reverse lookup: which plan an owned product grants.
+export const PRODUCT_TO_PLAN = {
+  [IAP_PRODUCTS.monthly]: 'monthly',
+  [IAP_PRODUCTS.yearly]: 'yearly',
 };
 
 // Promo codes. Redeeming one grants a plan without going through billing.

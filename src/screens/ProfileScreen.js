@@ -11,6 +11,16 @@ import { COLORS, LANGUAGES, RADIUS } from '../config';
 import { PixelPanel } from '../components/UI';
 import { useAlert } from '../components/PixelAlert';
 import PixelIcon from '../components/PixelIcon';
+import { useSession } from '../navigation/session';
+import { refreshWidget } from '../services/widgetService';
+import {
+  deleteAccount,
+  isSupabaseConfigured,
+  pushProgress,
+  setUsername,
+  signOutAccount,
+  updateMyProfile,
+} from '../services/accountService';
 import {
   getUserProfile,
   updateUserProfile,
@@ -19,7 +29,7 @@ import {
   getStickers,
   canChangeGoal,
   getPet,
-  seedDemoData,
+  signOut,
 } from '../services/storageService';
 
 const PLAN_LABELS = {
@@ -32,6 +42,7 @@ const PLAN_LABELS = {
 
 export default function ProfileScreen({ navigation }) {
   const showAlert = useAlert();
+  const { signedOut, user, account, refreshAccount } = useSession();
   const [profile, setProfile] = useState(null);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [subscription, setSubscription] = useState(null);
@@ -70,6 +81,141 @@ export default function ProfileScreen({ navigation }) {
       return;
     }
     navigation.navigate('GoalSetting');
+  };
+
+  // Ending the session and erasing the phone used to be the same button,
+  // because there was no session to end. Now they are two very different
+  // things and the copy has to keep them apart: log out is reversible, erase
+  // is not.
+  const handleLogOut = () => {
+    showAlert(
+      'Log out?',
+      'Your words, photos, and buddy stay on this phone. Log back in any time to find your pals again.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Log out',
+          onPress: async () => {
+            // Last chance to publish anything captured while offline.
+            await pushProgress();
+            const result = await signOutAccount();
+            if (!result.ok) showAlert('Could not log out', result.error);
+          },
+        },
+      ]
+    );
+  };
+
+  // The old destructive path, now named for what it actually does.
+  const handleErase = () => {
+    showAlert(
+      'Erase everything?',
+      user
+        ? 'This wipes the words, photos, pals, and buddy stored on this phone. Your account stays, so logging back in keeps your pals — but the collection on this phone is gone for good.'
+        : 'Your words, photos, pals, and buddy are stored on this phone only, so this erases them. This cannot be undone. A paid plan stays with your Apple ID — tap Restore Purchases to get it back.',
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Erase',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            if (user) await signOutAccount();
+            refreshWidget();
+            signedOut();
+          },
+        },
+      ]
+    );
+  };
+
+  // The end of the line: the account and everything on this phone. Worded so
+  // nobody reaches it thinking it is the same as logging out, and it says
+  // plainly that pals lose them too, which is the part people do not expect.
+  const handleDeleteAccount = () => {
+    showAlert(
+      'Delete your account?',
+      'This deletes your account, your username, and your place in your pals\u2019 lists, then erases the words, photos, and buddy on this phone. Nothing about this can be undone. A paid plan stays with your Apple ID.',
+      [
+        { text: 'Keep my account', style: 'cancel' },
+        {
+          text: 'Delete forever',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteAccount();
+            if (!result.ok) {
+              showAlert('Could not delete', result.error);
+              return;
+            }
+            await signOut();
+            refreshWidget();
+            signedOut();
+          },
+        },
+      ]
+    );
+  };
+
+  /**
+   * The display name: what the profile header says and what pals see next to
+   * the handle. It lives on the phone, so this works signed out too; when
+   * there is an account, the copy up there is corrected in the same breath
+   * rather than waiting for the next progress push.
+   */
+  const handleChangeName = () => {
+    showAlert(
+      'Your name',
+      'Shown at the top of this screen, and to your pals. Up to 40 characters.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (value) => {
+            const name = (value || '').trim().slice(0, 40);
+            if (!name) {
+              showAlert('Needs a name', 'Type something for us to call you.');
+              return;
+            }
+            await updateUserProfile({ name });
+            if (user) {
+              const result = await updateMyProfile({ display_name: name });
+              if (!result.ok) {
+                // The phone already has the new name; the account catching up
+                // is not worth an error popup.
+                showAlert('Saved on this phone', 'Your pals will see it next time you are online.');
+              }
+              await refreshAccount();
+            }
+            loadData();
+          },
+        },
+      ],
+      { prompt: true, defaultValue: profile?.name || '', placeholder: 'Your name' }
+    );
+  };
+
+  // Handles are how pals find each other, so they are worth being able to
+  // change. Uniqueness is settled by the database, not by a check here.
+  const handleChangeUsername = () => {
+    showAlert(
+      'Choose a username',
+      'This is how pals find you. 3-20 characters: letters, numbers, or underscores.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (value) => {
+            const result = await setUsername(value);
+            if (!result.ok) {
+              showAlert('That did not work', result.error);
+              return;
+            }
+            await refreshAccount();
+          },
+        },
+      ],
+      { prompt: true, defaultValue: account?.username || '', placeholder: 'username' }
+    );
   };
 
   const showComingSoon = (feature) =>
@@ -111,6 +257,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <Text style={styles.userName}>{profile.name}</Text>
+        {account?.username ? <Text style={styles.userHandle}>@{account.username}</Text> : null}
         <Text style={styles.userSubtext}>
           LEARNING {targetLang?.name?.toUpperCase()} WITH {petName.toUpperCase()}
         </Text>
@@ -124,6 +271,18 @@ export default function ProfileScreen({ navigation }) {
             </PixelPanel>
           ))}
         </View>
+      </View>
+
+      {/* Who you are. Outside the account section on purpose: the name is
+          stored on the phone, so it can be changed without signing in. */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>YOU</Text>
+        <MenuRow
+          icon="star"
+          label={profile.name}
+          hint="YOUR NAME"
+          onPress={handleChangeName}
+        />
       </View>
 
       {/* Subscription */}
@@ -170,27 +329,63 @@ export default function ProfileScreen({ navigation }) {
         />
       </View>
 
+      {/* Account. Hidden entirely when the app is built without a backend,
+          rather than showing rows that cannot do anything. */}
+      {isSupabaseConfigured ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+          {user ? (
+            <>
+              <MenuRow
+                icon="people"
+                label={account?.username ? `@${account.username}` : 'Choose a username'}
+                hint="HOW PALS FIND YOU"
+                onPress={handleChangeUsername}
+              />
+              <MenuRow
+                icon="lock"
+                label={user.email || 'Signed in with Apple'}
+                hint="SIGNED IN AS"
+                onPress={() =>
+                  showAlert(
+                    'Signed in',
+                    user.email
+                      ? `This phone is signed in as ${user.email}.`
+                      : 'This phone is signed in with your Apple ID.'
+                  )
+                }
+              />
+              <MenuRow icon="close" label="Log out" onPress={handleLogOut} />
+              <MenuRow
+                icon="close"
+                label="Delete my account"
+                onPress={handleDeleteAccount}
+                destructive
+              />
+            </>
+          ) : (
+            <MenuRow
+              icon="people"
+              label="Sign in or make an account"
+              hint="KEEP YOUR PALS AND PROGRESS"
+              onPress={() => navigation.navigate('Auth')}
+            />
+          )}
+        </View>
+      ) : null}
+
       {/* More */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>MORE</Text>
         <MenuRow icon="gear" label="App settings" onPress={() => showComingSoon('App settings')} />
         <MenuRow icon="chat" label="Help & support" onPress={() => showComingSoon('Help & support')} />
         <MenuRow icon="lock" label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} />
-        {__DEV__ ? (
-          <MenuRow
-            icon="star"
-            label="Load demo data"
-            hint="DEV ONLY"
-            onPress={async () => {
-              await seedDemoData();
-              await loadData();
-              showAlert(
-                'Demo data loaded',
-                'Sample stickers, friends, a streak, and 60 coins were added. Check the Book and Pals tabs.'
-              );
-            }}
-          />
-        ) : null}
+        <MenuRow
+          icon="close"
+          label="Erase everything on this phone"
+          onPress={handleErase}
+          destructive
+        />
       </View>
 
       <Text style={styles.footer}>MADE FOR CURIOUS MINDS</Text>
@@ -198,7 +393,7 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-function MenuRow({ icon, label, hint, onPress }) {
+function MenuRow({ icon, label, hint, onPress, destructive }) {
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
       <PixelPanel style={styles.menuItem}>
@@ -208,7 +403,7 @@ function MenuRow({ icon, label, hint, onPress }) {
           </View>
           <View>
             {hint ? <Text style={styles.menuHint}>{hint}</Text> : null}
-            <Text style={styles.menuText}>{label}</Text>
+            <Text style={[styles.menuText, destructive && styles.menuTextDanger]}>{label}</Text>
           </View>
         </View>
         <PixelIcon name="chevron" size={16} color={COLORS.textMuted} />
@@ -241,6 +436,12 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 26, fontWeight: '900', color: COLORS.primaryDark },
   userName: { fontSize: 22, fontWeight: '900', color: COLORS.text, marginTop: 12, letterSpacing: 0.5 },
+  userHandle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    marginTop: 2,
+  },
   userSubtext: {
     fontSize: 11,
     color: COLORS.textLight,
@@ -292,6 +493,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   menuText: { fontSize: 15, fontWeight: '800', color: COLORS.text },
+  menuTextDanger: { color: COLORS.danger },
   footer: {
     textAlign: 'center',
     color: COLORS.textMuted,

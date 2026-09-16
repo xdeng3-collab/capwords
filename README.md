@@ -16,24 +16,25 @@ A visual language learning app where users photograph objects to learn vocabular
 - **Record & practice**: Hold to record your pronunciation, release to stop
 - **Progress tracking**: Daily word count, streak tracking, and goal setting
 
-### Social — not yet implemented
-There is no backend. Every word, sticker, photo, and friend lives in
-AsyncStorage on the device (`src/services/storageService.js`), so nothing is
-shared between two phones. The Pals screen is a working UI built on local
-records and seeded demo data — treat it as a prototype, not a feature:
+### Social
+Backed by Supabase (accounts, the friend graph, and a small progress mirror).
+These need `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` to be
+set — see `supabase/README.md`. With them unset the app stays fully usable and
+simply hides the account and Pals screens.
 
-- **Add friends** — adds a row to local storage only; there is no user
-  directory to search and no request to send
-- **View collections** — a friend's stickers are not transmitted anywhere,
-  so there is nothing real to show
-- **Listen to friends** — no recordings are uploaded; pronunciation is
-  generated on-device by expo-speech
+- **Add friends**: Search people by handle, send and accept requests
+- **Streak system**: Meet your daily word target to extend your streak
+- **See how pals are doing**: Their streak, words today, total words, and pet
+- **Cheer a pal**: Send a daily cheer, worth a few coins to you both
 
-**Streak system** is real: meeting your daily word target extends your own
-streak, tracked locally.
+Not yet implemented:
+- **View collections** — a friend's stickers, photos, and words never leave
+  their device, so there is nothing for the app to show you
+- **Listen to friends** — for the same reason; pronunciation is generated
+  on-device by expo-speech, and no recordings are uploaded anywhere
 
 ### Subscription & Pricing
-The figures below come from `PRICING` in `src/config.js`.
+The figures below come from `PRICING` and `IAP_PRODUCTS` in `src/config.js`.
 
 - **Free Tier**: 3 words per day
 - **Pay Per Word**: $0.02/word
@@ -116,7 +117,8 @@ Equivalent npm command: `npm run stop`
 - **Audio**: expo-audio (recording & playback)
 - **Visuals**: hand-authored pixel art (Views) + Animated API
 - **Feedback**: expo-haptics
-- **Storage**: AsyncStorage on-device only (no cloud sync yet)
+- **Storage**: AsyncStorage on-device for words, stickers, and pet state;
+  Supabase for accounts, the friend graph, and shared progress
 - **Navigation**: React Navigation
 
 ## Design System
@@ -205,9 +207,14 @@ capwords/
 │   │   └── GoalSettingScreen.js  # Daily goal configuration
 │   └── services/
 │       ├── aiService.js          # DeepSeek API integration
+│       ├── accountService.js     # Sign-in and the progress mirror
+│       ├── friendService.js      # Friend graph (Supabase)
+│       ├── supabase.js           # Supabase client
 │       └── storageService.js     # Local data + pet state
 ├── server/
 │   └── index.js                  # API proxy - holds the DeepSeek key
+├── supabase/
+│   └── migrations/               # Accounts, friendships, cheers (+ RLS)
 ├── package.json
 ├── app.json                      # Expo configuration
 └── babel.config.js
@@ -222,9 +229,8 @@ capwords/
 
 ## Future Enhancements
 
-- A backend for accounts and the friend graph, which is what would make the
-  social features above real
-- Syncing stickers and words, so a friend's collection can actually be viewed
+- Syncing stickers and words to the cloud, which is what would make a friend's
+  collection and pronunciation viewable
 - Spaced repetition review system
 - Leaderboards
 - AR mode (see translations overlaid on objects)

@@ -9,6 +9,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  Linking,
 } from 'react-native';
 import {
   GestureHandlerRootView,
@@ -28,6 +29,7 @@ import PetSprite from '../components/PetSprite';
 import PaywallModal from '../components/PaywallModal';
 import { recognizeAndTranslate, RecognitionFailedError } from '../services/aiService';
 import { refreshWidget } from '../services/widgetService';
+import { pushProgress } from '../services/accountService';
 import {
   saveSticker,
   getUserProfile,
@@ -76,6 +78,10 @@ async function captureLocation() {
 export default function CameraScreen({ navigation }) {
   const showAlert = useAlert();
   const [permission, requestPermission] = useCameraPermissions();
+  // 'camera' | 'library', or null until the profile has loaded. Onboarding
+  // sets it; we hold the render until we know, so a library-only person never
+  // sees the camera wall flash past on the way in.
+  const [photoSource, setPhotoSource] = useState(null);
   const [facing, setFacing] = useState('back');
   const [isProcessing, setIsProcessing] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState('es');
@@ -101,6 +107,7 @@ export default function CameraScreen({ navigation }) {
     ]);
     setTargetLanguage(profile.targetLanguage);
     setDailyGoal(profile.dailyGoal);
+    setPhotoSource(profile.photoSource === 'library' ? 'library' : 'camera');
     setWordsToday(count);
     setPetName(pet.name);
     setPet(pet);
@@ -174,6 +181,9 @@ export default function CameraScreen({ navigation }) {
       await loadProfile();
       // New word, new streak, new buddy mood — push it to the home screen.
       refreshWidget();
+      // ...and to the account, so pals see today's count. Not awaited: a slow
+      // or missing network must never hold up the reward screen.
+      pushProgress();
 
       // Celebrate when this word is the one that completes the daily goal.
       const [profile, count, streakData] = await Promise.all([
@@ -223,14 +233,50 @@ export default function CameraScreen({ navigation }) {
     })
     .runOnJS(true);
 
+  /**
+   * Ask for the camera the first time someone reaches for the shutter — never
+   * on the way into the tab, and never a second time after iOS has stopped
+   * allowing the prompt. Returns true once the camera is usable.
+   */
+  const enableCamera = async () => {
+    if (permission?.canAskAgain === false) {
+      showAlert(
+        'Camera is switched off',
+        'CapWords needs the camera to snap a word. You can turn it on in Settings, or pick a photo from your library instead.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Open settings', onPress: () => Linking.openSettings().catch(() => {}) },
+        ]
+      );
+      return false;
+    }
+
+    const result = await requestPermission();
+    if (!result?.granted) return false;
+
+    // They opted in at the shutter, so stop treating them as library-only.
+    setPhotoSource('camera');
+    updateUserProfile({ photoSource: 'camera' }).catch(() => {});
+    return true;
+  };
+
   const takePicture = async () => {
-    if (!cameraRef.current || isProcessing) return;
+    if (isProcessing) return;
 
     const canLearn = await canLearnWord();
     if (!canLearn.allowed) {
       promptUpgrade();
       return;
     }
+
+    // No camera yet: this tap buys the permission prompt, and the viewfinder
+    // takes over from here. The next tap is the one that takes the photo.
+    if (!permission?.granted) {
+      await enableCamera();
+      return;
+    }
+
+    if (!cameraRef.current) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Animated.sequence([
@@ -269,7 +315,9 @@ export default function CameraScreen({ navigation }) {
     }
   };
 
-  if (!permission) {
+  // Hold the screen until we know both the permission state and the choice
+  // made in onboarding.
+  if (!permission || photoSource === null) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -277,7 +325,9 @@ export default function CameraScreen({ navigation }) {
     );
   }
 
-  if (!permission.granted) {
+  // People who picked the camera in onboarding still get the upfront ask.
+  // Library-only people fall through to the snap interface instead.
+  if (!permission.granted && photoSource !== 'library') {
     return (
       <View style={styles.permissionContainer}>
         <PetSprite
@@ -303,34 +353,36 @@ export default function CameraScreen({ navigation }) {
 
   const currentLang = LANGUAGES.find((l) => l.code === targetLanguage);
   const remaining = Math.max(dailyGoal - wordsToday, 0);
+  // Library-only people see the same chrome over a plain backdrop until they
+  // turn the camera on from the shutter.
+  const cameraActive = permission.granted;
 
-  return (
-    <GestureHandlerRootView style={styles.container}>
-      <GestureDetector gesture={pinchGesture}>
-      <CameraView style={styles.camera} facing={facing} zoom={zoom} ref={cameraRef}>
-        {/* Freeze the shot while we look up the word */}
-        {capturedUri ? (
-          <Image source={{ uri: capturedUri }} style={styles.frozenPhoto} />
-        ) : null}
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.langButton}
-            activeOpacity={0.85}
-            onPress={() =>
-              navigation.navigate('LanguageSelect', {
-                current: targetLanguage,
-                onSelect: async (code) => {
-                  setTargetLanguage(code);
-                  await updateUserProfile({ targetLanguage: code });
-                },
-              })
-            }
-          >
-            <Text style={styles.langShort}>{currentLang?.short}</Text>
-            <Text style={styles.langName}>{currentLang?.name}</Text>
-            <PixelIcon name="chevron" size={12} color="#FBF3E0" />
-          </TouchableOpacity>
+  const overlay = (
+    <>
+      {/* Freeze the shot while we look up the word */}
+      {capturedUri ? (
+        <Image source={{ uri: capturedUri }} style={styles.frozenPhoto} />
+      ) : null}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.langButton}
+          activeOpacity={0.85}
+          onPress={() =>
+            navigation.navigate('LanguageSelect', {
+              current: targetLanguage,
+              onSelect: async (code) => {
+                setTargetLanguage(code);
+                await updateUserProfile({ targetLanguage: code });
+              },
+            })
+          }
+        >
+          <Text style={styles.langShort}>{currentLang?.short}</Text>
+          <Text style={styles.langName}>{currentLang?.name}</Text>
+          <PixelIcon name="chevron" size={12} color="#FBF3E0" />
+        </TouchableOpacity>
 
+        {cameraActive ? (
           <TouchableOpacity
             style={styles.flipButton}
             onPress={() => {
@@ -340,71 +392,94 @@ export default function CameraScreen({ navigation }) {
           >
             <PixelIcon name="flip" size={18} color="#FBF3E0" />
           </TouchableOpacity>
-        </View>
+        ) : null}
+      </View>
 
-        <View style={styles.goalChip}>
-          <Text style={styles.goalChipText}>
-            {remaining > 0
-              ? `${remaining} MORE TO REACH TODAY'S GOAL`
-              : 'DAILY GOAL COMPLETE'}
-          </Text>
-        </View>
+      <View style={styles.goalChip}>
+        <Text style={styles.goalChipText}>
+          {remaining > 0
+            ? `${remaining} MORE TO REACH TODAY'S GOAL`
+            : 'DAILY GOAL COMPLETE'}
+        </Text>
+      </View>
 
-        <View style={styles.guideContainer}>
-          <View style={styles.guideFrame}>
-            <View style={[styles.corner, styles.cornerTL]} />
-            <View style={[styles.corner, styles.cornerTR]} />
-            <View style={[styles.corner, styles.cornerBL]} />
-            <View style={[styles.corner, styles.cornerBR]} />
+      <View style={styles.guideContainer}>
+        <View style={styles.guideFrame}>
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
 
-            {isProcessing ? (
-              <Animated.View style={[styles.processingBox, { transform: [{ scale: pulseAnim }] }]}>
-                <ActivityIndicator size="small" color="#FBF3E0" />
-                <Text style={styles.processingText}>FINDING THE WORD...</Text>
-              </Animated.View>
-            ) : null}
-          </View>
+          {isProcessing ? (
+            <Animated.View style={[styles.processingBox, { transform: [{ scale: pulseAnim }] }]}>
+              <ActivityIndicator size="small" color="#FBF3E0" />
+              <Text style={styles.processingText}>FINDING THE WORD...</Text>
+            </Animated.View>
+          ) : null}
 
-          {!isProcessing ? (
-            <Text style={styles.guideText}>POINT AT AN OBJECT TO LEARN ITS NAME</Text>
+          {!isProcessing && !cameraActive ? (
+            <View style={styles.libraryHint}>
+              <PixelIcon name="images" size={28} color="#FBF3E0" />
+            </View>
           ) : null}
         </View>
 
-        {/* Zoom controls */}
         {!isProcessing ? (
-          <View style={styles.zoomControls}>
-            <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(0.1)} hitSlop={6}>
-              <Text style={styles.zoomButtonText}>+</Text>
-            </TouchableOpacity>
-            <Text style={styles.zoomLabel}>{(1 + zoom * 5).toFixed(1)}x</Text>
-            <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(-0.1)} hitSlop={6}>
-              <Text style={styles.zoomButtonText}>−</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.guideText}>
+            {cameraActive
+              ? 'POINT AT AN OBJECT TO LEARN ITS NAME'
+              : 'PICK A PHOTO, OR TAP THE SHUTTER TO USE THE CAMERA'}
+          </Text>
         ) : null}
+      </View>
 
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={isProcessing}>
-            <PixelIcon name="images" size={20} color="#FBF3E0" />
+      {/* Zoom controls */}
+      {!isProcessing && cameraActive ? (
+        <View style={styles.zoomControls}>
+          <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(0.1)} hitSlop={6}>
+            <Text style={styles.zoomButtonText}>+</Text>
           </TouchableOpacity>
-
-          <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
-            <TouchableOpacity
-              style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
-              onPress={takePicture}
-              disabled={isProcessing}
-              activeOpacity={0.9}
-            >
-              <View style={styles.captureInner}>
-                <PixelIcon name="camera" size={26} color="#FBF3E0" />
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-
-          <View style={styles.spacer} />
+          <Text style={styles.zoomLabel}>{(1 + zoom * 5).toFixed(1)}x</Text>
+          <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(-0.1)} hitSlop={6}>
+            <Text style={styles.zoomButtonText}>−</Text>
+          </TouchableOpacity>
         </View>
-      </CameraView>
-      </GestureDetector>
+      ) : null}
+
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={isProcessing}>
+          <PixelIcon name="images" size={20} color="#FBF3E0" />
+        </TouchableOpacity>
+
+        <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
+          <TouchableOpacity
+            style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
+            onPress={takePicture}
+            disabled={isProcessing}
+            activeOpacity={0.9}
+          >
+            <View style={styles.captureInner}>
+              <PixelIcon name="camera" size={26} color="#FBF3E0" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.spacer} />
+      </View>
+    </>
+  );
+
+  return (
+    <GestureHandlerRootView style={styles.container}>
+      {cameraActive ? (
+        <GestureDetector gesture={pinchGesture}>
+          <CameraView style={styles.camera} facing={facing} zoom={zoom} ref={cameraRef}>
+            {overlay}
+          </CameraView>
+        </GestureDetector>
+      ) : (
+        <View style={[styles.camera, styles.libraryBackdrop]}>{overlay}</View>
+      )}
 
       <PaywallModal
         visible={paywallVisible}
@@ -420,6 +495,14 @@ export default function CameraScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   camera: { flex: 1 },
+  // Stand-in for the viewfinder before the camera is switched on.
+  libraryBackdrop: { backgroundColor: '#14100D' },
+  libraryHint: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.45,
+  },
   frozenPhoto: { ...StyleSheet.absoluteFillObject },
   zoomControls: {
     position: 'absolute',
