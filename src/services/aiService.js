@@ -1,4 +1,4 @@
-import { API_PROXY_URL, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
+import { API_PROXY_TOKEN, API_PROXY_URL, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
 
 /**
  * Floor for max_tokens on every call.
@@ -23,6 +23,21 @@ function assertConfigured() {
       'AI is not configured: set EXPO_PUBLIC_API_URL to the proxy (see server/index.js).'
     );
   }
+}
+
+/**
+ * Headers for an AI call. Against the proxy the app carries no DeepSeek key at
+ * all - the proxy holds it - and presents the shared token instead. Talking to
+ * DeepSeek directly is the local-development path and needs the key.
+ */
+function authHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (API_PROXY_URL) {
+    if (API_PROXY_TOKEN) headers['X-Capwords-Token'] = API_PROXY_TOKEN;
+  } else if (DEEPSEEK_API_KEY) {
+    headers.Authorization = `Bearer ${DEEPSEEK_API_KEY}`;
+  }
+  return headers;
 }
 
 /** Thrown when the model answered but we could not get a word out of it. */
@@ -57,8 +72,7 @@ async function requestRecognition(imageBase64, targetLanguage) {
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      ...authHeaders(),
     },
     body: JSON.stringify({
       model: DEEPSEEK_VISION_MODEL,
@@ -165,8 +179,7 @@ export async function getPronunciationGuide(word, language) {
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      ...authHeaders(),
     },
     body: JSON.stringify({
       model: DEEPSEEK_MODEL,
@@ -215,8 +228,7 @@ export async function evaluatePronunciation(audioTranscription, expectedWord, la
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      ...authHeaders(),
     },
     body: JSON.stringify({
       model: DEEPSEEK_MODEL,

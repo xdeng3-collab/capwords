@@ -42,20 +42,32 @@ The figures below come from `PRICING` in `src/config.js`.
 
 ## Cost Analysis
 
-Using the DeepSeek Flash API. These are rough planning figures, not measured
-billing — recognition is a reasoning call, so real token use varies:
-| Component | Cost per word |
-|-----------|--------------|
-| AI Image Recognition (input) | $0.00007 |
-| AI Translation (output) | $0.00006 |
-| Infrastructure & Storage | $0.00200 |
-| **Total** | **~$0.0025** |
+One learned word is **one** `deepseek-flash` call — recognition returns the
+word, pronunciation, example sentence, and fun fact together, so there is no
+separate translation call to pay for.
 
-With a selling price of $0.02/word, the margin covers:
-- Server infrastructure
-- CDN and image storage
-- App maintenance
-- Customer support
+Token counts below were measured against the live API using the prompt this
+repo ships; prices are DeepSeek's published `deepseek-flash` rates for a cache
+miss. Off-peak is $0.15/M input and $0.60/M output; peak (01:00-04:00 and
+06:00-10:00 UTC, Mon-Fri) is double that.
+
+| Photo sent | Input tok | Output tok | Off-peak | Peak |
+|------------|-----------|------------|----------|------|
+| 960x870 (downscaled) | 826 | 190 | $0.00024 | $0.00048 |
+| 2418x2192 (typical phone photo) | 1279 | 306 | $0.00038 | $0.00075 |
+
+`CameraScreen` captures at `quality: 0.7` with **no resize**, so the second row
+is what production traffic actually costs. Downscaling the long edge to ~1000px
+before upload would cut the bill roughly in half; the model reads both sizes
+correctly.
+
+Recognition retries once on an unparseable answer, so a bad response can cost
+twice the figures above.
+
+Infrastructure is not included: this app stores photos on-device and runs no
+CDN, so the only server cost today is whatever hosts `server/index.js`.
+
+At $0.02/word, AI is well under 5% of revenue even at peak rates.
 
 ## Running the App
 
@@ -102,6 +114,12 @@ Equivalent npm command: `npm run stop`
   proxy with `node server/index.js`, and point the app at it by also setting
   `EXPO_PUBLIC_API_URL=http://<your-mac-ip>:3210`. The app still runs without
   this, but recognition will report that AI is not configured.
+- The proxy allows 30 requests per client per 5 minutes
+  (`CAPWORDS_RATE_LIMIT`), because the upstream is billed per call. Setting
+  `CAPWORDS_PROXY_TOKEN` additionally requires the app to present it as
+  `EXPO_PUBLIC_API_TOKEN`; the proxy warns at startup when it is unset. That
+  token ships inside the bundle, so it turns away crawlers rather than people —
+  per-user auth is what would actually protect a public deployment.
 - Do **not** ship a build with `EXPO_PUBLIC_DEEPSEEK_API_KEY` set. Expo inlines
   every `EXPO_PUBLIC_*` variable into the JavaScript bundle, so that key would
   be readable by anyone who unpacks the installed app. It is a local-development

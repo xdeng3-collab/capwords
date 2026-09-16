@@ -13,6 +13,11 @@ export const DEEPSEEK_API_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '';
 // (server/index.js) which holds the API key server-side. Direct DeepSeek
 // access (key in the app bundle) is a dev-only convenience.
 export const API_PROXY_URL = process.env.EXPO_PUBLIC_API_URL || '';
+// Shared secret for the proxy, matching CAPWORDS_PROXY_TOKEN on the server.
+// This one IS meant to ship in the bundle, and it is not a real access control
+// for exactly that reason - it turns the proxy away from anonymous crawlers,
+// nothing more. Per-user auth is what actually protects it; see server/index.js.
+export const API_PROXY_TOKEN = process.env.EXPO_PUBLIC_API_TOKEN || '';
 export const DEEPSEEK_BASE_URL = API_PROXY_URL ? `${API_PROXY_URL}/v1` : 'https://api.deepseek.com/v1';
 // DeepSeek publishes exactly two model ids: 'deepseek-flash' and
 // 'deepseek-v4-pro' (GET /v1/models). deepseek-flash is multimodal - it accepts
