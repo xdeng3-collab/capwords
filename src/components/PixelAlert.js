@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -24,6 +25,12 @@ const AlertContext = createContext(() => {});
  *
  * Buttons render filled, with any `style: 'cancel'` button as the quiet text
  * action underneath. Tapping the backdrop or the X runs the cancel button.
+ *
+ * A fourth argument turns it into a prompt, the way Alert.prompt does on iOS.
+ * Each button's onPress then receives the typed text:
+ *
+ *   showAlert('Username', 'How pals find you', buttons,
+ *             { prompt: true, defaultValue: 'pip', placeholder: 'username' });
  */
 export function useAlert() {
   return useContext(AlertContext);
@@ -33,11 +40,14 @@ export function AlertProvider({ children }) {
   const [alertState, setAlertState] = useState(null);
   const pop = useRef(new Animated.Value(0)).current;
 
+  const [input, setInput] = useState('');
+
   const showAlert = useCallback(
-    (title, message, buttons) => {
+    (title, message, buttons, options) => {
       const list = buttons?.length ? buttons : [{ text: 'OK' }];
       pop.setValue(0);
-      setAlertState({ title, message, buttons: list });
+      setInput(options?.defaultValue ?? '');
+      setAlertState({ title, message, buttons: list, options: options || null });
       Animated.spring(pop, {
         toValue: 1,
         friction: 6,
@@ -49,10 +59,16 @@ export function AlertProvider({ children }) {
     [pop]
   );
 
-  const dismiss = useCallback((button) => {
-    setAlertState(null);
-    button?.onPress?.();
-  }, []);
+  // The typed text is read before the state is torn down, so a handler that
+  // uses it does not race the close.
+  const dismiss = useCallback(
+    (button) => {
+      const typed = input;
+      setAlertState(null);
+      button?.onPress?.(typed);
+    },
+    [input]
+  );
 
   // Backdrop / hardware back behaves like the cancel button when there is one.
   const handleBackdrop = useCallback(() => {
@@ -93,6 +109,20 @@ export function AlertProvider({ children }) {
               ) : null}
               {alertState?.message ? (
                 <Text style={styles.message}>{alertState.message}</Text>
+              ) : null}
+
+              {alertState?.options?.prompt ? (
+                <TextInput
+                  style={styles.input}
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder={alertState.options.placeholder}
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize={alertState.options.autoCapitalize || 'none'}
+                  autoCorrect={false}
+                  maxLength={alertState.options.maxLength || 40}
+                  autoFocus
+                />
               ) : null}
 
               <View style={styles.buttons}>
@@ -157,6 +187,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     marginTop: 10,
+  },
+  input: {
+    marginTop: 16,
+    backgroundColor: COLORS.background,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
   },
   buttons: { marginTop: 20, gap: 10 },
   button: { alignSelf: 'stretch' },

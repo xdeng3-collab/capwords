@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&amp;family=Silkscreen&amp;display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #EADBBB; }
+  a { color: #8C5A22; }
+  a:hover { color: #C98A3B; }
+  @keyframes buddyBoing {
+    0%, 100% { transform: translateY(0) scaleY(1) scaleX(1); }
+    45% { transform: translateY(-10px) scaleY(1.06) scaleX(0.96); }
+    70% { transform: translateY(0) scaleY(0.94) scaleX(1.05); }
+  }
+</style>
+</helmet>
+
+<section style="padding: 56px 64px; display: flex; flex-direction: column; gap: 40px; font-family: Nunito, system-ui, sans-serif; color: #4A3826;">
+  <div style="display: flex; flex-direction: column; gap: 8px; max-width: 860px;">
+    <div style="font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 2px; color: #A38F6F;">CAPWORDS — FIRST RUN</div>
+    <div style="font-size: 30px; font-weight: 900; letter-spacing: -0.4px;">Loading screen and onboarding flow</div>
+    <div style="font-size: 15px; font-weight: 600; line-height: 1.55; color: #6F5A41; text-wrap: pretty;">The launch screen is the buddy waking up: one sprite, one segmented meter, one line of copy that changes as the app boots. Onboarding then asks for exactly the four things the app cannot start without — language, species, name, daily goal — and ends on the camera primer, because the first real action is a photo.</div>
+  </div>
+
+  <div id="1a" style="display: flex; flex-direction: column; gap: 24px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1a</div>
+      <div style="font-size: 18px; font-weight: 900;">Loading — three moments of the same screen</div>
+    </div>
+    <div style="font-size: 14px; font-weight: 600; color: #6F5A41; max-width: 640px; line-height: 1.5;">Nothing moves position between frames. The meter fills, the buddy wakes, the caption changes. If loading finishes in under a second the user only ever sees the last frame, which is why it also reads as a static splash.</div>
+
+    <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">COLD START</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); position: relative; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 0 44px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 34px; letter-spacing: 2px; color: #4A3826;">CAPWORDS</div>
+              <div style="font-family: Silkscreen, monospace; font-size: 11px; letter-spacing: 3px; color: #A38F6F;">SNAP IT · LEARN IT</div>
+            </div>
+            <dc-import name="Buddy" species="cat" mood="sleepy" hint-size="108px,84px"></dc-import>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+              <div style="display: flex; width: 100%; height: 16px; border: 3px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1;"></div>
+              </div>
+              <div style="font-size: 14px; font-weight: 900; letter-spacing: 0.6px; color: #6F5A41;">Waking {{ petName }}…</div>
+            </div>
+          </div>
+          <div style="height: 84px; background: #E8D6AE; border-top: 3px solid #3A2A1A; position: relative;">
+            <div style="position: absolute; left: 34px; top: 22px; width: 6px; height: 6px; background: #D96C6C;"></div>
+            <div style="position: absolute; left: 96px; top: 40px; width: 6px; height: 6px; background: #5BA88C;"></div>
+            <div style="position: absolute; left: 168px; top: 20px; width: 6px; height: 6px; background: #F2C14E;"></div>
+            <div style="position: absolute; left: 244px; top: 44px; width: 6px; height: 6px; background: #B5638F;"></div>
+            <div style="position: absolute; left: 320px; top: 24px; width: 6px; height: 6px; background: #5D8FC4;"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-family: Silkscreen, monospace; font-size: 9px; letter-spacing: 2px; color: #A38F6F;">V 1.0</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">RESTORING DATA</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); position: relative; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 0 44px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 34px; letter-spacing: 2px; color: #4A3826;">CAPWORDS</div>
+              <div style="font-family: Silkscreen, monospace; font-size: 11px; letter-spacing: 3px; color: #A38F6F;">SNAP IT · LEARN IT</div>
+            </div>
+            <dc-import name="Buddy" species="cat" mood="content" hint-size="108px,84px"></dc-import>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+              <div style="display: flex; width: 100%; height: 16px; border: 3px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1;"></div>
+              </div>
+              <div style="font-size: 14px; font-weight: 900; letter-spacing: 0.6px; color: #6F5A41;">Counting your stickers…</div>
+            </div>
+          </div>
+          <div style="height: 84px; background: #E8D6AE; border-top: 3px solid #3A2A1A; position: relative;">
+            <div style="position: absolute; left: 34px; top: 22px; width: 6px; height: 6px; background: #D96C6C;"></div>
+            <div style="position: absolute; left: 96px; top: 40px; width: 6px; height: 6px; background: #5BA88C;"></div>
+            <div style="position: absolute; left: 168px; top: 20px; width: 6px; height: 6px; background: #F2C14E;"></div>
+            <div style="position: absolute; left: 244px; top: 44px; width: 6px; height: 6px; background: #B5638F;"></div>
+            <div style="position: absolute; left: 320px; top: 24px; width: 6px; height: 6px; background: #5D8FC4;"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-family: Silkscreen, monospace; font-size: 9px; letter-spacing: 2px; color: #A38F6F;">V 1.0</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #4E7B45;">READY / STATIC SPLASH</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); position: relative; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 0 44px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 34px; letter-spacing: 2px; color: #4A3826;">CAPWORDS</div>
+              <div style="font-family: Silkscreen, monospace; font-size: 11px; letter-spacing: 3px; color: #A38F6F;">SNAP IT · LEARN IT</div>
+            </div>
+            <dc-import name="Buddy" species="cat" mood="happy" hint-size="108px,84px"></dc-import>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+              <div style="display: flex; width: 100%; height: 16px; border: 3px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A; border-right: 1px solid #3A2A1A;"></div>
+                <div style="flex: 1; background: #7CB06A;"></div>
+              </div>
+              <div style="font-size: 14px; font-weight: 900; letter-spacing: 0.6px; color: #4E7B45;">Good to see you.</div>
+            </div>
+          </div>
+          <div style="height: 84px; background: #E8D6AE; border-top: 3px solid #3A2A1A; position: relative;">
+            <div style="position: absolute; left: 34px; top: 22px; width: 6px; height: 6px; background: #D96C6C;"></div>
+            <div style="position: absolute; left: 96px; top: 40px; width: 6px; height: 6px; background: #5BA88C;"></div>
+            <div style="position: absolute; left: 168px; top: 20px; width: 6px; height: 6px; background: #F2C14E;"></div>
+            <div style="position: absolute; left: 244px; top: 44px; width: 6px; height: 6px; background: #B5638F;"></div>
+            <div style="position: absolute; left: 320px; top: 24px; width: 6px; height: 6px; background: #5D8FC4;"></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-family: Silkscreen, monospace; font-size: 9px; letter-spacing: 2px; color: #A38F6F;">V 1.0</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="1b" style="display: flex; flex-direction: column; gap: 24px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 28px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: Silkscreen, monospace; font-size: 12px; background: #3A2A1A; color: #F3E9D2; padding: 4px 8px;">1b</div>
+      <div style="font-size: 18px; font-weight: 900;">Onboarding — six screens, four decisions</div>
+    </div>
+    <div style="font-size: 14px; font-weight: 600; color: #6F5A41; max-width: 640px; line-height: 1.5;">Welcome, then language, species, name, goal, camera. Every step after the welcome carries a segmented step meter in the same style as the daily-goal bar, so the retro progress language is established before the user meets it in the app.</div>
+
+    <div style="display: flex; gap: 28px; flex-wrap: wrap;">
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">01 WELCOME</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; padding: 0 34px;">
+            <dc-import name="Buddy" species="cat" mood="happy" style="transform: scale(1.5); margin: 26px 0 34px;" hint-size="108px,84px"></dc-import>
+            <div style="font-size: 34px; font-weight: 900; line-height: 1.15; text-align: center; letter-spacing: -0.6px; color: #4A3826;">Snap a photo.<br>Learn the word.</div>
+            <div style="font-size: 16px; font-weight: 600; line-height: 1.5; text-align: center; color: #6F5A41; text-wrap: pretty;">Point your camera at anything around you. CapWords names it in the language you are learning and turns it into a sticker for your collection.</div>
+          </div>
+          <div style="padding: 0 24px 40px; display: flex; flex-direction: column; gap: 16px; align-items: center;">
+            <div style="width: 100%; box-sizing: border-box; background: #C98A3B; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">GET STARTED</div>
+            <div style="font-size: 14px; font-weight: 800; color: #8C5A22; text-decoration: underline;">I already have an account</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">02 LANGUAGE</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 22px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; height: 10px; border: 2px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 18px; line-height: 1.4; letter-spacing: 1px; color: #4A3826;">WHAT ARE YOU<br>LEARNING?</div>
+              <div style="font-size: 15px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Pick one to start with. You can switch languages any time from your profile.</div>
+            </div>
+          </div>
+          <div style="flex: 1; padding: 20px 24px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start;">
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">ZH</div>
+              <div style="font-size: 15px; font-weight: 900;">中文</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #E7F0E1; border: 3px solid #4E7B45; box-shadow: 0 3px 0 rgba(78,123,69,0.4); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #7CB06A; border: 2px solid #4E7B45; font-family: Silkscreen, monospace; font-size: 10px; color: #FBF3E0;">ES</div>
+              <div style="font-size: 15px; font-weight: 900; color: #3F6338;">Español</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">FR</div>
+              <div style="font-size: 15px; font-weight: 900;">Français</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">DE</div>
+              <div style="font-size: 15px; font-weight: 900;">Deutsch</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">JA</div>
+              <div style="font-size: 15px; font-weight: 900;">日本語</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">KO</div>
+              <div style="font-size: 15px; font-weight: 900;">한국어</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">PT</div>
+              <div style="font-size: 15px; font-weight: 900;">Português</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 12px;">
+              <div style="width: 34px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center; background: #EADBBB; border: 2px solid #3A2A1A; font-family: Silkscreen, monospace; font-size: 10px; color: #6F5A41;">IT</div>
+              <div style="font-size: 15px; font-weight: 900;">Italiano</div>
+            </div>
+            <div style="grid-column: 1 / -1; text-align: center; font-size: 14px; font-weight: 800; color: #8C5A22; text-decoration: underline; padding-top: 6px;">See all 12 languages</div>
+          </div>
+          <div style="padding: 20px 24px 40px;">
+            <div style="width: 100%; box-sizing: border-box; background: #C98A3B; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">CONTINUE</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">03 BUDDY</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 22px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; height: 10px; border: 2px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 18px; letter-spacing: 1px; color: #4A3826;">PICK A BUDDY</div>
+              <div style="font-size: 15px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Your buddy lives on the home screen and reacts to how much you learn. You can change whenever you want in the app.</div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px; padding: 0 24px;">
+            <dc-import name="Buddy" species="cat" mood="happy" style="transform: scale(1.6);" hint-size="108px,84px"></dc-import>
+            <div style="display: flex; gap: 12px; width: 100%;">
+              <div style="flex: 1; min-width: 0; height: 108px; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; background: #E7F0E1; border: 3px solid #4E7B45; box-shadow: 0 3px 0 rgba(78,123,69,0.4); padding: 14px 6px;">
+                <div style="position: relative; width: 67px; height: 52px; flex: none; margin: 0 auto;">
+                  
+                <dc-import name="Buddy" species="cat" mood="content" style="position: absolute; left: -20.5px; top: -14px; width: 108px; height: 84px; transform: scale(0.62)" hint-size="108px,84px"></dc-import></div>
+                <div style="text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 0.8px; color: #3F6338;">CAT</div>
+              </div>
+              <div style="flex: 1; min-width: 0; height: 108px; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 14px 6px;">
+                <div style="position: relative; width: 67px; height: 52px; flex: none; margin: 0 auto;">
+                  <dc-import name="Buddy" species="dog" mood="content" style="position: absolute; left: -20.5px; top: -14px; width: 108px; height: 84px; transform: scale(0.62)" hint-size="108px,84px"></dc-import>
+                </div>
+                <div style="text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 0.8px; color: #6F5A41;">DOG</div>
+              </div>
+              <div style="flex: 1; min-width: 0; height: 108px; box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 14px 6px;">
+                <div style="position: relative; width: 67px; height: 52px; flex: none; margin: 0 auto;">
+                  <dc-import name="Buddy" species="bunny" mood="content" style="position: absolute; left: -20.5px; top: -14px; width: 108px; height: 84px; transform: scale(0.62)" hint-size="108px,84px"></dc-import>
+                </div>
+                <div style="text-align: center; font-size: 13px; font-weight: 900; letter-spacing: 0.8px; color: #6F5A41;">BUNNY</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 20px 24px 40px;">
+            <div style="width: 100%; box-sizing: border-box; background: #C98A3B; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">CONTINUE</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">04 NAME</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 22px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; height: 10px; border: 2px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 18px; letter-spacing: 1px; color: #4A3826;">NAME YOUR BUDDY</div>
+              <div style="font-size: 15px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Twelve characters or fewer. You can rename them later from the pet screen.</div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 24px;">
+            <div style="background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.3); padding: 12px 16px; font-size: 15px; font-weight: 800; color: #4A3826;">Hi! What should you call me?</div>
+            <dc-import name="Buddy" species="cat" mood="content" style="transform: scale(1.4); margin: 14px 0 24px;" hint-size="108px,84px"></dc-import>
+            <div style="width: 100%; box-sizing: border-box; background: #FBF3E0; border: 3px solid #C98A3B; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 3px;">
+                <div style="font-size: 22px; font-weight: 900; color: #7C7A78">{{ petName }}</div>
+                <div style="width: 3px; height: 24px; background: #C98A3B;"></div>
+              </div>
+              <div style="font-family: Silkscreen, monospace; font-size: 10px; color: #A38F6F;">8/12</div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+              <div style="border: 2px solid #C98A3B; background: rgba(201,138,59,0.13); padding: 6px 12px; font-size: 12px; font-weight: 900; letter-spacing: 0.6px; color: #8C5A22;">MOCHI</div>
+              <div style="border: 2px solid #C98A3B; background: rgba(201,138,59,0.13); padding: 6px 12px; font-size: 12px; font-weight: 900; letter-spacing: 0.6px; color: #8C5A22;">PIP</div>
+              <div style="border: 2px solid #C98A3B; background: rgba(201,138,59,0.13); padding: 6px 12px; font-size: 12px; font-weight: 900; letter-spacing: 0.6px; color: #8C5A22;">WAFFLE</div>
+              <div style="border: 2px solid #C98A3B; background: rgba(201,138,59,0.13); padding: 6px 12px; font-size: 12px; font-weight: 900; letter-spacing: 0.6px; color: #8C5A22;">SURPRISE ME</div>
+            </div>
+          </div>
+          <div style="padding: 20px 24px 40px;">
+            <div style="width: 100%; box-sizing: border-box; background: #C98A3B; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">CONTINUE</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">05 DAILY GOAL</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding: 22px 24px 0; display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; height: 10px; border: 2px solid #3A2A1A; background: #EADBBB; box-sizing: border-box;">
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B; border-right: 1px solid #3A2A1A;"></div>
+              <div style="flex: 1; background: #C98A3B;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="font-family: Silkscreen, monospace; font-size: 18px; line-height: 1.4; letter-spacing: 1px; color: #4A3826;">HOW MANY WORDS<br>A DAY?</div>
+              <div style="font-size: 15px; font-weight: 600; line-height: 1.5; color: #6F5A41;">Hit your goal to keep the streak alive and your buddy happy.</div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 24px 24px 0;">
+            <div style="display: flex; align-items: center; gap: 14px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 16px;">
+              <div style="width: 52px; flex: none; text-align: center; font-family: Silkscreen, monospace; font-size: 22px; color: #4A3826;">3</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 15px; font-weight: 900;">Casual</div>
+                <div style="font-size: 13px; font-weight: 600; color: #6F5A41;">A minute a day. The free tier limit.</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; background: #E7F0E1; border: 3px solid #4E7B45; box-shadow: 0 3px 0 rgba(78,123,69,0.4); padding: 16px;">
+              <div style="width: 52px; flex: none; text-align: center; font-family: Silkscreen, monospace; font-size: 22px; color: #3F6338;">5</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 15px; font-weight: 900; color: #3F6338;">Steady</div>
+                <div style="font-size: 13px; font-weight: 600; color: #4E7B45;">Recommended. About five minutes.</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; background: #FBF3E0; border: 3px solid #3A2A1A; box-shadow: 0 3px 0 rgba(58,42,26,0.28); padding: 16px;">
+              <div style="width: 52px; flex: none; text-align: center; font-family: Silkscreen, monospace; font-size: 22px; color: #4A3826;">10</div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 15px; font-weight: 900;">Serious</div>
+                <div style="font-size: 13px; font-weight: 600; color: #6F5A41;">For a real vocabulary push.</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; background: #FBF3E0; border: 3px dashed #A38F6F; padding: 16px;">
+              <div style="width: 52px; flex: none; text-align: center; font-family: Silkscreen, monospace; font-size: 18px; color: #A38F6F;">?</div>
+              <div style="font-size: 15px; font-weight: 900; color: #6F5A41;">Set my own (1–50)</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 8px; background: #EADBBB; border: 2px solid #C98A3B; padding: 12px 14px;">
+              <div style="width: 8px; height: 8px; flex: none; background: #C98A3B; margin-top: 6px;"></div>
+              <div style="font-size: 13px; font-weight: 700; line-height: 1.45; color: #6F5A41;">Your goal can only change once a week, so pick something you will still want on a bad day.</div>
+            </div>
+          </div>
+          <div style="padding: 20px 24px 40px;">
+            <div style="width: 100%; box-sizing: border-box; background: #C98A3B; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">CONTINUE</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="font-family: Silkscreen, monospace; font-size: 10px; letter-spacing: 1.5px; color: #A38F6F;">06 CAMERA PRIMER</div>
+        <div style="width: 390px; height: 780px; box-sizing: border-box; background: #F3E9D2; border: 3px solid #3A2A1A; box-shadow: 0 6px 0 rgba(58,42,26,0.35); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 0; font-size: 13px; font-weight: 900; color: #4A3826;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 7px; align-items: center;">
+              <div style="display: flex; gap: 2px; align-items: flex-end; height: 11px;">
+                <div style="width: 3px; height: 4px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 6px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 9px; background: #4A3826;"></div>
+                <div style="width: 3px; height: 11px; background: #4A3826;"></div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1px;">
+                <div style="width: 22px; height: 11px; box-sizing: border-box; border: 2px solid #4A3826; padding: 1px; display: flex;">
+                  <div style="width: 12px; background: #4A3826;"></div>
+                </div>
+                <div style="width: 2px; height: 5px; background: #4A3826;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 0 34px;">
+            <div style="position: relative; width: 208px; height: 208px; flex: none; background: #EADBBB; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.3);">
+              <div style="position: absolute; left: 14px; top: 14px; width: 34px; height: 6px; background: #C98A3B;"></div>
+              <div style="position: absolute; left: 14px; top: 14px; width: 6px; height: 34px; background: #C98A3B;"></div>
+              <div style="position: absolute; right: 14px; top: 14px; width: 34px; height: 6px; background: #C98A3B;"></div>
+              <div style="position: absolute; right: 14px; top: 14px; width: 6px; height: 34px; background: #C98A3B;"></div>
+              <div style="position: absolute; left: 14px; bottom: 14px; width: 34px; height: 6px; background: #C98A3B;"></div>
+              <div style="position: absolute; left: 14px; bottom: 14px; width: 6px; height: 34px; background: #C98A3B;"></div>
+              <div style="position: absolute; right: 14px; bottom: 14px; width: 34px; height: 6px; background: #C98A3B;"></div>
+              <div style="position: absolute; right: 14px; bottom: 14px; width: 6px; height: 34px; background: #C98A3B;"></div>
+              <div style="position: absolute; left: 74px; top: 62px; width: 60px; height: 54px; background: #D96C6C; border: 3px solid #3A2A1A; box-sizing: border-box;"></div>
+              <div style="position: absolute; left: 86px; top: 74px; width: 10px; height: 10px; background: #F0A5A5;"></div>
+              <div style="position: absolute; left: 100px; top: 48px; width: 8px; height: 16px; background: #6E4128;"></div>
+              <div style="position: absolute; left: 108px; top: 44px; width: 16px; height: 8px; background: #7CB06A;"></div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; font-family: Silkscreen, monospace; font-size: 13px; letter-spacing: 1px; color: #6F5A41;">MANZANA</div>
+            </div>
+            <div style="font-size: 26px; font-weight: 900; line-height: 1.2; text-align: center; letter-spacing: -0.4px;">CapWords needs your camera</div>
+            <div style="font-size: 15px; font-weight: 600; line-height: 1.55; text-align: center; color: #6F5A41; text-wrap: pretty;">Photos are used once to identify the object. Only friends you add can see your collection.</div>
+          </div>
+          <div style="padding: 0 24px 40px; display: flex; flex-direction: column; gap: 16px; align-items: center;">
+            <div style="width: 100%; box-sizing: border-box; background: #5BA88C; border: 3px solid #3A2A1A; box-shadow: 0 4px 0 rgba(58,42,26,0.4); padding: 16px; text-align: center; color: #FBF3E0; font-size: 15px; font-weight: 900; letter-spacing: 1.4px;">ALLOW CAMERA</div>
+            <div style="font-size: 14px; font-weight: 800; color: #8C5A22; text-decoration: underline;">Use my photo library instead</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;petName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Biscuit&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      petName: this.props.petName ?? 'Biscuit',
+    };
+  }
+}
+
+</script>
+</body>
+</html>

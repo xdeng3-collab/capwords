@@ -102,6 +102,25 @@ function bodyGrid(species, mood) {
 // Soft ground shadow the slime bounces over.
 const SHADOW_GRID = ['...ssssssssssss...', '.ssssssssssssssss.'];
 
+// The blob under the ears is the same 8 rows for every species.
+const BODY_ROWS = 8;
+
+/**
+ * How tall a sprite lays out, in points. Ears differ by species — a dog is two
+ * rows shorter than a bunny — so any screen that swaps species in place has to
+ * reserve room for the tallest one or everything below it jumps.
+ */
+export function petSpriteHeight(species, pixelSize = 9) {
+  const ears = (HEAD_ROWS[species] || HEAD_ROWS.cat).length;
+  // The shadow is tucked up under the blob by one pixel row.
+  return (ears + BODY_ROWS + SHADOW_GRID.length - 1) * pixelSize;
+}
+
+/** The tallest any species renders — the height to reserve for a picker. */
+export function tallestPetSpriteHeight(pixelSize = 9) {
+  return Math.max(...Object.keys(HEAD_ROWS).map((s) => petSpriteHeight(s, pixelSize)));
+}
+
 /**
  * Outfit overlays. `x` is a column in the 18-wide grid; `y` is relative to
  * the blob's top row (ears occupy negative space), so outfits sit correctly

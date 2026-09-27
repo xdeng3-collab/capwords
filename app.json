@@ -7,8 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
       "backgroundColor": "#F3E9D2"
     },
     "assetBundlePatterns": [
@@ -20,7 +18,12 @@
       "infoPlist": {
         "NSCameraUsageDescription": "CapWords needs camera access to take photos of objects for word learning.",
         "NSMicrophoneUsageDescription": "CapWords needs microphone access to record your pronunciation.",
-        "NSLocationWhenInUseUsageDescription": "CapWords uses your location to remember where you learned each word."
+        "NSLocationWhenInUseUsageDescription": "CapWords uses your location to remember where you learned each word.",
+        "NSLocalNetworkUsageDescription": "CapWords connects to the local development server while running a development build.",
+        "NSBonjourServices": [
+          "_expo._tcp",
+          "_dns-sd._udp"
+        ]
       },
       "appleTeamId": "A59BMF9Y7J",
       "entitlements": {

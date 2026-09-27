@@ -139,6 +139,12 @@ export async function getUserProfile() {
     nativeLanguage: 'en',
     dailyGoal: DEFAULT_DAILY_GOAL,
     lastGoalChange: null,
+    // How onboarding said they want to add photos: 'camera' or 'library'.
+    // Library-only people are never asked for the camera until they reach
+    // for the shutter themselves.
+    photoSource: 'camera',
+    // First-run setup has not run yet on a brand new profile.
+    onboarded: false,
     joinDate: new Date().toISOString(),
   };
   await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(defaultProfile));
@@ -150,6 +156,37 @@ export async function updateUserProfile(updates) {
   const updated = { ...profile, ...updates };
   await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
   return updated;
+}
+
+/**
+ * Whether first-run setup is done. Profiles written before onboarding existed
+ * carry no flag at all — those people already have a working app, so they are
+ * never sent back through it. Only an explicit `false` means "still to do".
+ */
+export async function hasCompletedOnboarding() {
+  const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+  if (!data) return false;
+  return JSON.parse(data).onboarded !== false;
+}
+
+/**
+ * Save every answer from onboarding in one go: the four decisions plus how
+ * they said they want to add photos.
+ */
+export async function completeOnboarding({
+  targetLanguage,
+  species,
+  petName,
+  dailyGoal,
+  photoSource,
+}) {
+  await namePet(petName, species);
+  return updateUserProfile({
+    targetLanguage,
+    dailyGoal,
+    photoSource,
+    onboarded: true,
+  });
 }
 
 export async function canChangeGoal() {
@@ -235,48 +272,10 @@ export async function getDailyWordCount(date) {
 }
 
 // ==================== Friends ====================
-
-export async function getFriends() {
-  const data = await AsyncStorage.getItem(STORAGE_KEYS.FRIENDS);
-  return data ? JSON.parse(data) : [];
-}
-
-export async function addFriend(friendData) {
-  const friends = await getFriends();
-  const friend = {
-    ...friendData,
-    id: friendData.id || Date.now().toString(),
-    addedAt: new Date().toISOString(),
-  };
-  friends.push(friend);
-  await AsyncStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
-  return friend;
-}
-
-export async function removeFriend(friendId) {
-  const friends = await getFriends();
-  const filtered = friends.filter(f => f.id !== friendId);
-  await AsyncStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(filtered));
-}
-
-// ==================== Cheers ====================
-// Friend congrats reset daily (Duolingo-style): you can cheer each friend
-// once per day, and the "sent" state survives app restarts.
-
-export async function getTodayCheers() {
-  const today = new Date().toISOString().split('T')[0];
-  const data = await AsyncStorage.getItem(STORAGE_KEYS.CHEERS);
-  const parsed = data ? JSON.parse(data) : null;
-  if (!parsed || parsed.date !== today) return { date: today, ids: {} };
-  return parsed;
-}
-
-export async function cheerFriend(friendId) {
-  const cheers = await getTodayCheers();
-  cheers.ids[friendId] = true;
-  await AsyncStorage.setItem(STORAGE_KEYS.CHEERS, JSON.stringify(cheers));
-  return cheers;
-}
+// Pals and cheers moved to Supabase (services/friendService.js). They have to
+// live there: a friend is another real account, and "once per day" has to be
+// decided somewhere a reinstall cannot reset. The two storage keys are kept
+// in STORAGE_KEYS only so the legacy sweep and signOut still clear them.
 
 // ==================== Subscription ====================
 
@@ -382,118 +381,49 @@ export async function updateSettings(updates) {
   return updated;
 }
 
-// ==================== Demo data (dev only) ====================
+// ==================== Demo data cleanup ====================
 
-// Example sentences + fun facts for a few demo words so the detail screen
-// can be previewed. Real captures get these from the AI.
-const DEMO_LEARN = {
-  Manzana: {
-    exampleSentence: 'Quiero comer una manzana roja.',
-    sentenceTranslation: 'I want to eat a red apple.',
-    funFact: '"Manzana" also means "city block" in Spanish — ask for directions and you might hear it!',
-  },
-  Perro: {
-    exampleSentence: 'Mi perro juega en el parque.',
-    sentenceTranslation: 'My dog plays in the park.',
-    funFact: 'Spanish dogs say "guau guau" instead of "woof woof".',
-  },
-  Café: {
-    exampleSentence: 'Un café con leche, por favor.',
-    sentenceTranslation: 'A coffee with milk, please.',
-    funFact: '"Café" is also the word for the color brown in much of Latin America.',
-  },
-};
-
-const DEMO_STICKERS = [
-  // [word, english, pronunciation, category, daysAgo, place]
-  ['Manzana', 'Apple', 'man-SAH-nah', 'food', 0, 'Palo Alto, CA'],
-  ['Taza', 'Cup', 'TAH-sah', 'object', 0, 'Palo Alto, CA'],
-  ['Flor', 'Flower', 'flor', 'nature', 0, 'Menlo Park, CA'],
-  ['Perro', 'Dog', 'PEH-rroh', 'animal', 1, 'San Francisco, CA'],
-  ['Silla', 'Chair', 'SEE-yah', 'object', 1, 'San Francisco, CA'],
-  ['Café', 'Coffee', 'kah-FEH', 'drink', 1, 'San Francisco, CA'],
-  ['Zapato', 'Shoe', 'sah-PAH-toh', 'clothing', 3, 'Mountain View, CA'],
-  ['Árbol', 'Tree', 'AR-bol', 'nature', 3, 'Mountain View, CA'],
-  ['Gato', 'Cat', 'GAH-toh', 'animal', 5, 'Berkeley, CA'],
-  ['Libro', 'Book', 'LEE-broh', 'object', 5, 'Berkeley, CA'],
-  ['Bicicleta', 'Bicycle', 'bee-see-KLEH-tah', 'vehicle', 7, 'Santa Cruz, CA'],
-  ['Pan', 'Bread', 'pahn', 'food', 7, 'Santa Cruz, CA'],
-];
-
-const DEMO_FRIENDS = [
-  { id: '101', name: 'Sarah Chen', avatar: null, streak: 12, wordsToday: 8, pet: { name: 'Mochi', species: 'bunny', outfit: 'bow' } },
-  { id: '102', name: 'Marco Rivera', avatar: null, streak: 45, wordsToday: 5, pet: { name: 'Rocky', species: 'dog', outfit: 'cap' } },
-  { id: '103', name: 'Yuki Tanaka', avatar: null, streak: 7, wordsToday: 3, pet: { name: 'Tofu', species: 'cat', outfit: 'none' } },
-];
+// Sample stickers that an earlier build could seed from the profile screen.
+// The button is gone; this sweeps up whatever it left behind.
+const DEMO_STICKER_PREFIX = 'demo_';
 
 /**
- * Populate the Book (stickers) and Pals (friends) with sample data so the
- * screens can be tested without capturing real photos. Safe to run more than
- * once — demo entries are not duplicated. Dev/testing use only.
+ * Clear data that older versions left on the phone. Idempotent and cheap — it
+ * only writes when it actually finds something — so it is safe to run on
+ * every launch.
+ *
+ * Two things get swept: seeded demo stickers, and the whole local friends
+ * list. That list held people picked out of a hardcoded search — they were
+ * never real accounts, and nothing reads the key any more now that pals come
+ * from Supabase, so leaving it would just be a puzzle for the next person.
  */
-export async function seedDemoData() {
-  // Stickers spread over the past week, rendered with category-icon fallbacks.
+export async function removeDemoData() {
   const stickers = await getStickers();
-  const dailyRaw = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_WORDS);
-  const dailyData = dailyRaw ? JSON.parse(dailyRaw) : {};
-
-  DEMO_STICKERS.forEach(([word, english, pronunciation, category, daysAgo, place], i) => {
-    const id = `demo_${i}`;
-    const existing = stickers.find((s) => s.id === id);
-    if (existing) {
-      if (!existing.location && place) {
-        existing.location = { latitude: null, longitude: null, place };
-      }
-      if (!existing.exampleSentence && DEMO_LEARN[word]) {
-        Object.assign(existing, DEMO_LEARN[word]);
-      }
-      return;
-    }
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    stickers.push({
-      id,
-      imageUri: null,
-      word,
-      english,
-      pronunciation,
-      description: `A common word you will hear every day: "${word}" means ${english.toLowerCase()}.`,
-      category,
-      language: 'es',
-      location: place ? { latitude: null, longitude: null, place } : null,
-      createdAt: date.toISOString(),
-      ...(DEMO_LEARN[word] || {}),
-    });
-    const day = date.toISOString().split('T')[0];
-    dailyData[day] = (dailyData[day] || 0) + 1;
-  });
-
-  stickers.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(stickers));
-  await AsyncStorage.setItem(STORAGE_KEYS.DAILY_WORDS, JSON.stringify(dailyData));
-
-  // Friends for the Pals tab.
-  const friends = await getFriends();
-  for (const friend of DEMO_FRIENDS) {
-    const existing = friends.find((f) => f.id === friend.id);
-    if (existing) {
-      if (!existing.pet) existing.pet = friend.pet;
-    } else {
-      friends.push({ ...friend, addedAt: new Date().toISOString() });
-    }
+  const keptStickers = stickers.filter((s) => !String(s.id).startsWith(DEMO_STICKER_PREFIX));
+  if (keptStickers.length !== stickers.length) {
+    await AsyncStorage.setItem(STORAGE_KEYS.STICKERS, JSON.stringify(keptStickers));
   }
-  await AsyncStorage.setItem(STORAGE_KEYS.FRIENDS, JSON.stringify(friends));
 
-  // A little streak history and pocket money so pet + wardrobe feel alive.
-  const streak = await getStreak();
-  if (streak.current === 0) {
-    const today = new Date().toISOString().split('T')[0];
-    await AsyncStorage.setItem(
-      STORAGE_KEYS.STREAK,
-      JSON.stringify({ current: 3, longest: 5, lastActiveDate: today })
-    );
+  const legacy = await AsyncStorage.multiGet([STORAGE_KEYS.FRIENDS, STORAGE_KEYS.CHEERS]);
+  const stale = legacy.filter(([, value]) => value != null).map(([key]) => key);
+  if (stale.length) await AsyncStorage.multiRemove(stale);
+}
+
+// ==================== Sign out ====================
+
+/**
+ * Erase everything this device knows about the person: profile, collection and
+ * its photos, pals, pet, streak, and coins. There is no account server —
+ * all of it lives on the phone — so signing out is exactly this wipe.
+ *
+ * A paid plan is not lost with it: the entitlement belongs to the Apple ID, so
+ * the App Store sync on next launch (or Restore Purchases) brings it back.
+ */
+export async function signOut() {
+  await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+  if (FileSystem.documentDirectory) {
+    await FileSystem.deleteAsync(STICKER_IMAGE_DIR, { idempotent: true }).catch(() => {});
   }
-  await addCoins(60);
 }
 
 // ==================== Coins ====================
@@ -632,8 +562,7 @@ export async function equipOutfit(outfitId) {
  * Mood ladder:
  *  - happy   : hit today's goal
  *  - content : learned at least one word today (progressing)
- *  - neutral : nothing yet today but streak is alive
- *  - sleepy  : brand new / no activity and no streak
+ *  - sleepy  : nothing learned yet today, streak or no streak
  *  - sad     : had a streak but missed a day (streak broken / at risk)
  */
 export async function getPetState() {
@@ -663,7 +592,8 @@ export async function getPetState() {
   } else if (wordsToday > 0) {
     mood = 'content';
   } else if (streak.current > 0 && activeRecently) {
-    mood = 'neutral';
+    // The day simply hasn't started — the buddy is still asleep, not upset.
+    mood = 'sleepy';
   } else if (streak.current > 0 && !activeRecently) {
     // Had a streak but has been away — the pet misses you.
     mood = 'sad';

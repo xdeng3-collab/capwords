@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Platform, StyleSheet, View, Text } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../config';
+import { COLORS, PET, RADIUS, SHADOW } from '../config';
 import PixelIcon from '../components/PixelIcon';
 
 // Screens
@@ -20,6 +20,12 @@ import FriendProfileScreen from '../screens/FriendProfileScreen';
 import GoalSettingScreen from '../screens/GoalSettingScreen';
 import StickerDetailScreen from '../screens/StickerDetailScreen';
 import WardrobeScreen from '../screens/WardrobeScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
+import LoadingScreen from '../screens/LoadingScreen';
+import AuthScreen from '../screens/AuthScreen';
+import { hasCompletedOnboarding, getPet, removeDemoData } from '../services/storageService';
+import { getMyProfile, onAuthChange, pushProgress } from '../services/accountService';
+import { SessionContext } from './session';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -61,7 +67,22 @@ function FriendsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FriendsMain" component={FriendsScreen} />
       <Stack.Screen name="FriendProfile" component={FriendProfileScreen} />
+      <Stack.Screen name="Auth" component={AuthRoute} options={{ presentation: 'modal' }} />
     </Stack.Navigator>
+  );
+}
+
+/**
+ * AuthScreen as a route. It is written to be host-agnostic (onboarding shows
+ * it inline), so the navigation wiring lives here rather than inside it.
+ */
+function AuthRoute({ navigation, route }) {
+  return (
+    <AuthScreen
+      initialMode={route.params?.mode || 'signin'}
+      onDone={() => navigation.goBack()}
+      onCancel={() => navigation.goBack()}
+    />
   );
 }
 
@@ -69,6 +90,7 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="Auth" component={AuthRoute} options={{ presentation: 'modal' }} />
       <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       <Stack.Screen name="LanguageSelect" component={LanguageSelectScreen} />
       <Stack.Screen name="GoalSetting" component={GoalSettingScreen} />
@@ -176,9 +198,85 @@ const linking = {
 };
 
 export default function AppNavigator() {
+  // null while we are still reading storage — the loading screen covers it.
+  const [onboarded, setOnboarded] = useState(null);
+  const [petName, setPetName] = useState(PET.defaultName);
+  const [settled, setSettled] = useState(false);
+  // The Supabase user, and the profile row that goes with them. Both null
+  // when signed out, which is a perfectly normal way to use the app.
+  const [user, setUser] = useState(null);
+  const [account, setAccount] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      // One-time sweep of the sample data an older build could seed.
+      await removeDemoData().catch(() => {});
+      const [done, pet] = await Promise.all([hasCompletedOnboarding(), getPet()]);
+      setPetName(pet.name);
+      setOnboarded(done);
+    })();
+  }, []);
+
+  // One auth subscription for the whole app. Screens read the result off the
+  // session context instead of each opening their own listener.
+  useEffect(
+    () =>
+      onAuthChange((s) => {
+        const nextUser = s?.user || null;
+        setUser(nextUser);
+        if (!nextUser) {
+          setAccount(null);
+          return;
+        }
+        getMyProfile().then(setAccount);
+        // A returning session may have been away for days; make sure the
+        // numbers pals can see are the ones on this phone.
+        pushProgress();
+      }),
+    []
+  );
+
+  const refreshAccount = useCallback(async () => {
+    const profile = await getMyProfile();
+    setAccount(profile);
+    return profile;
+  }, []);
+
+  const handleSettled = useCallback(() => setSettled(true), []);
+
+  const session = useMemo(
+    () => ({
+      // Storage is already cleared by the time this runs — just show onboarding.
+      signedOut: () => {
+        setPetName(PET.defaultName);
+        setOnboarded(false);
+      },
+      user,
+      account,
+      refreshAccount,
+    }),
+    [user, account, refreshAccount]
+  );
+
+  if (!settled || onboarded === null) {
+    return (
+      <LoadingScreen
+        petName={petName}
+        ready={onboarded !== null}
+        onSettled={handleSettled}
+      />
+    );
+  }
+
+  if (!onboarded) {
+    return <OnboardingScreen onDone={() => setOnboarded(true)} />;
+  }
+
   return (
-    <NavigationContainer linking={linking}>
-      <TabNavigator />
-    </NavigationContainer>
+    <SessionContext.Provider value={session}>
+      <NavigationContainer linking={linking}>
+        <TabNavigator />
+      </NavigationContainer>
+    </SessionContext.Provider>
   );
 }

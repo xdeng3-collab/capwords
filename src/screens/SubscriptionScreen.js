@@ -10,13 +10,21 @@ import {
   Dimensions,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { COLORS, PRICING, RADIUS, SHADOW } from '../config';
+import { COLORS, PRICING, PRODUCT_TO_PLAN, RADIUS, SHADOW } from '../config';
 import PixelIcon from '../components/PixelIcon';
 import {
   getSubscription,
   redeemPromoCode,
   updateSubscription,
 } from '../services/storageService';
+import {
+  getStoreProducts,
+  isBillingAvailable,
+  purchasePlan,
+  restorePurchases,
+  syncEntitlements,
+} from '../services/purchaseService';
+import { useAlert } from '../components/PixelAlert';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -154,40 +162,104 @@ const PromoCard = React.memo(function PromoCard({ subscription, onRedeemed }) {
 });
 
 export default function SubscriptionScreen({ navigation }) {
+  const showAlert = useAlert();
   const [selectedPlan, setSelectedPlan] = useState('monthly');
+  // Which word pack is picked. Only means anything while 'per_word' is the
+  // selected plan; 50 is the middle pack and the best value per word.
+  const [selectedPack, setSelectedPack] = useState(50);
   const [subscription, setSubscription] = useState(null);
+  // App Store prices, keyed by plan. Empty until (and unless) they load.
+  const [storePrices, setStorePrices] = useState({});
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     getSubscription().then(setSubscription).catch(() => {});
+    // Catch up on anything bought elsewhere — another device, or a reinstall.
+    syncEntitlements().then(setSubscription).catch(() => {});
+    getStoreProducts()
+      .then((products) => {
+        const byPlan = {};
+        for (const product of products) {
+          const plan = PRODUCT_TO_PLAN[product.id];
+          if (plan) byPlan[plan] = product.price;
+        }
+        setStorePrices(byPlan);
+      })
+      .catch(() => {});
   }, []);
 
   const handlePurchase = async (plan) => {
-    // In production, this would integrate with App Store / Google Play billing
+    if (busy) return;
+
+    // Per-word packs are not sold through StoreKit yet; keep the existing
+    // local behaviour rather than pretending to charge for them.
     if (plan.id === 'per_word') {
-      // Show word pack selection
+      const pack = plan.packs.find((p) => p.words === selectedPack) || plan.packs[0];
+      const current = await getSubscription();
       await updateSubscription({
         type: 'per_word',
-        wordBalance: 50, // Default pack
+        // Packs stack: buying 50 on top of 12 leftover words leaves 62, rather
+        // than throwing away what they already paid for.
+        wordBalance: (current.wordBalance || 0) + pack.words,
         promoCode: null,
       });
-    } else if (plan.id === 'monthly') {
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 1);
-      await updateSubscription({
-        type: 'monthly',
-        expiresAt: expiresAt.toISOString(),
-        promoCode: null,
-      });
-    } else if (plan.id === 'yearly') {
-      const expiresAt = new Date();
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      await updateSubscription({
-        type: 'yearly',
-        expiresAt: expiresAt.toISOString(),
-        promoCode: null,
-      });
+      navigation.goBack();
+      return;
     }
-    navigation.goBack();
+
+    if (!isBillingAvailable()) {
+      showAlert(
+        'Purchases unavailable',
+        'In-app purchases are not available in this build. Once CapWords is on a paid Apple Developer account you will be able to subscribe here.'
+      );
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await purchasePlan(plan.id);
+      if (result.status === 'purchased') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        navigation.goBack();
+      } else if (result.status === 'pending') {
+        showAlert(
+          'Waiting for approval',
+          'This purchase needs approval before it goes through. Your plan will unlock as soon as it does.'
+        );
+      } else if (result.status === 'unavailable') {
+        showAlert(
+          'Plan unavailable',
+          "That plan isn't available from the App Store right now. Please try again later."
+        );
+      }
+      // 'cancelled' is a deliberate choice, not a problem worth an alert.
+    } catch (error) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      showAlert('Purchase failed', error?.message || 'That purchase could not be completed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // People expect this to be a visible, deliberate action — it can prompt for
+  // an Apple ID password, so it never runs on its own.
+  const handleRestore = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { restored, subscription: restoredSub } = await restorePurchases();
+      setSubscription(restoredSub);
+      showAlert(
+        restored ? 'Purchases restored' : 'Nothing to restore',
+        restored
+          ? 'Your plan is active again on this device.'
+          : "We couldn't find a previous purchase on this Apple ID."
+      );
+    } catch (error) {
+      showAlert('Restore failed', error?.message || 'Your purchases could not be restored.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -234,7 +306,7 @@ export default function SubscriptionScreen({ navigation }) {
               <Text style={styles.planDescription}>{plan.description}</Text>
             </View>
             <View style={styles.planPricing}>
-              <Text style={styles.planPrice}>{plan.price}</Text>
+              <Text style={styles.planPrice}>{storePrices[plan.id] || plan.price}</Text>
               <Text style={styles.planPeriod}>{plan.period}</Text>
             </View>
           </View>
@@ -250,14 +322,33 @@ export default function SubscriptionScreen({ navigation }) {
 
           {plan.packs && (
             <View style={styles.packsContainer}>
-              <Text style={styles.packsTitle}>Word Packs:</Text>
+              <Text style={styles.packsTitle}>PICK A PACK</Text>
               <View style={styles.packsRow}>
-                {plan.packs.map((pack, index) => (
-                  <View key={index} style={styles.packItem}>
-                    <Text style={styles.packWords}>{pack.words}</Text>
-                    <Text style={styles.packPrice}>${pack.price.toFixed(2)}</Text>
-                  </View>
-                ))}
+                {plan.packs.map((pack) => {
+                  const active = selectedPlan === 'per_word' && selectedPack === pack.words;
+                  return (
+                    <TouchableOpacity
+                      key={pack.words}
+                      style={[styles.packItem, active && styles.packItemActive]}
+                      onPress={() => {
+                        Haptics.selectionAsync().catch(() => {});
+                        // Picking a pack is also how you pick this plan —
+                        // tapping a size and then having to tap the card too
+                        // would be a step nobody expects.
+                        setSelectedPlan('per_word');
+                        setSelectedPack(pack.words);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.packWords, active && styles.packTextActive]}>
+                        {pack.words}
+                      </Text>
+                      <Text style={[styles.packPrice, active && styles.packTextActiveSoft]}>
+                        ${pack.price.toFixed(2)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -266,12 +357,22 @@ export default function SubscriptionScreen({ navigation }) {
 
       {/* Purchase Button */}
       <TouchableOpacity
-        style={styles.purchaseButton}
+        style={[styles.purchaseButton, busy && styles.purchaseButtonBusy]}
         onPress={() => handlePurchase(PLANS.find((p) => p.id === selectedPlan))}
+        disabled={busy}
       >
         <Text style={styles.purchaseButtonText}>
-          {selectedPlan === 'per_word' ? 'Buy Word Pack' : 'Subscribe Now'}
+          {busy
+            ? 'Working...'
+            : selectedPlan === 'per_word'
+            ? `Buy ${selectedPack} words`
+            : 'Subscribe Now'}
         </Text>
+      </TouchableOpacity>
+
+      {/* Bought before, or reinstalled? The plan lives on the Apple ID. */}
+      <TouchableOpacity style={styles.restoreButton} onPress={handleRestore} disabled={busy}>
+        <Text style={styles.restoreButtonText}>Restore purchases</Text>
       </TouchableOpacity>
 
       {/* Free tier info */}
@@ -515,11 +616,17 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
   },
+  packItemActive: {
+    backgroundColor: '#E7F0E1',
+    borderColor: COLORS.leafDark,
+  },
   packWords: {
     fontSize: 18,
     fontWeight: '900',
     color: COLORS.primaryDark,
   },
+  packTextActive: { color: '#3F6338' },
+  packTextActiveSoft: { color: COLORS.leafDark },
   packPrice: {
     fontSize: 12,
     color: COLORS.textLight,
@@ -536,6 +643,14 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     alignItems: 'center',
     ...SHADOW.glow,
+  },
+  purchaseButtonBusy: { opacity: 0.6 },
+  restoreButton: { marginTop: 14, alignItems: 'center', paddingVertical: 8 },
+  restoreButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    textDecorationLine: 'underline',
   },
   purchaseButtonText: {
     color: '#FBF3E0',
@@ -557,7 +672,9 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
     fontWeight: '600',
   },
+  // The tab bar floats over the scroll view (66pt tall, 24pt off the bottom),
+  // so the last row needs to clear it or it can only be read mid-scroll.
   bottomPadding: {
-    height: 40,
+    height: 120,
   },
 });
