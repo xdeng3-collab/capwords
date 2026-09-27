@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Port of src/components/PetSprite.js — the same character grids and palettes,
+// Port of src/components/pixel/PetSprite.js — the same character grids and palettes,
 // so the buddy on the home screen is the same buddy that lives in the app.
 // Kept static here: widgets do not animate, so the "boing" is dropped.
 

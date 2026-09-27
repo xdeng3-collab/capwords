@@ -10,7 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COINS } from '../../config';
+import { COINS, ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { EmptyState, PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
 import { useSession } from '../../hooks/useSession';
@@ -24,6 +24,7 @@ import {
   sendFriendRequest,
 } from '../../services/friendService';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
+import { getInitials } from '../../utils/text';
 
 // Long enough that typing "sarah" is one query rather than four, short enough
 // that the results still feel like they are keeping up.
@@ -137,13 +138,10 @@ export default function FriendsScreen({ navigation }) {
     }
   };
 
-  const getAvatarInitials = (name) =>
-    (name || '?').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
-
   const renderFriend = ({ item }) => (
     <TouchableOpacity
       style={styles.friendCard}
-      onPress={() => navigation.navigate('FriendProfile', { friend: item })}
+      onPress={() => navigation.navigate(ROUTES.FRIEND_PROFILE, { friend: item })}
     >
       {item.pet ? (
         <View style={styles.petAvatar}>
@@ -157,7 +155,7 @@ export default function FriendsScreen({ navigation }) {
         </View>
       ) : (
         <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
+          <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
         </View>
       )}
 
@@ -192,7 +190,7 @@ export default function FriendsScreen({ navigation }) {
   const renderSearchResult = ({ item }) => (
     <View style={styles.searchResultCard}>
       <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
+        <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
       </View>
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
@@ -220,7 +218,7 @@ export default function FriendsScreen({ navigation }) {
   const renderRequest = (item) => (
     <View key={item.friendshipId} style={styles.searchResultCard}>
       <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{getAvatarInitials(item.name)}</Text>
+        <Text style={styles.avatarText}>{getInitials(item.name)}</Text>
       </View>
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
@@ -253,7 +251,7 @@ export default function FriendsScreen({ navigation }) {
               label="SIGN IN"
               size="lg"
               style={styles.signInButton}
-              onPress={() => navigation.navigate('Auth')}
+              onPress={() => navigation.navigate(ROUTES.AUTH)}
             />
           }
         />

@@ -13,7 +13,7 @@ module.exports = () => ({
   },
   // containerBackground and the modern widget APIs need iOS 17.
   deploymentTarget: '17.0',
-  // Mirrors COLORS in src/config.js so the widget matches the app.
+  // Mirrors COLORS in src/theme/colors.js so the widget matches the app.
   colors: {
     WidgetBackground: '#F3E9D2',
     WidgetSurface: '#FBF3E0',

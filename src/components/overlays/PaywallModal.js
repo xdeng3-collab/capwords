@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  Easing,
   Modal,
   Pressable,
   StyleSheet,

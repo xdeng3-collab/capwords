@@ -34,7 +34,7 @@ Not yet implemented:
   on-device by expo-speech, and no recordings are uploaded anywhere
 
 ### Subscription & Pricing
-The figures below come from `PRICING` and `IAP_PRODUCTS` in `src/config.js`.
+The figures below come from `PRICING` and `IAP_PRODUCTS` in `src/config/pricing.js`.
 
 - **Free Tier**: 3 words per day
 - **Pay Per Word**: $0.02/word
@@ -142,17 +142,18 @@ Equivalent npm command: `npm run stop`
 ## Design System
 
 A cozy, retro Stardew-Valley-inspired pixel theme. No emojis — every icon and
-the pet are drawn from pixel grids. Shared design tokens live in `src/config.js`
-and reusable components in `src/components/`:
+the pet are drawn from pixel grids. Design tokens live in `src/theme/` and
+reusable components in `src/components/` (import both through their `index.js`):
 
 - `COLORS` — warm parchment/wood retro palette
 - `RADIUS` / `SPACING` / `SHADOW` — near-square corners and hard, offset pixel shadows
 - `CATEGORY_STYLES` — a pixel-icon key + colour per sticker category
-- `PET_MOODS` — mood copy driven by streak + daily progress
-- `PixelSprite.js` — renders any bitmap from a 2D grid of colour keys (no image files)
-- `PetSprite.js` — the original pixel pet with per-mood expressions and idle animation
-- `PixelIcon.js` — pixel-art glyph set used everywhere in place of emojis/vector icons
-- `UI.js` — `PixelPanel`/`Card`, `PixelButton`, `Pill`, `EmptyState`, `ProgressBar` (segmented)
+- `PET_MOODS` (in `src/config/pet.js`) — mood copy driven by streak + daily progress
+- `pixel/PixelSprite` — renders any bitmap from a 2D grid of colour keys (no image files)
+- `pixel/PetSprite` — the original pixel pet with per-mood expressions and idle animation
+- `pixel/PixelIcon` — pixel-art glyph set used everywhere in place of emojis/vector icons
+- `ui/` — `PixelPanel`, `PixelButton`, `BackButton`, `Pill`, `EmptyState`, `ProgressBar` (segmented)
+- `overlays/` — `PixelAlert` (`useAlert`), `PaywallModal`, `StreakCelebration`
 
 ## Troubleshooting
 
@@ -197,45 +198,44 @@ npx expo start --android
 
 ## Project Structure
 
+The code is layered: each folder in `src/` may only import from the folders
+below it in this list, and screens reach storage and the network only through
+`services/`. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the rules and a
+"where does this go?" guide; `npm run check` enforces them.
+
 ```
 capwords/
-├── App.js                        # Entry point
-├── plugins/
-│   └── withFmtConstevalFix.js    # iOS build fix for fmt on Xcode 26+
+├── App.js                  # Expo entry - hands off to src/app
 ├── src/
-│   ├── config.js                 # Design tokens, API keys, pricing
-│   ├── components/
-│   │   ├── UI.js                 # PixelPanel, PixelButton, Pill, EmptyState, ProgressBar
-│   │   ├── PixelSprite.js        # Grid-based bitmap renderer (no image assets)
-│   │   ├── PetSprite.js          # Original pixel pet with per-mood expressions
-│   │   └── PixelIcon.js          # Pixel-art glyph set (replaces emojis/vector icons)
-│   ├── navigation/
-│   │   └── AppNavigator.js       # Pixel tab bar + stacks
-│   ├── screens/
-│   │   ├── PetScreen.js          # Pet home: mood, streak, goal, naming
-│   │   ├── CameraScreen.js       # Photo capture screen
-│   │   ├── StickerResultScreen.js # Word result + pronunciation
-│   │   ├── CollectionScreen.js   # Sticker collection by date
-│   │   ├── StickerDetailScreen.js # Single sticker detail
-│   │   ├── FriendsScreen.js      # Friends list & search
-│   │   ├── FriendProfileScreen.js # View friend's collection
-│   │   ├── ProfileScreen.js      # User profile & settings
-│   │   ├── SubscriptionScreen.js # Pricing & subscription
-│   │   ├── LanguageSelectScreen.js # Language picker
-│   │   └── GoalSettingScreen.js  # Daily goal configuration
-│   └── services/
-│       ├── aiService.js          # DeepSeek API integration
-│       ├── accountService.js     # Sign-in and the progress mirror
-│       ├── friendService.js      # Friend graph (Supabase)
-│       ├── supabase.js           # Supabase client
-│       └── storageService.js     # Local data + pet state
-├── server/
-│   └── index.js                  # API proxy - holds the DeepSeek key
-├── supabase/
-│   └── migrations/               # Accounts, friendships, cheers (+ RLS)
-├── package.json
-├── app.json                      # Expo configuration
-└── babel.config.js
+│   ├── app/                # App shell: lifecycle effects, root + tab navigators, deep links
+│   ├── features/           # Screens, one folder per feature, each with an index.js
+│   │   ├── onboarding/     #   Loading splash, first-run setup
+│   │   ├── auth/           #   Sign in / sign up
+│   │   ├── buddy/          #   Pet home, wardrobe
+│   │   ├── capture/        #   Camera, word result + pronunciation practice
+│   │   ├── collection/     #   Sticker book, sticker detail
+│   │   ├── friends/        #   Pals list + search, pal profile
+│   │   ├── profile/        #   Me tab, daily goal, language picker
+│   │   └── subscription/   #   Plans, promo codes, restore
+│   ├── components/         # Shared presentational UI: pixel/, ui/, overlays/
+│   ├── hooks/              # Shared React hooks (useSession)
+│   ├── services/           # Business rules: collection, progress, pet, wallet,
+│   │                       #   subscription, profile, account, friends, purchases, AI, widget
+│   ├── data/               # On-device persistence: AsyncStorage keys + one store per entity
+│   ├── api/                # Remote clients: Supabase, DeepSeek
+│   ├── utils/              # Pure helpers: day keys, haptics, text
+│   ├── theme/              # Colours, radius/spacing/shadow, category styles
+│   └── config/             # Env, languages, pricing, goals, pet, economy, copy, route names
+├── modules/                # Native Expo modules: shared-store (widget), store-kit (billing)
+├── targets/widget/         # iOS home screen widget (SwiftUI)
+├── server/index.js         # API proxy - holds the DeepSeek key
+├── supabase/               # Migrations (accounts, friendships, cheers + RLS), edge functions
+├── scripts/
+│   ├── check-architecture.js  # `npm run check`
+│   └── test-ai.js             # Live recognition test against the proxy / DeepSeek
+├── plugins/withFmtConstevalFix.js  # iOS build fix for fmt on Xcode 26+
+├── app.json                # Expo configuration
+└── package.json
 ```
 
 ## Daily Goal & Streak

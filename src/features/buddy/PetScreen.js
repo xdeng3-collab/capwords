@@ -9,7 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COINS, PET, PET_MOODS, PET_SPECIES } from '../../config';
+import { COINS, PET, PET_MOODS, PET_SPECIES, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PetSprite, PixelButton, PixelIcon, PixelPanel, ProgressBar } from '../../components';
 import { getPetState, namePet } from '../../services/petService';
@@ -160,14 +160,14 @@ export default function PetScreen({ navigation }) {
           color={COLORS.leaf}
           size="lg"
           style={styles.cta}
-          onPress={() => navigation.navigate('Camera')}
+          onPress={() => navigation.navigate(TABS.CAMERA)}
         />
         <PixelButton
           label="Wardrobe"
           icon="shirt"
           color={COLORS.berry}
           style={styles.wardrobeBtn}
-          onPress={() => navigation.navigate('Wardrobe')}
+          onPress={() => navigation.navigate(ROUTES.WARDROBE)}
         />
       </ScrollView>
 

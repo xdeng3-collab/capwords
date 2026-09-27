@@ -20,8 +20,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
-import { LANGUAGES } from '../../config';
-import { COLORS, RADIUS, SHADOW } from '../../theme';
+import { LANGUAGES, ROUTES, TABS } from '../../config';
+import { COLORS, RADIUS } from '../../theme';
 import { PaywallModal, PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
 import { recognizeAndTranslate, RecognitionFailedError } from '../../services/aiService';
 import { refreshWidget } from '../../services/widgetService';
@@ -140,7 +140,7 @@ export default function CameraScreen({ navigation }) {
   const goToPlans = () => {
     setPaywallVisible(false);
     // Subscription lives in the Profile tab's stack, so navigate through it.
-    navigation.navigate('Profile', { screen: 'Subscription' });
+    navigation.navigate(TABS.PROFILE, { screen: ROUTES.SUBSCRIPTION });
   };
 
   const processImage = async ({ uri, base64 }) => {
@@ -185,7 +185,7 @@ export default function CameraScreen({ navigation }) {
       ]);
       const goalJustReached = count === profile.dailyGoal;
 
-      navigation.navigate('StickerResult', {
+      navigation.navigate(ROUTES.STICKER_RESULT, {
         sticker,
         recognition,
         goalJustReached,
@@ -360,7 +360,7 @@ export default function CameraScreen({ navigation }) {
           style={styles.langButton}
           activeOpacity={0.85}
           onPress={() =>
-            navigation.navigate('LanguageSelect', {
+            navigation.navigate(ROUTES.LANGUAGE_SELECT, {
               current: targetLanguage,
               onSelect: async (code) => {
                 setTargetLanguage(code);

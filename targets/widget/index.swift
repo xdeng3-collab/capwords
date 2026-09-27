@@ -111,7 +111,7 @@ enum WidgetState {
         }
     }
 
-    /// Mirrors PET_MOODS in src/config.js.
+    /// Mirrors PET_MOODS in src/config/pet.js.
     var line: String {
         switch self {
         case .goalHit: return "You hit your goal! I am so proud!"
@@ -205,7 +205,7 @@ struct PixelStar: View {
     }
 }
 
-/// Segmented progress, same geometry as ProgressBar in src/components/UI.js.
+/// Segmented progress, same geometry as ProgressBar in src/components/ui/ProgressBar.js.
 struct PixelPips: View {
     let filled: Int
     let total: Int

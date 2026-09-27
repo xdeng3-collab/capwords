@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { LANGUAGES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PixelIcon } from '../../components';
+import { BackButton, PixelIcon } from '../../components';
 import { selectFeedback } from '../../utils/haptics';
 
 export default function LanguageSelectScreen({ route, navigation }) {
@@ -42,9 +42,7 @@ export default function LanguageSelectScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
-          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>CHOOSE LANGUAGE</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -71,13 +69,6 @@ const styles = StyleSheet.create({
     paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 6,
-  },
-  backButton: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    padding: 8,
   },
   title: { fontSize: 16, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
   headerSpacer: { width: 40 },

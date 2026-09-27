@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   Image,
-  TouchableOpacity,
   ScrollView,
 } from 'react-native';
 import * as Speech from 'expo-speech';
 import { setAudioModeAsync } from 'expo-audio';
 import { format } from 'date-fns';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
-import { PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
+import { BackButton, PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
 import { deleteSticker } from '../../services/collectionService';
 import { refreshWidget } from '../../services/widgetService';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
@@ -64,9 +63,7 @@ export default function StickerDetailScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
-          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>STICKER</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -151,13 +148,6 @@ const styles = StyleSheet.create({
     paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 8,
-  },
-  backButton: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    padding: 8,
   },
   headerTitle: { fontSize: 16, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
   headerSpacer: { width: 40 },

@@ -8,7 +8,14 @@ import {
 } from 'react-native';
 import { MIN_DAILY_GOAL, MAX_DAILY_GOAL } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PixelButton, PixelIcon, PixelPanel, ProgressBar, useAlert } from '../../components';
+import {
+  BackButton,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  ProgressBar,
+  useAlert,
+} from '../../components';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
 import { refreshWidget } from '../../services/widgetService';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
@@ -71,9 +78,7 @@ export default function GoalSettingScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} hitSlop={10}>
-          <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.title}>DAILY GOAL</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -169,13 +174,6 @@ const styles = StyleSheet.create({
     paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 8,
-  },
-  backButton: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    padding: 8,
   },
   title: { fontSize: 16, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
   headerSpacer: { width: 40 },

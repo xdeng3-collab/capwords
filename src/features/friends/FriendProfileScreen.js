@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
+import { BackButton, PetSprite, PixelButton, useAlert } from '../../components';
 import { unfriend } from '../../services/friendService';
 import { successFeedback } from '../../utils/haptics';
 
@@ -56,13 +56,7 @@ export default function FriendProfileScreen({ route, navigation }) {
       {/* Header: friend name sits next to the back button */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            hitSlop={10}
-          >
-            <PixelIcon name="arrowLeft" size={18} color={COLORS.text} />
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} />
           <Text style={styles.headerName} numberOfLines={1}>
             {friend.name}
           </Text>
@@ -138,13 +132,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  backButton: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    padding: 8,
   },
   headerName: {
     flex: 1,

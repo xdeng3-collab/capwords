@@ -32,7 +32,7 @@ const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.EXPO_PUBLIC_DEEPSEEK
 const PORT = process.env.PORT || 3210;
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 // Only these models may be requested through the proxy. These are the two ids
-// DeepSeek actually publishes (GET /v1/models); keep in sync with src/config.js.
+// DeepSeek actually publishes (GET /v1/models); keep in sync with src/config/env.js.
 const ALLOWED_MODELS = new Set(['deepseek-flash', 'deepseek-v4-pro']);
 
 if (!API_KEY) {

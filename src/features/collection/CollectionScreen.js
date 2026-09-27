@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
+import { ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
 import { EmptyState, PixelIcon, PixelPanel, ProgressBar } from '../../components';
 import { getStickersByDate } from '../../services/collectionService';
@@ -80,7 +81,7 @@ export default function CollectionScreen({ navigation }) {
       <TouchableOpacity
         style={styles.stickerItem}
         activeOpacity={0.85}
-        onPress={() => navigation.navigate('StickerDetail', { sticker: item })}
+        onPress={() => navigation.navigate(ROUTES.STICKER_DETAIL, { sticker: item })}
       >
         <View style={styles.stickerImageWrap}>
           {item.imageUri ? (

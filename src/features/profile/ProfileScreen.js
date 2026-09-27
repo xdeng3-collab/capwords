@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LANGUAGES } from '../../config';
+import { LANGUAGES, ROUTES } from '../../config';
 import { COLORS, RADIUS } from '../../theme';
 import { PixelIcon, PixelPanel, useAlert } from '../../components';
 import { useSession } from '../../hooks/useSession';
@@ -26,6 +26,7 @@ import { getPet } from '../../services/petService';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getStreak } from '../../services/progressService';
 import { getSubscription } from '../../services/subscriptionService';
+import { getInitials } from '../../utils/text';
 
 const PLAN_LABELS = {
   free: { title: 'Free Plan', detail: '3 free words each day', icon: 'seed' },
@@ -75,7 +76,7 @@ export default function ProfileScreen({ navigation }) {
       );
       return;
     }
-    navigation.navigate('GoalSetting');
+    navigation.navigate(ROUTES.GOAL_SETTING);
   };
 
   // Ending the session and erasing the phone used to be the same button,
@@ -228,12 +229,7 @@ export default function ProfileScreen({ navigation }) {
       ? `${subscription?.wordBalance ?? 0} words remaining`
       : plan.detail;
 
-  const initials = profile.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(profile.name);
 
   const stats = [
     { label: 'WORDS', value: totalWords, icon: 'book' },
@@ -283,7 +279,7 @@ export default function ProfileScreen({ navigation }) {
       {/* Subscription */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>YOUR PLAN</Text>
-        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('Subscription')}>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(ROUTES.SUBSCRIPTION)}>
           <PixelPanel style={styles.planCard}>
             <View style={styles.planLeft}>
               <View style={styles.iconBadge}>
@@ -313,7 +309,7 @@ export default function ProfileScreen({ navigation }) {
           label={targetLang?.name || 'Choose a language'}
           hint="TARGET LANGUAGE"
           onPress={() =>
-            navigation.navigate('LanguageSelect', {
+            navigation.navigate(ROUTES.LANGUAGE_SELECT, {
               current: profile.targetLanguage,
               onSelect: async (code) => {
                 await updateUserProfile({ targetLanguage: code });
@@ -363,7 +359,7 @@ export default function ProfileScreen({ navigation }) {
               icon="people"
               label="Sign in or make an account"
               hint="KEEP YOUR PALS AND PROGRESS"
-              onPress={() => navigation.navigate('Auth')}
+              onPress={() => navigation.navigate(ROUTES.AUTH)}
             />
           )}
         </View>

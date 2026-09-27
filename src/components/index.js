@@ -11,6 +11,7 @@ export { default as PetSprite, petSpriteHeight, tallestPetSpriteHeight } from '.
 
 // Building blocks for screens.
 export { PixelPanel } from './ui/PixelPanel';
+export { BackButton } from './ui/BackButton';
 export { PixelButton } from './ui/PixelButton';
 export { Pill } from './ui/Pill';
 export { EmptyState } from './ui/EmptyState';

@@ -188,10 +188,10 @@ The Apple button then appears on the auth screen on its own.
 | --- | --- |
 | `migrations/20260901000000_accounts.sql` | Tables, RLS, triggers, and the RPCs the app calls |
 | `migrations/20260927000000_lock_friendship_updates.sql` | Friendship status changes only through the RPCs |
-| `src/services/supabase.js` | The client, session storage, error copy |
+| `src/api/supabaseClient.js` | The client, session storage, error copy |
 | `src/services/accountService.js` | Sign up / in / out, profile, progress push |
 | `src/services/friendService.js` | Search, requests, cheers |
-| `src/screens/AuthScreen.js` | The sign-in UI, used by onboarding and Profile |
+| `src/features/auth/AuthScreen.js` | The sign-in UI, used by onboarding and Profile |
 | `functions/delete-account/` | Account deletion, which needs the service role |
 
 ### Two rules the code keeps
