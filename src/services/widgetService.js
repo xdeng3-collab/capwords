@@ -40,11 +40,10 @@ async function buildThumbnail(imageUri) {
 }
 
 /** Mirrors the mood logic on the Buddy screen so the widget agrees with the app. */
-function moodForProgress(wordsToday, dailyGoal, streak = 0) {
+function moodForProgress(wordsToday, dailyGoal) {
   if (wordsToday >= dailyGoal) return 'happy';
   if (wordsToday > 0) return 'content';
-  if (streak > 0) return 'sad'; // streak on the line
-  return 'sleepy'; // nothing yet — matches the Buddy screen
+  return 'sleepy'; // the day hasn't started yet, streak or no streak
 }
 
 /**
@@ -70,7 +69,7 @@ export async function refreshWidget() {
       petName: pet?.name || 'Your buddy',
       species: pet?.species || 'cat',
       outfit: pet?.equippedOutfit || 'none',
-      mood: moodForProgress(wordsToday, dailyGoal, streak?.current ?? 0),
+      mood: moodForProgress(wordsToday, dailyGoal),
       streak: streak?.current ?? 0,
       bestStreak: streak?.longest ?? 0,
       wordsToday,
