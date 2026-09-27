@@ -36,7 +36,7 @@ export const DEEPSEEK_MODEL = 'deepseek-flash';
 // ==================== Supabase ====================
 // Accounts, the progress mirror friends can see, and the friend graph.
 // The publishable key is designed to ship inside the app bundle - Row Level
-// Security (see supabase/migrations/0001_accounts.sql) is what actually keeps
+// Security (see supabase/migrations/) is what actually keeps
 // one person out of another's rows, not the secrecy of this string.
 // Both empty means "no backend": the app stays fully usable on-device and the
 // account screens hide themselves.

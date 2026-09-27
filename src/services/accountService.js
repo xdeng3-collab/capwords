@@ -9,6 +9,7 @@ import {
   getStickers,
   getStreak,
   getUserProfile,
+  hasCompletedOnboarding,
   updatePet,
   updateUserProfile,
 } from './storageService';
@@ -45,7 +46,7 @@ const RESET_REDIRECT = 'capwords://reset-password';
 
 // ==================== session ====================
 
-/** The signed-in user, or null. Cheap: reads the cached session. */
+/** The signed-in user, or null. Asks the auth server, so a revoked session reads as signed out. */
 export async function getCurrentUser() {
   if (!supabase) return null;
   const { data } = await supabase.auth.getUser();
@@ -352,6 +353,10 @@ export async function setUsername(username) {
  */
 export async function pushProgress() {
   if (!supabase) return { ok: false };
+  // Before setup finishes, everything on this phone is a placeholder - the
+  // default pet, a zero streak. Pushing that would overwrite a returning
+  // account's buddy moments before restoreFromAccount() reads it back.
+  if (!(await hasCompletedOnboarding())) return { ok: false };
   const user = await getCurrentUser();
   if (!user) return { ok: false };
 
@@ -408,13 +413,29 @@ async function afterSignIn(appleName) {
     profile.display_name = appleName;
   }
 
-  await updateUserProfile({
-    name: profile.display_name,
-    targetLanguage: profile.target_language,
-    dailyGoal: profile.daily_goal,
-  });
+  // Signing in during onboarding: leave the phone alone. Onboarding decides
+  // between restoreFromAccount() and the normal questions, and pushes once
+  // it is done.
+  if (!(await hasCompletedOnboarding())) return;
+
+  // A brand new account holds nothing but database defaults ('es', 5 words).
+  // Copying those down would quietly replace the language and goal this
+  // person already chose on the phone, so only an account that has had
+  // progress pushed to it before is worth pulling from.
+  if (hasPushedProgress(profile)) {
+    await updateUserProfile({
+      name: profile.display_name,
+      targetLanguage: profile.target_language,
+      dailyGoal: profile.daily_goal,
+    });
+  }
 
   await pushProgress();
+}
+
+/** words_on is only ever written by pushProgress(), so it marks a used account. */
+function hasPushedProgress(profile) {
+  return Boolean(profile?.words_on);
 }
 
 /**
@@ -431,7 +452,9 @@ async function afterSignIn(appleName) {
  */
 export async function restoreFromAccount() {
   const profile = await getMyProfile();
-  if (!profile) return { ok: false };
+  // Nothing was ever pushed, so the pet and goal up there are just defaults:
+  // let onboarding ask its questions instead.
+  if (!profile || !hasPushedProgress(profile)) return { ok: false };
 
   await updateUserProfile({
     name: profile.display_name,

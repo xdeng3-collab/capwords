@@ -28,6 +28,14 @@ Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server
 Security advisors are clean apart from the expected `SECURITY DEFINER`-callable
 notes on the friend-graph RPCs — that surface is the app's API by design.
 
+Still to do:
+
+- **Apply `migrations/20260927000000_lock_friendship_updates.sql`.** It closes
+  a hole in the first migration: the requester of a friend request could
+  update their own row to `accepted` through the Data API and read the other
+  person's profile without them ever saying yes. `npx supabase db push`, or
+  paste it into the SQL editor.
+
 Still to do by hand in the dashboard (no API for these):
 
 - Add `capwords://auth-callback` **and** `capwords://reset-password` under
@@ -58,12 +66,13 @@ under Settings → Database, and is *not* the same as any of the API keys. Both
 prompts read the value directly from you; neither needs to be written down
 anywhere.
 
-**Or by hand**, if you would rather not deal with the password: paste
-`migrations/20260901000000_accounts.sql` into the SQL editor and run it.
+**Or by hand**, if you would rather not deal with the password: paste each
+file in `migrations/` into the SQL editor and run them in filename order
+(`20260901000000_accounts.sql`, then `20260927000000_lock_friendship_updates.sql`).
 
 https://supabase.com/dashboard/project/bxwifjkinhtxxcelasqe/sql/new
 
-It is written to be re-runnable, so running it twice is harmless.
+They are written to be re-runnable, so running one twice is harmless.
 
 Check it took by confirming three tables exist under Table Editor:
 `profiles`, `friendships`, `cheers`. Then run Supabase's own linter over the
@@ -178,6 +187,7 @@ The Apple button then appears on the auth screen on its own.
 | File | Does |
 | --- | --- |
 | `migrations/20260901000000_accounts.sql` | Tables, RLS, triggers, and the RPCs the app calls |
+| `migrations/20260927000000_lock_friendship_updates.sql` | Friendship status changes only through the RPCs |
 | `src/services/supabase.js` | The client, session storage, error copy |
 | `src/services/accountService.js` | Sign up / in / out, profile, progress push |
 | `src/services/friendService.js` | Search, requests, cheers |

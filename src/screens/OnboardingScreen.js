@@ -25,7 +25,7 @@ import { PixelButton, ProgressBar } from '../components/UI';
 import PixelIcon from '../components/PixelIcon';
 import PetSprite, { tallestPetSpriteHeight } from '../components/PetSprite';
 import { completeOnboarding } from '../services/storageService';
-import { isSupabaseConfigured, restoreFromAccount } from '../services/accountService';
+import { isSupabaseConfigured, pushProgress, restoreFromAccount } from '../services/accountService';
 import AuthScreen from './AuthScreen';
 
 // Welcome, the account offer, and the camera primer sit outside the meter:
@@ -251,6 +251,9 @@ export default function OnboardingScreen({ onDone }) {
         // for itself the first time it is used.
         photoSource: 'camera',
       });
+      // A no-op when signed out. Signed in, it is the first push this phone
+      // makes - pushProgress() holds off until setup is complete.
+      pushProgress();
       onDone?.();
     } finally {
       setSaving(false);
@@ -289,6 +292,9 @@ export default function OnboardingScreen({ onDone }) {
         dailyGoal,
         photoSource,
       });
+      // A no-op when signed out. Signed in, it is the first push this phone
+      // makes - pushProgress() holds off until setup is complete.
+      pushProgress();
       onDone?.();
     } finally {
       setSaving(false);
