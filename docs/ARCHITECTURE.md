@@ -103,7 +103,7 @@ only on programmer error.
 ## Before pushing
 
 ```bash
-npm run check                             # imports resolve, named exports exist, layers respected
+npm run check                             # imports resolve, named exports exist, layers respected, no cycles
 npx expo export --platform ios --output-dir /tmp/capwords-export   # the bundle builds
 ```
 

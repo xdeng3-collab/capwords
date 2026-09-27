@@ -9,6 +9,8 @@
  *    not check this - a misspelt name bundles fine and is `undefined` at
  *    runtime - so this is the check that makes moving code around safe.
  * 3. Imports only point down the layer stack described in docs/ARCHITECTURE.md.
+ * 4. There are no import cycles. Services call each other, and a cycle there
+ *    can hand a module `undefined` for an import at load time.
  *
  * Exits non-zero on any violation so it can gate CI or a pre-commit hook.
  */
@@ -142,6 +144,7 @@ function exportsOf(file, seen = new Set()) {
 function check() {
   const files = [...listFiles(SRC), path.join(ROOT, 'App.js')];
   const problems = [];
+  const graph = new Map(); // file -> files it imports
 
   for (const file of files) {
     const src = fs.readFileSync(file, 'utf8');
@@ -167,6 +170,8 @@ function check() {
         problems.push(`${from}: cannot resolve '${spec}'`);
         continue;
       }
+      if (!graph.has(file)) graph.set(file, []);
+      graph.get(file).push(target);
 
       // Named bindings must exist on the target.
       const available = exportsOf(target);
@@ -202,7 +207,32 @@ function check() {
     }
   }
 
+  const cycles = findCycles(graph).map((c) => c.map((f) => path.relative(ROOT, f)).join(' -> '));
+  [...new Set(cycles)].forEach((cycle) => problems.push(`import cycle: ${cycle}`));
+
   return { files: files.length, problems };
+}
+
+function findCycles(graph) {
+  const cycles = [];
+  const done = new Set();
+  const stack = [];
+  const onStack = new Set();
+
+  const visit = (node) => {
+    stack.push(node);
+    onStack.add(node);
+    for (const next of graph.get(node) || []) {
+      if (onStack.has(next)) cycles.push([...stack.slice(stack.indexOf(next)), next]);
+      else if (!done.has(next)) visit(next);
+    }
+    stack.pop();
+    onStack.delete(node);
+    done.add(node);
+  };
+
+  [...graph.keys()].forEach((node) => done.has(node) || visit(node));
+  return cycles;
 }
 
 const { files, problems } = check();
@@ -211,4 +241,4 @@ if (problems.length) {
   problems.forEach((p) => console.error(`  - ${p}`));
   process.exit(1);
 }
-console.log(`Architecture check passed: ${files} files, imports resolve and respect the layers.`);
+console.log(`Architecture check passed: ${files} files, imports resolve, respect the layers, and form no cycles.`);
