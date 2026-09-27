@@ -41,3 +41,9 @@ targets/*/Assets.xcassets/
 
 # Design handoffs dropped into the repo root
 widgets.zip
+
+# Claude Code
+# Vendored skill docs are reinstallable from skills-lock.json (`npx skills add`),
+# and settings.local.json is per-developer. The shared MCP server list in
+# .mcp.json and the lockfile itself are committed.
+.claude/
