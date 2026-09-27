@@ -1,13 +1,10 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
 import SharedStore from '../../modules/shared-store';
-import {
-  getPet,
-  getStickers,
-  getStreak,
-  getUserProfile,
-  getDailyWordCount,
-} from './storageService';
+import { getStickers } from './collectionService';
+import { getPet } from './petService';
+import { getUserProfile } from './profileService';
+import { getDailyWordCount, getStreak } from './progressService';
 
 /**
  * Feeds the home screen widget. App Groups — the usual way to share a

@@ -1,18 +1,18 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Platform } from 'react-native';
 import { APPLE_SIGN_IN_ENABLED } from '../config';
-import { supabase, isSupabaseConfigured, friendlyError } from './supabase';
 import {
-  getCoins,
-  getDailyWordCount,
-  getPet,
-  getStickers,
-  getStreak,
-  getUserProfile,
-  hasCompletedOnboarding,
-  updatePet,
-  updateUserProfile,
-} from './storageService';
+  friendlyError,
+  isSupabaseConfigured,
+  startSessionAutoRefresh,
+  supabase,
+} from '../api/supabaseClient';
+import { getStickers } from './collectionService';
+import { getPet, updatePet } from './petService';
+import { getUserProfile, hasCompletedOnboarding, updateUserProfile } from './profileService';
+import { getDailyWordCount, getStreak } from './progressService';
+import { getCoins } from './walletService';
+import { todayKey } from '../utils/date';
 
 /**
  * The user's CapWords account.
@@ -381,7 +381,7 @@ export async function pushProgress() {
         longest_streak: streak.longest,
         total_words: stickers.length,
         words_today: wordsToday,
-        words_on: new Date().toISOString().split('T')[0],
+        words_on: todayKey(),
         coins: coins.balance,
         pet_name: pet.name,
         pet_species: pet.species,
@@ -493,7 +493,7 @@ export async function restoreFromAccount() {
  * so there is nothing here that could ask it to delete somebody else.
  *
  * Only the account. The words and photos on this phone are erased separately
- * by storageService.signOut - the caller does both.
+ * by deviceDataService.eraseDeviceData - the caller does both.
  */
 export async function deleteAccount() {
   if (!supabase) return NO_BACKEND;
@@ -519,7 +519,7 @@ export async function deleteAccount() {
  * End the session only. The on-device collection is untouched, which is the
  * whole point of having an account: log out, log back in, everything is still
  * here. The old "log out wipes the phone" behaviour lives on as
- * storageService.signOut, which the Profile screen now offers separately as
+ * deviceDataService.eraseDeviceData, which the Profile screen offers separately as
  * an explicit erase.
  */
 export async function signOutAccount() {
@@ -529,4 +529,5 @@ export async function signOutAccount() {
   return { ok: true };
 }
 
-export { isSupabaseConfigured };
+// Re-exported so the app shell and screens never reach into api/ directly.
+export { isSupabaseConfigured, startSessionAutoRefresh };

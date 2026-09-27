@@ -1,4 +1,4 @@
-import { supabase, friendlyError } from './supabase';
+import { supabase, friendlyError } from '../api/supabaseClient';
 import { getCurrentUser } from './accountService';
 
 /**

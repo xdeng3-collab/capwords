@@ -1,6 +1,6 @@
 import StoreKitBilling from '../../modules/store-kit';
 import { IAP_PRODUCTS, PRODUCT_TO_PLAN } from '../config';
-import { getSubscription, updateSubscription } from './storageService';
+import { getSubscription, updateSubscription } from './subscriptionService';
 
 // The plans StoreKit knows about. A promo-code 'unlimited' grant is ours, not
 // Apple's, so it is never touched by anything in this file.

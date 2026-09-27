@@ -28,6 +28,11 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+// 'x' may name a file (x.js) or a folder with an index.js, as in the app.
+function resolveAppPath(relPath) {
+  return fs.existsSync(path.join(ROOT, `${relPath}.js`)) ? `${relPath}.js` : path.join(relPath, 'index.js');
+}
+
 // Require the app's ES modules through babel so we test the real code.
 function loadAppModule(relPath) {
   const file = path.join(ROOT, relPath);
@@ -39,7 +44,7 @@ function loadAppModule(relPath) {
   const mod = { exports: {} };
   const fn = new Function('module', 'exports', 'require', code);
   fn(mod, mod.exports, (id) =>
-    id.startsWith('.') ? loadAppModule(path.join(path.dirname(relPath), id) + '.js') : require(id)
+    id.startsWith('.') ? loadAppModule(resolveAppPath(path.join(path.dirname(relPath), id))) : require(id)
   );
   return mod.exports;
 }
@@ -62,7 +67,7 @@ const REQUIRED_FIELDS = ['word', 'pronunciation', 'english', 'exampleSentence', 
 
 async function main() {
   const { recognizeAndTranslate } = loadAppModule('src/services/aiService.js');
-  const config = loadAppModule('src/config.js');
+  const config = loadAppModule('src/config/index.js');
 
   // Either route works: through the proxy (no key on this side) or straight to
   // DeepSeek with a key. Only the case where neither is configured is an error.
