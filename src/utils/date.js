@@ -21,6 +21,17 @@ export function yesterdayKey() {
   return dayKey(date);
 }
 
+/**
+ * The person's own calendar day ('YYYY-MM-DD' in local time), for display
+ * only - grouping the sticker book, "today" / "yesterday" labels. Never use it
+ * for anything counted; see dayKey() above for why those are UTC.
+ */
+export function localDayKey(date = new Date()) {
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** Whole and fractional days between two dates (b - a). */
 export function daysBetween(a, b) {
   return (new Date(b) - new Date(a)) / (1000 * 60 * 60 * 24);

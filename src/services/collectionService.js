@@ -5,6 +5,7 @@ import {
   resolveStickerImage,
   writeStickers,
 } from '../data/stickerStore';
+import { localDayKey } from '../utils/date';
 import { recordWordLearned } from './progressService';
 
 /**
@@ -41,12 +42,17 @@ export async function getStickers() {
   return stickers.map((s) => ({ ...s, imageUri: resolveStickerImage(s.imageUri) }));
 }
 
-/** Stickers grouped by the day they were learned: [{ date, items }], newest day first. */
+/**
+ * Stickers grouped by the local calendar day they were learned:
+ * [{ date, items }], newest day first. Local, not UTC, because this is what
+ * the Book labels "Today" / "Yesterday" - a word snapped at 7am in Beijing is
+ * still yesterday in UTC.
+ */
 export async function getStickersByDate() {
   const stickers = await getStickers();
   const grouped = {};
   stickers.forEach((sticker) => {
-    const date = sticker.createdAt.split('T')[0];
+    const date = localDayKey(sticker.createdAt);
     (grouped[date] = grouped[date] || []).push(sticker);
   });
   return Object.entries(grouped)
