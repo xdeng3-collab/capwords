@@ -12,7 +12,7 @@ import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PetSprite, PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
 import { refreshWidget } from '../../services/widgetService';
 import { buyOutfit, equipOutfit, getPetState, setPetSpecies } from '../../services/petService';
-import { addCoins } from '../../services/walletService';
+import { arePacksForSale, buyCoinPack } from '../../services/purchaseService';
 import { selectFeedback, successFeedback, tapFeedback } from '../../utils/haptics';
 
 export default function WardrobeScreen({ navigation }) {
@@ -93,7 +93,13 @@ export default function WardrobeScreen({ navigation }) {
   };
 
   const handleCoinPack = async (pack) => {
-    // In production this would go through App Store / Google Play billing.
+    if (!arePacksForSale()) {
+      showAlert(
+        'Coin packs coming soon',
+        `Coin packs can't be bought in this version yet. Learn words to earn coins - ${COINS.perWord} per word, plus a ${COINS.goalBonus} coin bonus for hitting your goal.`
+      );
+      return;
+    }
     showAlert(
       'Buy coins',
       `Get ${pack.coins} coins for $${pack.price.toFixed(2)}?`,
@@ -102,7 +108,8 @@ export default function WardrobeScreen({ navigation }) {
         {
           text: 'Buy',
           onPress: async () => {
-            await addCoins(pack.coins);
+            const result = await buyCoinPack(pack.coins);
+            if (result.status !== 'purchased') return;
             successFeedback();
             load();
           },
