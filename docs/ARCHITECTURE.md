@@ -60,13 +60,14 @@ The two rules that matter most:
 
 | Service                  | Owns                                                                 |
 | ------------------------ | -------------------------------------------------------------------- |
+| `learningService`        | "A word was learned" end to end: save, charge, widget, pals mirror    |
 | `collectionService`      | Stickers: save (which counts the word), list, group by day, delete   |
 | `progressService`        | Words per day, the streak, and what happens when a word is learned   |
 | `petService`             | Name, species, outfits, and the mood ladder (`derivePetMood` is pure) |
 | `walletService`          | Coins, daily gift, practice bonus                                    |
 | `profileService`         | Local profile, onboarding state, goal-change cooldown                |
 | `subscriptionService`    | Daily allowance, per-word balance, promo codes                       |
-| `purchaseService`        | StoreKit: products, purchases, entitlements -> subscription          |
+| `purchaseService`        | StoreKit subscriptions; word/coin packs (dev builds only until they have App Store products) |
 | `accountService`         | Supabase auth, the profile row, the progress mirror pals can read    |
 | `friendService`          | Pals: search, requests, cheers (all via RPCs)                        |
 | `aiService`              | Recognition and pronunciation prompts, parsing the answers           |
@@ -100,10 +101,20 @@ only on programmer error.
   `services/petService.js`, `moodForProgress` in `services/widgetService.js`,
   and `WidgetState` in `targets/widget/index.swift`.
 
+## Tests
+
+Service rules are unit tested with Jest (`jest-expo` preset) in
+`src/services/__tests__/`. AsyncStorage is an in-memory mock, the app's own
+native modules resolve to null (as they do in Expo Go), and the suite runs in
+Asia/Shanghai so UTC and local days differ - see `jest.config.js` and
+`test/`. When you change a rule - the streak, the free limit, a price, the mood
+ladder - change or add the test that pins it.
+
 ## Before pushing
 
 ```bash
-npm run check                             # imports resolve, named exports exist, layers respected, no cycles
+npm run check    # imports resolve, named exports exist, layers respected, no cycles
+npm test         # service rules
 npx expo export --platform ios --output-dir /tmp/capwords-export   # the bundle builds
 ```
 

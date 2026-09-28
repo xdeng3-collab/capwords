@@ -11,5 +11,7 @@ moving code: `src/` is layered and imports only point down the stack.
   `src/data/storage.js` are never renamed.
 - Run `npm run check` after any change that adds, moves or renames an import.
   It catches misspelt named imports, which Metro bundles as `undefined`.
+- Run `npm test` after changing a service. Business rules (streak, free limit,
+  coins, mood, packs) are pinned by tests in `src/services/__tests__/`.
 - Native builds (StoreKit, Supabase auth, the widget) cannot run in this
   environment; `npx expo export --platform ios` is the bundling check.

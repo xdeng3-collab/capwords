@@ -24,13 +24,11 @@ import { LANGUAGES, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS } from '../../theme';
 import { PaywallModal, PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
 import { recognizeAndTranslate, RecognitionFailedError } from '../../services/aiService';
-import { refreshWidget } from '../../services/widgetService';
-import { pushProgress } from '../../services/accountService';
-import { saveSticker } from '../../services/collectionService';
+import { recordLearnedWord } from '../../services/learningService';
 import { getPet } from '../../services/petService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
-import { getDailyWordCount, getStreak } from '../../services/progressService';
-import { canLearnWord, consumeWord } from '../../services/subscriptionService';
+import { getDailyWordCount } from '../../services/progressService';
+import { canLearnWord } from '../../services/subscriptionService';
 import { pressFeedback, selectFeedback } from '../../utils/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -149,60 +147,53 @@ export default function CameraScreen({ navigation }) {
     try {
       const langName =
         LANGUAGES.find((l) => l.code === targetLanguage)?.name || targetLanguage;
-      // Recognize the word and grab the location at the same time.
-      const [recognition, location] = await Promise.all([
-        recognizeAndTranslate(base64, langName),
-        captureLocation(),
-      ]);
 
-      const sticker = await saveSticker({
-        imageUri: uri,
-        word: recognition.word,
-        pronunciation: recognition.pronunciation,
-        english: recognition.english,
-        description: recognition.description,
-        category: recognition.category,
-        exampleSentence: recognition.exampleSentence,
-        sentenceTranslation: recognition.sentenceTranslation,
-        funFact: recognition.funFact,
-        language: targetLanguage,
-        location,
-      });
+      // Step 1: recognise. Nothing is saved or charged until this succeeds.
+      let recognition;
+      let location;
+      try {
+        [recognition, location] = await Promise.all([
+          recognizeAndTranslate(base64, langName),
+          captureLocation(),
+        ]);
+      } catch (error) {
+        // Say plainly that the word was not used — a failed snap that
+        // silently costs a word is the thing people notice and resent.
+        console.error('Recognition failed', error);
+        const couldNotSee = error instanceof RecognitionFailedError;
+        showAlert(
+          couldNotSee ? "Couldn't read that one" : 'Something went wrong',
+          couldNotSee
+            ? "We couldn't work out what's in the photo. Try getting closer, or finding better light.\n\nThis one is free — no word was used."
+            : "We couldn't reach the word service. Check your connection and try again.\n\nThis one is free — no word was used."
+        );
+        return;
+      }
 
-      await consumeWord();
-      await loadProfile();
-      // New word, new streak, new buddy mood — push it to the home screen.
-      refreshWidget();
-      // ...and to the account, so pals see today's count. Not awaited: a slow
-      // or missing network must never hold up the reward screen.
-      pushProgress();
-
-      // Celebrate when this word is the one that completes the daily goal.
-      const [profile, count, streakData] = await Promise.all([
-        getUserProfile(),
-        getDailyWordCount(),
-        getStreak(),
-      ]);
-      const goalJustReached = count === profile.dailyGoal;
-
-      navigation.navigate(ROUTES.STICKER_RESULT, {
-        sticker,
-        recognition,
-        goalJustReached,
-        streak: streakData.current,
-      });
-    } catch (error) {
-      // Nothing was saved and consumeWord() never ran, so the user still has
-      // the word. Say so plainly — a failed snap that silently costs a word is
-      // the thing people notice and resent.
-      console.error('Recognition failed', error);
-      const couldNotSee = error instanceof RecognitionFailedError;
-      showAlert(
-        couldNotSee ? "Couldn't read that one" : 'Something went wrong',
-        couldNotSee
-          ? "We couldn't work out what's in the photo. Try getting closer, or finding better light.\n\nThis one is free — no word was used."
-          : "We couldn't reach the word service. Check your connection and try again.\n\nThis one is free — no word was used."
-      );
+      // Step 2: keep it. Past this point the word may already be saved, so a
+      // failure must not claim the word was free.
+      try {
+        const { sticker, goalJustReached, streak } = await recordLearnedWord({
+          recognition,
+          imageUri: uri,
+          language: targetLanguage,
+          location,
+        });
+        // No reload here: coming back from the result screen refocuses this
+        // one, and the focus effect reloads today's count.
+        navigation.navigate(ROUTES.STICKER_RESULT, {
+          sticker,
+          recognition,
+          goalJustReached,
+          streak,
+        });
+      } catch (error) {
+        console.error('Saving the word failed', error);
+        showAlert(
+          'Something went wrong',
+          `We recognised "${recognition.word}" but hit a problem saving it. Check your Book before trying again.`
+        );
+      }
     } finally {
       setIsProcessing(false);
       setCapturedUri(null);

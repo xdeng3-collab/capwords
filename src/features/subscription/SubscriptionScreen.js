@@ -12,12 +12,9 @@ import {
 import { PRICING, PRODUCT_TO_PLAN } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PixelIcon, useAlert } from '../../components';
+import { getSubscription, redeemPromoCode } from '../../services/subscriptionService';
 import {
-  getSubscription,
-  redeemPromoCode,
-  updateSubscription,
-} from '../../services/subscriptionService';
-import {
+  buyWordPack,
   getStoreProducts,
   isBillingAvailable,
   purchasePlan,
@@ -191,19 +188,17 @@ export default function SubscriptionScreen({ navigation }) {
   const handlePurchase = async (plan) => {
     if (busy) return;
 
-    // Per-word packs are not sold through StoreKit yet; keep the existing
-    // local behaviour rather than pretending to charge for them.
     if (plan.id === 'per_word') {
       const pack = plan.packs.find((p) => p.words === selectedPack) || plan.packs[0];
-      const current = await getSubscription();
-      await updateSubscription({
-        type: 'per_word',
-        // Packs stack: buying 50 on top of 12 leftover words leaves 62, rather
-        // than throwing away what they already paid for.
-        wordBalance: (current.wordBalance || 0) + pack.words,
-        promoCode: null,
-      });
-      navigation.goBack();
+      const result = await buyWordPack(pack.words);
+      if (result.status === 'purchased') {
+        navigation.goBack();
+      } else {
+        showAlert(
+          'Word packs coming soon',
+          "Word packs can't be bought in this version yet. A monthly or yearly plan unlocks unlimited words today."
+        );
+      }
       return;
     }
 

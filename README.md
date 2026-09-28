@@ -230,6 +230,7 @@ capwords/
 ├── targets/widget/         # iOS home screen widget (SwiftUI)
 ├── server/index.js         # API proxy - holds the DeepSeek key
 ├── supabase/               # Migrations (accounts, friendships, cheers + RLS), edge functions
+├── test/                   # Jest setup (`npm test`); tests live in src/services/__tests__
 ├── scripts/
 │   ├── check-architecture.js  # `npm run check`
 │   └── test-ai.js             # Live recognition test against the proxy / DeepSeek

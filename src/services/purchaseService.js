@@ -1,10 +1,46 @@
 import StoreKitBilling from '../../modules/store-kit';
 import { IAP_PRODUCTS, PRODUCT_TO_PLAN } from '../config';
 import { getSubscription, updateSubscription } from './subscriptionService';
+import { addCoins } from './walletService';
 
 // The plans StoreKit knows about. A promo-code 'unlimited' grant is ours, not
 // Apple's, so it is never touched by anything in this file.
 const STORE_PLANS = ['monthly', 'yearly'];
+
+// ==================== Packs (consumables) ====================
+//
+// Word packs and coin packs have no App Store products yet, so there is no way
+// to actually charge for them. Until there is, development builds hand them
+// out (so the flows can be tested) and release builds refuse - a "Buy" button
+// that grants for free would let anyone skip the daily limit forever.
+// Wire these to StoreKit consumables before turning them on.
+
+export function arePacksForSale() {
+  return __DEV__;
+}
+
+/** Add a word pack to the balance. Returns { status: 'purchased' | 'unavailable' }. */
+export async function buyWordPack(words) {
+  if (!arePacksForSale()) return { status: 'unavailable' };
+  const current = await getSubscription();
+  await updateSubscription({
+    type: 'per_word',
+    // Packs stack: buying 50 on top of 12 leftover words leaves 62, rather
+    // than throwing away what they already paid for.
+    wordBalance: (current.wordBalance || 0) + words,
+    promoCode: null,
+  });
+  return { status: 'purchased' };
+}
+
+/** Add a coin pack to the wallet. Returns { status: 'purchased' | 'unavailable' }. */
+export async function buyCoinPack(coins) {
+  if (!arePacksForSale()) return { status: 'unavailable' };
+  await addCoins(coins);
+  return { status: 'purchased' };
+}
+
+// ==================== Subscriptions (StoreKit) ====================
 
 /** Whether real billing is wired up in this build. */
 export function isBillingAvailable() {
