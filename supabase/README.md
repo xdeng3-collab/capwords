@@ -11,7 +11,7 @@ Everything a person actually *makes* — the words, the photos, the collection �
 stays on the phone. Signing out no longer erases it; that is now a separate,
 clearly-labelled "Erase everything on this phone" button.
 
-## Status (2026-09-01)
+## Status (2026-09-28)
 
 Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server:
 
@@ -24,17 +24,20 @@ Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server
   accept / cheer (with once-per-day dedup) / unfriend all work; RLS keeps a
   non-friend from reading another profile row; deleting the auth user cascades
   the profile, friendships, and cheers away.
+- **Friendship updates locked down (2026-09-28)** —
+  `migrations/20260927000000_lock_friendship_updates.sql` was run by hand in
+  the SQL editor, so it is not in `supabase_migrations` (a later `db push`
+  re-runs it harmlessly). Verified: no UPDATE policy on `friendships`, and
+  `authenticated` has no UPDATE privilege on it.
 
-Security advisors are clean apart from the expected `SECURITY DEFINER`-callable
-notes on the friend-graph RPCs — that surface is the app's API by design.
-
-Still to do:
-
-- **Apply `migrations/20260927000000_lock_friendship_updates.sql`.** It closes
-  a hole in the first migration: the requester of a friend request could
-  update their own row to `accepted` through the Data API and read the other
-  person's profile without them ever saying yes. `npx supabase db push`, or
-  paste it into the SQL editor.
+Security advisors are clean apart from:
+- the expected `SECURITY DEFINER`-callable notes on the friend-graph RPCs, which
+  are the app's API by design;
+- `rls_auto_enable()`, Supabase's own event-trigger function for auto-enabling
+  RLS. Postgres refuses to call an event-trigger function directly, so the RPC
+  endpoint it flags cannot run it;
+- **leaked password protection is off.** Turn it on under Authentication ->
+  Password security before launch.
 
 Still to do by hand in the dashboard (no API for these):
 
