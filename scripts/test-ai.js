@@ -10,7 +10,8 @@
  *   node scripts/test-ai.js                 # test all sample images, Spanish
  *   node scripts/test-ai.js path/to/img.jpg Japanese
  *
- * Requires EXPO_PUBLIC_DEEPSEEK_API_KEY in .env (loaded automatically).
+ * Requires either EXPO_PUBLIC_API_URL (the proxy) or EXPO_PUBLIC_DEEPSEEK_API_KEY
+ * in .env (loaded automatically).
  */
 const fs = require('fs');
 const path = require('path');
@@ -27,6 +28,11 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+// 'x' may name a file (x.js) or a folder with an index.js, as in the app.
+function resolveAppPath(relPath) {
+  return fs.existsSync(path.join(ROOT, `${relPath}.js`)) ? `${relPath}.js` : path.join(relPath, 'index.js');
+}
+
 // Require the app's ES modules through babel so we test the real code.
 function loadAppModule(relPath) {
   const file = path.join(ROOT, relPath);
@@ -38,7 +44,7 @@ function loadAppModule(relPath) {
   const mod = { exports: {} };
   const fn = new Function('module', 'exports', 'require', code);
   fn(mod, mod.exports, (id) =>
-    id.startsWith('.') ? loadAppModule(path.join(path.dirname(relPath), id) + '.js') : require(id)
+    id.startsWith('.') ? loadAppModule(resolveAppPath(path.join(path.dirname(relPath), id))) : require(id)
   );
   return mod.exports;
 }
@@ -61,12 +67,16 @@ const REQUIRED_FIELDS = ['word', 'pronunciation', 'english', 'exampleSentence', 
 
 async function main() {
   const { recognizeAndTranslate } = loadAppModule('src/services/aiService.js');
-  const config = loadAppModule('src/config.js');
+  const config = loadAppModule('src/config/index.js');
 
-  if (!config.DEEPSEEK_API_KEY) {
-    console.error('FAIL: EXPO_PUBLIC_DEEPSEEK_API_KEY is not set (.env missing?)');
+  // Either route works: through the proxy (no key on this side) or straight to
+  // DeepSeek with a key. Only the case where neither is configured is an error.
+  if (!config.API_PROXY_URL && !config.DEEPSEEK_API_KEY) {
+    console.error('FAIL: set EXPO_PUBLIC_API_URL to the proxy, or');
+    console.error('EXPO_PUBLIC_DEEPSEEK_API_KEY to call DeepSeek directly.');
     process.exit(1);
   }
+  console.log(config.API_PROXY_URL ? `Via proxy: ${config.API_PROXY_URL}` : 'Direct to DeepSeek');
   console.log(`Vision model: ${config.DEEPSEEK_VISION_MODEL}`);
 
   const [customImage, language = 'Spanish'] = process.argv.slice(2);

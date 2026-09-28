@@ -1,0 +1,213 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { COLORS, RADIUS, SHADOW } from '../../theme';
+import { PixelButton } from '../ui/PixelButton';
+import { warningFeedback } from '../../utils/haptics';
+
+const AlertContext = createContext(() => {});
+
+/**
+ * Drop-in replacement for React Native's Alert.alert that renders in the app's
+ * pixel style instead of the system dialog. Call signature matches Alert.alert:
+ *
+ *   const showAlert = useAlert();
+ *   showAlert('Title', 'Message', [{ text: 'Cancel', style: 'cancel' }, { text: 'OK', onPress }]);
+ *
+ * Buttons render filled, with any `style: 'cancel'` button as the quiet text
+ * action underneath. Tapping the backdrop or the X runs the cancel button.
+ *
+ * A fourth argument turns it into a prompt, the way Alert.prompt does on iOS.
+ * Each button's onPress then receives the typed text:
+ *
+ *   showAlert('Username', 'How pals find you', buttons,
+ *             { prompt: true, defaultValue: 'pip', placeholder: 'username' });
+ */
+export function useAlert() {
+  return useContext(AlertContext);
+}
+
+export function AlertProvider({ children }) {
+  const [alertState, setAlertState] = useState(null);
+  const pop = useRef(new Animated.Value(0)).current;
+
+  const [input, setInput] = useState('');
+
+  const showAlert = useCallback(
+    (title, message, buttons, options) => {
+      const list = buttons?.length ? buttons : [{ text: 'OK' }];
+      pop.setValue(0);
+      setInput(options?.defaultValue ?? '');
+      setAlertState({ title, message, buttons: list, options: options || null });
+      Animated.spring(pop, {
+        toValue: 1,
+        friction: 6,
+        tension: 90,
+        useNativeDriver: true,
+      }).start();
+      warningFeedback();
+    },
+    [pop]
+  );
+
+  // The typed text is read before the state is torn down, so a handler that
+  // uses it does not race the close.
+  const dismiss = useCallback(
+    (button) => {
+      const typed = input;
+      setAlertState(null);
+      button?.onPress?.(typed);
+    },
+    [input]
+  );
+
+  // Backdrop / hardware back behaves like the cancel button when there is one.
+  const handleBackdrop = useCallback(() => {
+    const cancel = alertState?.buttons.find((b) => b.style === 'cancel');
+    dismiss(cancel);
+  }, [alertState, dismiss]);
+
+  const value = useMemo(() => showAlert, [showAlert]);
+  const filled = alertState?.buttons.filter((b) => b.style !== 'cancel') ?? [];
+  const cancel = alertState?.buttons.find((b) => b.style === 'cancel');
+  const translateY = pop.interpolate({ inputRange: [0, 1], outputRange: [30, 0] });
+
+  // Rendered as an in-tree overlay rather than a <Modal>. iOS silently drops a
+  // modal presentation that starts while another sheet is still dismissing, so
+  // an alert raised right after the image picker closes never appeared.
+  useEffect(() => {
+    if (!alertState || Platform.OS !== 'android') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackdrop();
+      return true;
+    });
+    return () => sub.remove();
+  }, [alertState, handleBackdrop]);
+
+  return (
+    <AlertContext.Provider value={value}>
+      <View style={styles.root}>
+        {children}
+        {alertState ? (
+        <Pressable style={[StyleSheet.absoluteFill, styles.backdrop]} onPress={handleBackdrop}>
+          {/* Swallow taps on the card so only the backdrop dismisses. */}
+          <Pressable onPress={() => {}}>
+            <Animated.View
+              style={[styles.card, { opacity: pop, transform: [{ scale: pop }, { translateY }] }]}
+            >
+              {alertState?.title ? (
+                <Text style={styles.title}>{alertState.title.toUpperCase()}</Text>
+              ) : null}
+              {alertState?.message ? (
+                <Text style={styles.message}>{alertState.message}</Text>
+              ) : null}
+
+              {alertState?.options?.prompt ? (
+                <TextInput
+                  style={styles.input}
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder={alertState.options.placeholder}
+                  placeholderTextColor={COLORS.textMuted}
+                  autoCapitalize={alertState.options.autoCapitalize || 'none'}
+                  autoCorrect={false}
+                  maxLength={alertState.options.maxLength || 40}
+                  autoFocus
+                />
+              ) : null}
+
+              <View style={styles.buttons}>
+                {filled.map((button, index) => (
+                  <PixelButton
+                    key={button.text ?? index}
+                    label={button.text}
+                    color={button.style === 'destructive' ? COLORS.danger : COLORS.primary}
+                    onPress={() => dismiss(button)}
+                    size="lg"
+                    style={styles.button}
+                  />
+                ))}
+                {cancel ? (
+                  <TouchableOpacity style={styles.cancelButton} onPress={() => dismiss(cancel)}>
+                    <Text style={styles.cancelText}>{cancel.text.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </Animated.View>
+          </Pressable>
+        </Pressable>
+        ) : null}
+      </View>
+    </AlertContext.Provider>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  backdrop: {
+    zIndex: 1000,
+    elevation: 1000,
+    backgroundColor: 'rgba(43, 32, 20, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 4,
+    borderColor: COLORS.outline,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 18,
+    ...SHADOW.glow,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: COLORS.text,
+    letterSpacing: 0.8,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 10,
+  },
+  input: {
+    marginTop: 16,
+    backgroundColor: COLORS.background,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  buttons: { marginTop: 20, gap: 10 },
+  button: { alignSelf: 'stretch' },
+  cancelButton: { marginTop: 2, paddingVertical: 8, alignItems: 'center' },
+  cancelText: {
+    color: COLORS.textLight,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+});
