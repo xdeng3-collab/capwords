@@ -168,20 +168,25 @@ The code is written and wired; it is switched off because it cannot work yet.
 
 `A59BMF9Y7J` is a free personal team, and "Sign in with Apple" is a capability
 only the paid Apple Developer Program grants. Worse than the button failing:
-adding the entitlement to `app.json` makes code signing fail, so the whole
-build breaks. That is why this is an explicit flag rather than a runtime
+the entitlement makes code signing fail on a device, so the whole build
+breaks. That is why this is an explicit flag rather than a runtime
 check — `AppleAuthentication.isAvailableAsync()` reports on the phone, not on
 whether this build is entitled, so it would say yes and then fail.
 
-Once the membership is paid, three steps turn it on:
+Leaving `expo-apple-authentication` out of `plugins` is not enough: Expo
+applies that package's config plugin whenever it is installed, and the plugin
+adds the entitlement. `plugins/withoutAppleSignInEntitlement.js` strips it
+again unless `EXPO_PUBLIC_APPLE_SIGN_IN=true`.
 
-1. `app.json` → add `"expo-apple-authentication"` to `plugins`, then
-   `npx expo prebuild --clean`.
-2. Supabase → Authentication → Sign In / Providers → **Apple** → enable, and
+Once the membership is paid, two steps turn it on:
+
+1. Supabase → Authentication → Sign In / Providers → **Apple** → enable, and
    put `com.capwordsxxx.app` in **Client IDs**. Native sign-in verifies the
    token against the bundle id; no secret key or Services ID is needed for the
    iOS app on its own.
-3. `.env` → `EXPO_PUBLIC_APPLE_SIGN_IN=true`.
+2. `.env` → `EXPO_PUBLIC_APPLE_SIGN_IN=true`, then
+   `npx expo prebuild --clean`. The one flag both keeps the entitlement in the
+   build and shows the button.
 
 The Apple button then appears on the auth screen on its own.
 

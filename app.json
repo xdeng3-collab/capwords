@@ -47,7 +47,8 @@
       "expo-camera",
       "expo-audio",
       "@bacons/apple-targets",
-      "./plugins/withFmtConstevalFix"
+      "./plugins/withFmtConstevalFix",
+      "./plugins/withoutAppleSignInEntitlement"
     ],
     "scheme": "capwords",
     "web": {

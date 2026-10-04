@@ -234,7 +234,9 @@ capwords/
 ├── scripts/
 │   ├── check-architecture.js  # `npm run check`
 │   └── test-ai.js             # Live recognition test against the proxy / DeepSeek
-├── plugins/withFmtConstevalFix.js  # iOS build fix for fmt on Xcode 26+
+├── plugins/
+│   ├── withFmtConstevalFix.js            # iOS build fix for fmt on Xcode 26+
+│   └── withoutAppleSignInEntitlement.js  # Drops Sign in with Apple unless enabled
 ├── app.json                # Expo configuration
 └── package.json
 ```
