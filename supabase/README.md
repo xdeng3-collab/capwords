@@ -36,18 +36,23 @@ Security advisors are clean apart from:
 - `rls_auto_enable()`, Supabase's own event-trigger function for auto-enabling
   RLS. Postgres refuses to call an event-trigger function directly, so the RPC
   endpoint it flags cannot run it;
-- **leaked password protection is off.** Turn it on under Authentication ->
-  Password security before launch.
+- **leaked password protection is off.** It lives under Authentication →
+  Sign In / Providers → Email, and is only available on the Pro plan; the
+  project is on the free plan. Turn it on if the plan is upgraded.
 
-Still to do by hand in the dashboard (no API for these):
+Auth settings set in the dashboard (2026-10-04):
 
-- Add `capwords://auth-callback` **and** `capwords://reset-password` under
-  **Authentication → URL Configuration → Redirect URLs**, and set **Site URL**
-  to `capwords://`. Without these the links in Supabase's emails fall back to
-  the Site URL — `http://localhost:3000` on a fresh project — which is a dead
-  end on a phone, and is why a confirmation email looks broken.
-- Decide **Confirm email** on/off (see section 3) and set up real SMTP before
-  launch.
+- **Site URL** is `capwords://`, and **Redirect URLs** list
+  `capwords://auth-callback` and `capwords://reset-password`. Without these
+  the links in Supabase's emails fall back to the Site URL —
+  `http://localhost:3000` on a fresh project — which is a dead end on a phone.
+- **Confirm email is off** for development, so sign-ups get a session straight
+  away (see section 3).
+
+Still to do before launch:
+
+- Turn **Confirm email** back on, and set up real SMTP under Authentication →
+  Emails; the built-in sender only manages a few messages an hour.
 
 The rest of this file is the from-scratch setup, kept for the next environment.
 
@@ -138,10 +143,10 @@ rather than doing anything. Everything else works without it.
 
 ## 3. Email confirmation (decide, once)
 
-The project currently has **Confirm email on**. That means signing up sends a
-link and hands back no session, so the app shows a "check your inbox" panel
-and the person has to come back and log in. That is correct behaviour, but two
-things are worth knowing:
+The project currently has **Confirm email off** (switched off 2026-10-04 for
+development). With it on, signing up sends a link and hands back no session,
+so the app shows a "check your inbox" panel and the person has to come back
+and log in. That is correct behaviour, but two things are worth knowing:
 
 - Supabase's built-in SMTP is rate limited to a few messages an hour. It is
   fine for you testing, not for real users — set up your own SMTP under
@@ -168,20 +173,25 @@ The code is written and wired; it is switched off because it cannot work yet.
 
 `A59BMF9Y7J` is a free personal team, and "Sign in with Apple" is a capability
 only the paid Apple Developer Program grants. Worse than the button failing:
-adding the entitlement to `app.json` makes code signing fail, so the whole
-build breaks. That is why this is an explicit flag rather than a runtime
+the entitlement makes code signing fail on a device, so the whole build
+breaks. That is why this is an explicit flag rather than a runtime
 check — `AppleAuthentication.isAvailableAsync()` reports on the phone, not on
 whether this build is entitled, so it would say yes and then fail.
 
-Once the membership is paid, three steps turn it on:
+Leaving `expo-apple-authentication` out of `plugins` is not enough: Expo
+applies that package's config plugin whenever it is installed, and the plugin
+adds the entitlement. `plugins/withoutAppleSignInEntitlement.js` strips it
+again unless `EXPO_PUBLIC_APPLE_SIGN_IN=true`.
 
-1. `app.json` → add `"expo-apple-authentication"` to `plugins`, then
-   `npx expo prebuild --clean`.
-2. Supabase → Authentication → Sign In / Providers → **Apple** → enable, and
+Once the membership is paid, two steps turn it on:
+
+1. Supabase → Authentication → Sign In / Providers → **Apple** → enable, and
    put `com.capwordsxxx.app` in **Client IDs**. Native sign-in verifies the
    token against the bundle id; no secret key or Services ID is needed for the
    iOS app on its own.
-3. `.env` → `EXPO_PUBLIC_APPLE_SIGN_IN=true`.
+2. `.env` → `EXPO_PUBLIC_APPLE_SIGN_IN=true`, then
+   `npx expo prebuild --clean`. The one flag both keeps the entitlement in the
+   build and shows the button.
 
 The Apple button then appears on the auth screen on its own.
 
