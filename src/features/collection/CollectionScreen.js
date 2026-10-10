@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,21 +9,23 @@ import {
   Dimensions,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import { ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
-import { EmptyState, PixelIcon, PixelPanel, ProgressBar } from '../../components';
+import { EmptyState, PixelIcon } from '../../components';
 import { getStickersByDate } from '../../services/collectionService';
-import { getUserProfile } from '../../services/profileService';
-import { getDailyWordCount, getStreak } from '../../services/progressService';
+import { getStreak } from '../../services/progressService';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { selectFeedback } from '../../utils/haptics';
+import GlobeView from './globe/GlobeView';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_GAP = 12;
 const H_PADDING = 18;
 const STICKER_SIZE = (SCREEN_WIDTH - H_PADDING * 2 - GRID_GAP * 2) / 3;
+// Opened, the globe runs from under the title down to the floating tab bar.
+const GLOBE_OPEN_HEIGHT = Math.max(320, SCREEN_HEIGHT - 252);
 
 function formatDateLabel(dateString) {
   const date = parseISO(dateString);
@@ -35,25 +37,19 @@ function formatDateLabel(dateString) {
 export default function CollectionScreen({ navigation }) {
   const [stickerGroups, setStickerGroups] = useState([]);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
-  const [dailyCount, setDailyCount] = useState(0);
-  const [dailyGoal, setDailyGoal] = useState(5);
-  const [totalWords, setTotalWords] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [globeOpen, setGlobeOpen] = useState(false);
+  const isFocused = useIsFocused();
 
   const loadData = useCallback(async () => {
-    const [groups, streakData, daily, profile] = await Promise.all([
-      getStickersByDate(),
-      getStreak(),
-      getDailyWordCount(),
-      getUserProfile(),
-    ]);
-
+    const [groups, streakData] = await Promise.all([getStickersByDate(), getStreak()]);
     setStickerGroups(groups);
     setStreak(streakData);
-    setDailyCount(daily);
-    setDailyGoal(profile.dailyGoal);
-    setTotalWords(groups.reduce((sum, group) => sum + group.items.length, 0));
   }, []);
+
+  // Newest first, which is what the globe flies to when it opens.
+  const stickers = useMemo(() => stickerGroups.flatMap((group) => group.items), [stickerGroups]);
+  const totalWords = stickers.length;
 
   useFocusEffect(
     useCallback(() => {
@@ -71,9 +67,6 @@ export default function CollectionScreen({ navigation }) {
     selectFeedback();
     Speech.speak(word, { language, rate: 0.8 });
   };
-
-  const goalReached = dailyGoal > 0 && dailyCount >= dailyGoal;
-  const progress = dailyGoal > 0 ? dailyCount / dailyGoal : 0;
 
   const renderSticker = ({ item }) => {
     const categoryStyle = getCategoryStyle(item.category);
@@ -158,20 +151,20 @@ export default function CollectionScreen({ navigation }) {
           </View>
         </View>
 
-        <PixelPanel tone="alt" style={styles.progressCard}>
-          <View style={styles.progressTop}>
-            <Text style={styles.progressLabel}>
-              {goalReached ? 'GOAL COMPLETE!' : "TODAY'S PROGRESS"}
-            </Text>
-            <Text style={styles.progressCount}>
-              {dailyCount}/{dailyGoal}
-            </Text>
-          </View>
-          <ProgressBar progress={progress} color={goalReached ? COLORS.leaf : COLORS.sun} />
-        </PixelPanel>
+        <View style={styles.globe}>
+          <GlobeView
+            stickers={stickers}
+            width={SCREEN_WIDTH - H_PADDING * 2}
+            openHeight={GLOBE_OPEN_HEIGHT}
+            active={isFocused}
+            onOpenChange={setGlobeOpen}
+            onOpenSticker={(sticker) => navigation.navigate(ROUTES.STICKER_DETAIL, { sticker })}
+          />
+        </View>
       </View>
 
-      {stickerGroups.length === 0 ? (
+      {/* The opened globe takes the whole page; the book comes back when it closes. */}
+      {globeOpen ? null : stickerGroups.length === 0 ? (
         <EmptyState
           mood="sleepy"
           title="NO STICKERS YET"
@@ -240,25 +233,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.text,
   },
-  progressCard: {
+  globe: {
     marginTop: 16,
-  },
-  progressTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: COLORS.textLight,
-    letterSpacing: 0.8,
-  },
-  progressCount: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.primaryDark,
   },
   listContent: {
     padding: H_PADDING,
