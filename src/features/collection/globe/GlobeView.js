@@ -1,8 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
 import { PixelIcon } from '../../../components';
+import { MAP_ATTRIBUTION, cachedMapTile, loadMapTiles } from '../../../services/mapService';
 import { selectFeedback, tapFeedback } from '../../../utils/haptics';
 import {
   MAX_ZOOM,
@@ -11,8 +20,13 @@ import {
   clusterPoints,
   focusOnLatest,
   landCellIndex,
+  commonestColour,
   locatedPoints,
+  meshRows,
   paintGlobe,
+  project,
+  tileZoomFor,
+  visibleTiles,
   wrapLongitude,
 } from './geo';
 import PlaceSheet from './PlaceSheet';
@@ -27,15 +41,20 @@ import PlaceSheet from './PlaceSheet';
  *
  * It is drawn the way every other sprite in the app is - square Views on a
  * grid - so it needs no graphics library. geo.js works out the colours and
- * hands back each row as runs, which keeps a frame to a few hundred Views.
+ * hands back each row as runs, merged into rectangles, which keeps a frame of
+ * open sea to a few dozen Views and a city's streets to about a thousand.
+ *
+ * Far out, the land comes from a small mask built into the app. Zoomed in,
+ * coastlines, parks, buildings and streets are filled in from map tiles
+ * (services/mapService.js) as they arrive; offline it simply stays coarse.
  */
 
 const CELL = 6;
 const BORDER = 3;
 export const GLOBE_CLOSED_HEIGHT = 132;
 
-// Indexed by the colour slots paintGlobe() writes: outline, then ocean, land
-// and ice, each lit / mid / shaded.
+// Indexed by the colour slots paintGlobe() writes: outline; ocean, land and
+// ice, each lit / mid / shaded; then sand, buildings, main roads and streets.
 const GLOBE_COLORS = [
   COLORS.outline,
   '#8FC6E8',
@@ -47,6 +66,10 @@ const GLOBE_COLORS = [
   '#FBF3E0',
   '#DDE3E2',
   '#AEBBC6',
+  '#E8D6AE',
+  '#B08A5B',
+  '#FBF3E0',
+  '#EADBBB',
 ];
 const NIGHT = '#2B2748';
 const STAR_COLORS = ['#FBF3E0', '#F2C14E', '#8FC6E8'];
@@ -58,13 +81,27 @@ const DRIFT_FRAME_MS = 90;
 // Below this zoom pins are dots; from here on they show the photo.
 const PHOTO_ZOOM = 3;
 const PHOTO_SIZE = 40;
+// Map tiles are only asked for once the view has held still this long.
+const SETTLE_MS = 150;
+// However heavy the picture, never draw slower than this while moving.
+const MAX_FRAME_MS = 80;
+// Close in, the globe is as good as flat, so dragging and pinching slide and
+// stretch the picture already drawn (which costs nothing) and only redraw it
+// now and then. It is drawn this many cells bigger all round so there is
+// something to slide in.
+const GLIDE_ZOOM = 8;
+const GLIDE_MARGIN = 6;
+const GLIDE_FRAME_MS = 120;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-/** Where the globe sits on the cell grid for a given view and panel size. */
-function sceneFor(view, innerWidth, openHeight) {
+/**
+ * Where the globe sits on the cell grid for a given view and panel size.
+ * `margin` grows the grid by that many cells on every side, off screen.
+ */
+function sceneFor(view, innerWidth, openHeight, margin = 0) {
   const cols = innerWidth / CELL;
   const closedRows = (GLOBE_CLOSED_HEIGHT - BORDER * 2) / CELL;
   const openRows = (openHeight - BORDER * 2) / CELL;
@@ -75,33 +112,35 @@ function sceneFor(view, innerWidth, openHeight) {
     // Closed, the centre sits just under the strip so about half shows.
     radius: lerp(closedRows - 1, cols * 0.42, view.open) * view.zoom,
     shading: clamp(1 - (view.zoom - 1) / 2, 0, 1),
-    cx: cols / 2,
-    cy: lerp(closedRows + 2, openRows / 2, view.open),
-    cols: Math.ceil(cols),
-    rows: Math.ceil((height - BORDER * 2) / CELL),
+    cx: cols / 2 + margin,
+    cy: lerp(closedRows + 2, openRows / 2, view.open) + margin,
+    cols: Math.ceil(cols) + margin * 2,
+    rows: Math.ceil((height - BORDER * 2) / CELL) + margin * 2,
     height,
   };
 }
 
-const Row = React.memo(function Row({ line, top }) {
-  if (!line) return null;
-  return line.split(',').map((run) => {
-    const [start, length, colour] = run.split(':');
-    return (
+function Surface({ rects }) {
+  const views = [];
+  for (let i = 0; i < rects.length; i += 5) {
+    views.push(
       <View
-        key={start}
+        // Keyed by order, not position: as the globe moves the same Views are
+        // re-styled, which is far cheaper than making new ones.
+        key={i}
         style={{
           position: 'absolute',
-          top,
-          left: start * CELL,
-          width: length * CELL,
-          height: CELL,
-          backgroundColor: GLOBE_COLORS[colour],
+          left: rects[i] * CELL,
+          top: rects[i + 1] * CELL,
+          width: rects[i + 2] * CELL,
+          height: rects[i + 3] * CELL,
+          backgroundColor: GLOBE_COLORS[rects[i + 4]],
         }}
       />
     );
-  });
-});
+  }
+  return views;
+}
 
 const Stars = React.memo(function Stars({ width, height }) {
   const stars = useMemo(() => {
@@ -186,6 +225,33 @@ export default function GlobeView({
   const [selected, setSelected] = useState(null);
   const [, repaint] = useReducer((n) => n + 1, 0);
 
+  // A street map is thousands of cells where the open sea is a few dozen, and
+  // drawing it can take longer than a frame. So motion asks for a frame with
+  // paint(), which spaces them out by how long the last one took: the globe
+  // steps a little more coarsely instead of falling behind the finger.
+  const renderStarted = performance.now();
+  const pace = useRef({ cost: 0, last: 0, pending: null });
+  const paint = useCallback(() => {
+    const state = pace.current;
+    const gap = live.current.margin
+      ? Math.max(GLIDE_FRAME_MS, state.cost * 3)
+      : Math.min(MAX_FRAME_MS, state.cost * 1.5);
+    const wait = gap - (performance.now() - state.last);
+    if (wait <= 0) {
+      clearTimeout(state.pending);
+      state.pending = null;
+      state.last = performance.now();
+      repaint();
+    } else if (!state.pending) {
+      state.pending = setTimeout(() => {
+        state.pending = null;
+        state.last = performance.now();
+        repaint();
+      }, wait);
+    }
+  }, []);
+  useEffect(() => () => clearTimeout(pace.current.pending), []);
+
   // The view is animated outside React state: a frame writes it, then asks
   // for one repaint.
   const view = useRef({ lon: 100, lat: CLOSED_LAT, zoom: 1, open: 0 }).current;
@@ -198,8 +264,62 @@ export default function GlobeView({
   const drifting = useRef(false);
   const clustersRef = useRef({ list: [], photos: false });
 
-  const scene = sceneFor(view, innerWidth, openHeight);
-  live.current = { points, innerWidth, openHeight, active, isOpen };
+  const margin = isOpen && view.open === 1 && view.zoom >= GLIDE_ZOOM ? GLIDE_MARGIN : 0;
+  const scene = sceneFor(view, innerWidth, openHeight, margin);
+  live.current = { points, innerWidth, openHeight, active, isOpen, margin };
+
+  // How the picture on screen has been moved since it was drawn: slid to
+  // wherever the point it was centred on has got to, and stretched by however
+  // much the zoom has changed.
+  const shift = useRef(new Animated.ValueXY()).current;
+  const stretch = useRef(new Animated.Value(1)).current;
+  const drawn = useRef({ lon: view.lon, lat: view.lat, zoom: 1, x: 0, y: 0, scale: 1 });
+  const slide = useCallback(() => {
+    const { margin: m, innerWidth: w, openHeight: h } = live.current;
+    const was = drawn.current;
+    let x = 0;
+    let y = 0;
+    let scale = 1;
+    if (m) {
+      const now = sceneFor(view, w, h, m);
+      const at = project(now, was.lat, was.lon);
+      if (at) {
+        x = (at.x - now.cx) * CELL;
+        y = (at.y - now.cy) * CELL;
+      }
+      scale = view.zoom / was.zoom;
+    }
+    if (x !== was.x || y !== was.y) shift.setValue({ x, y });
+    if (scale !== was.scale) stretch.setValue(scale);
+    was.x = x;
+    was.y = y;
+    was.scale = scale;
+  }, [view, shift, stretch]);
+  useLayoutEffect(() => {
+    pace.current.cost = performance.now() - renderStarted;
+    drawn.current.lon = view.lon;
+    drawn.current.lat = view.lat;
+    drawn.current.zoom = view.zoom;
+    slide();
+  });
+
+  // Tiles replace the mask once the globe is open and close enough that it is
+  // no longer shaded as a ball.
+  const tiles = isOpen && view.open === 1 && scene.shading === 0 ? tileZoomFor(scene) : null;
+  const detail = tiles && { ...tiles, tile: cachedMapTile };
+
+  // When the view comes to rest, fetch the tiles it is looking at. Every
+  // repaint restarts the wait, so nothing is fetched mid-gesture.
+  const settle = useRef(null);
+  useEffect(() => {
+    clearTimeout(settle.current);
+    if (!tiles || !active) return undefined;
+    settle.current = setTimeout(() => {
+      if (tweens.current.length || drag.current) return;
+      loadMapTiles(visibleTiles(scene, scene.cols, scene.rows, tiles.z), repaint);
+    }, SETTLE_MS);
+    return () => clearTimeout(settle.current);
+  });
 
   useEffect(() => onOpenChange?.(isOpen), [isOpen, onOpenChange]);
 
@@ -264,13 +384,14 @@ export default function GlobeView({
 
       if (changed && (smooth || now - state.painted >= DRIFT_FRAME_MS)) {
         state.painted = now;
-        repaint();
+        slide();
+        paint();
       }
 
       const keepGoing = live.current.active && (tweens.current.length || drift || fling.current.x || fling.current.y);
       state.raf = keepGoing ? requestAnimationFrame(frame) : null;
     },
-    [view]
+    [view, paint, slide]
   );
 
   const kick = useCallback(() => {
@@ -314,6 +435,14 @@ export default function GlobeView({
     async (spin) => {
       const focus = focusOnLatest(live.current.points);
       if (!focus) return;
+      // Start on the destination's tiles now, so they are there on arrival.
+      const arrival = sceneFor(
+        { lon: focus.longitude, lat: focus.latitude, zoom: focus.zoom, open: 1 },
+        live.current.innerWidth,
+        live.current.openHeight
+      );
+      const there = tileZoomFor(arrival);
+      if (there) loadMapTiles(visibleTiles(arrival, arrival.cols, arrival.rows, there.z), repaint);
       const ahead = (((focus.longitude - view.lon) % 360) + 360) % 360;
       let turn = ahead > 180 ? ahead - 360 : ahead;
       // On opening, always arrive with a good eastward spin.
@@ -329,7 +458,7 @@ export default function GlobeView({
         if (!turned) return;
         view.lon = wrapLongitude(view.lon);
       }
-      await tween({ zoom: focus.zoom }, clamp(500 + 200 * Math.log2(focus.zoom), 500, 1800));
+      await tween({ zoom: focus.zoom }, clamp(500 + 200 * Math.log2(focus.zoom), 500, 2200));
     },
     [view, tween]
   );
@@ -373,8 +502,14 @@ export default function GlobeView({
     const reach = photos ? PHOTO_SIZE / 2 + 6 : 18;
     let best = null;
     let bestDistance = reach * reach;
+    // Clusters are where they were drawn; the tap is on the screen, and the
+    // picture may have been slid and stretched since.
+    const { margin: m, canvas } = live.current;
+    const was = drawn.current;
+    const px = canvas.width / 2 + (x + m * CELL - was.x - canvas.width / 2) / was.scale;
+    const py = canvas.height / 2 + (y + m * CELL - was.y - canvas.height / 2) / was.scale;
     list.forEach((cluster) => {
-      const d = (cluster.x * CELL - x) ** 2 + (cluster.y * CELL - y) ** 2;
+      const d = (cluster.x * CELL - px) ** 2 + (cluster.y * CELL - py) ** 2;
       if (d <= bestDistance) {
         best = cluster;
         bestDistance = d;
@@ -420,7 +555,8 @@ export default function GlobeView({
         view.lon =
           start.lon -
           (event.translationX * perPx) / Math.max(0.3, Math.cos((start.lat * Math.PI) / 180));
-        repaint();
+        slide();
+        paint();
       })
       .onEnd((event) => {
         fling.current = { x: event.velocityX, y: event.velocityY };
@@ -441,7 +577,8 @@ export default function GlobeView({
       })
       .onUpdate((event) => {
         view.zoom = clamp(pinchFrom * event.scale, MIN_ZOOM, MAX_ZOOM);
-        repaint();
+        slide();
+        paint();
       });
 
     const tap = Gesture.Tap()
@@ -452,12 +589,17 @@ export default function GlobeView({
       });
 
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
-  }, [isOpen, open, pick, cancelTweens, kick, view]);
+  }, [isOpen, open, pick, cancelTweens, kick, paint, slide, view]);
 
-  const lines = paintGlobe(scene, scene.cols, scene.rows, extraLand);
+  const lines = paintGlobe(scene, scene.cols, scene.rows, extraLand, detail);
+  // Close in, the globe fills the whole picture: whatever colour most of it is
+  // goes down as one backdrop, which also shows where a drag outruns it.
+  const backdrop = margin ? commonestColour(lines) : -1;
+  const rects = meshRows(lines, backdrop);
   const photos = isOpen && view.open === 1 && view.zoom >= PHOTO_ZOOM;
   const clusters = clusterPoints(points, scene, scene.cols, scene.rows, photos ? 8 : 2.5);
   clustersRef.current = { list: clusters, photos };
+  live.current.canvas = { width: scene.cols * CELL, height: scene.rows * CELL };
 
   const pinnedLabel = `${points.length} ${points.length === 1 ? 'PIN' : 'PINS'}`;
 
@@ -467,13 +609,28 @@ export default function GlobeView({
 
       <GestureHandlerRootView style={StyleSheet.absoluteFill}>
         <GestureDetector gesture={gesture}>
-          <View style={StyleSheet.absoluteFill} collapsable={false}>
-            {lines.map((line, r) => (
-              <Row key={r} line={line} top={r * CELL} />
-            ))}
-            {clusters.map((cluster) => (
-              <Pin key={cluster.id} cluster={cluster} photos={photos} />
-            ))}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              backdrop >= 0 ? { backgroundColor: GLOBE_COLORS[backdrop] } : null,
+            ]}
+            collapsable={false}
+          >
+            <Animated.View
+              style={{
+                position: 'absolute',
+                left: -margin * CELL,
+                top: -margin * CELL,
+                width: scene.cols * CELL,
+                height: scene.rows * CELL,
+                transform: [...shift.getTranslateTransform(), { scale: stretch }],
+              }}
+            >
+              <Surface rects={rects} />
+              {clusters.map((cluster) => (
+                <Pin key={cluster.id} cluster={cluster} photos={photos} />
+              ))}
+            </Animated.View>
           </View>
         </GestureDetector>
       </GestureHandlerRootView>
@@ -481,6 +638,12 @@ export default function GlobeView({
       <View style={styles.label} pointerEvents="none">
         <Text style={styles.labelText}>{isOpen ? pinnedLabel : 'WORD MAP'}</Text>
       </View>
+
+      {detail ? (
+        <Text style={styles.attribution} pointerEvents="none">
+          {MAP_ATTRIBUTION}
+        </Text>
+      ) : null}
 
       {isOpen ? (
         <>
@@ -490,10 +653,10 @@ export default function GlobeView({
 
           {!selected ? (
             <View style={styles.controls}>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(2.5)} hitSlop={4}>
+              <TouchableOpacity style={styles.button} onPress={() => zoomBy(3)} hitSlop={4}>
                 <PixelIcon name="plus" size={14} color={COLORS.text} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(1 / 2.5)} hitSlop={4}>
+              <TouchableOpacity style={styles.button} onPress={() => zoomBy(1 / 3)} hitSlop={4}>
                 <PixelIcon name="minus" size={14} color={COLORS.text} />
               </TouchableOpacity>
               {points.length ? (
@@ -612,6 +775,19 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.text,
     letterSpacing: 0.8,
+  },
+  attribution: {
+    position: 'absolute',
+    top: 40,
+    left: 8,
+    fontSize: 8,
+    fontWeight: '700',
+    color: COLORS.text,
+    backgroundColor: `${COLORS.surface}CC`,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
   },
   chevronDown: {
     transform: [{ rotate: '90deg' }],

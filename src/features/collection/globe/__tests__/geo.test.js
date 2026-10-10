@@ -1,5 +1,8 @@
+import { TERRAIN, TILE_SIZE } from '../../../../utils/tileRaster';
 import {
   MAX_ZOOM,
+  commonestColour,
+  meshRows,
   clusterPoints,
   focusOnLatest,
   landCellIndex,
@@ -7,6 +10,9 @@ import {
   paintGlobe,
   placeName,
   project,
+  tileZoomFor,
+  unproject,
+  visibleTiles,
 } from '../geo';
 import { landMask } from '../landMask';
 
@@ -39,6 +45,118 @@ it('puts the point facing the viewer at the centre, and north of it above', () =
 
 it('hides what is on the far side of the globe', () => {
   expect(project(scene, -30, -160)).toBeNull();
+  expect(unproject(scene, 0, 0)).toBeNull();
+});
+
+it('projects a coordinate to the grid and back', () => {
+  const at = project(scene, 48.85, 2.35);
+  const back = unproject(scene, at.x, at.y);
+  expect(back.latitude).toBeCloseTo(48.85, 5);
+  expect(back.longitude).toBeCloseTo(2.35, 5);
+});
+
+describe('map tiles', () => {
+  // The globe zoomed to `zoom` over Pittsburgh, on a 58 x 97 grid.
+  const over = (zoom) => ({ lon: -79.943, lat: 40.444, radius: 24.4 * zoom, cx: 29, cy: 48.5 });
+
+  it('uses none far out, and deeper ones the closer the globe gets', () => {
+    expect(tileZoomFor(over(1))).toBeNull();
+    expect(tileZoomFor(over(4))).toBeNull();
+    const found = [20, 200, 2000, 20000].map((zoom) => tileZoomFor(over(zoom)));
+    const zooms = found.map((tiles) => tiles.z);
+    expect(zooms).toEqual([...zooms].sort((a, b) => a - b));
+    expect(zooms[0]).toBeGreaterThanOrEqual(4);
+    expect(zooms[3]).toBe(14); // as deep as tiles go
+    // Tile cells are never coarser than the screen's until tiles run out...
+    found.slice(0, 3).forEach(({ spread }) => {
+      expect(spread).toBeGreaterThanOrEqual(1);
+      expect(spread).toBeLessThan(2);
+    });
+    // ...after which one tile cell is spread over several screen cells.
+    expect(tileZoomFor(over(26000)).spread).toBeLessThan(1);
+  });
+
+  it('never loses a road between samples', () => {
+    // Two tile cells per screen cell, and a street only one tile cell wide.
+    const close = over(5000);
+    const { z } = tileZoomFor(close);
+    const tile = new Uint8Array(TILE_SIZE * TILE_SIZE);
+    for (let row = 0; row < TILE_SIZE; row += 1) tile[row * TILE_SIZE + 77] = TERRAIN.STREET;
+    const street = '13';
+    [1, 1.5, 1.99].forEach((spread) => {
+      const lines = paintGlobe(close, 58, 97, null, { z, spread, tile: () => tile });
+      const withStreet = lines.filter((line) => line.split(',').some((run) => run.endsWith(`:${street}`)));
+      // The street crosses the view top to bottom without a gap.
+      expect(withStreet).toHaveLength(lines.length);
+    });
+  });
+
+  it('reads tiles off patches exactly as it would cell by cell', () => {
+    // A tile where every cell is different from its neighbours, so a cell
+    // read even slightly off shows. The far side of the date line and the
+    // globe's edge are where patches give up and cells are looked up singly.
+    const tile = Uint8Array.from({ length: TILE_SIZE * TILE_SIZE }, (_, i) => {
+      const [x, y] = [i % TILE_SIZE, Math.floor(i / TILE_SIZE)];
+      return [TERRAIN.LAND, TERRAIN.WATER, TERRAIN.WOOD][(x + 2 * y) % 3];
+    });
+    const coloursOf = (scene, z) =>
+      paintGlobe(scene, 58, 97, null, { z, spread: 0.5, tile: () => tile });
+
+    // Street level: a cell is half a tile cell, so a slip of a cell would show.
+    const close = over(26000);
+    const lines = coloursOf(close, 14);
+    const cells = lines.join(',').split(',').length;
+    expect(cells).toBeGreaterThan(500);
+    // Shifting the view by exactly one screen cell shifts the picture by one.
+    const shifted = coloursOf({ ...close, cx: close.cx + 1 }, 14);
+    const colourAt = (rows, c, r) => {
+      const run = rows[r].split(',').find((text) => {
+        const [start, length] = text.split(':').map(Number);
+        return c >= start && c < start + length;
+      });
+      return run.split(':')[2];
+    };
+    for (let r = 3; r < 97; r += 7) {
+      for (let c = 3; c < 56; c += 5) {
+        expect(colourAt(shifted, c + 1, r)).toBe(colourAt(lines, c, r));
+      }
+    }
+    // Across the date line nothing is torn.
+    const pacific = { lon: 180, lat: 0, radius: 24.4 * 40, cx: 29, cy: 48.5 };
+    const row = coloursOf(pacific, 6)[48];
+    expect(row.split(',').every((run) => ['2', '5', '6'].includes(run.split(':')[2]))).toBe(true);
+  });
+
+  it('asks for the few tiles in view, the middle one first', () => {
+    const close = over(14000);
+    const tiles = visibleTiles(close, 58, 97, 14);
+    expect(tiles[0]).toEqual({ z: 14, x: 4553, y: 6176 });
+    expect(tiles.length).toBeLessThanOrEqual(6);
+    tiles.forEach((tile) => {
+      expect(Math.abs(tile.x - 4553)).toBeLessThanOrEqual(1);
+      expect(Math.abs(tile.y - 6176)).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('draws from a tile where there is one and the land mask where there is not', () => {
+    const close = over(14000);
+    const street = new Uint8Array(TILE_SIZE * TILE_SIZE).fill(TERRAIN.STREET);
+    const colours = (detail) =>
+      new Set(
+        paintGlobe(close, 58, 97, null, detail)
+          .join(',')
+          .split(',')
+          .map((run) => run.split(':')[2])
+      );
+
+    // No tiles yet: plain land (and its flecks).
+    expect([...colours({ z: 14, spread: 1, tile: () => undefined })].sort()).toEqual(['5', '6']);
+    // Every tile is all street.
+    expect([...colours({ z: 14, spread: 1, tile: () => street })]).toEqual(['13']);
+    // Only a coarser tile over the same ground has arrived: use that.
+    const coarse = { z: 14, spread: 1, tile: (z) => (z === 12 ? street : undefined) };
+    expect([...colours(coarse)]).toEqual(['13']);
+  });
 });
 
 it('paints rows as runs that cover only the globe', () => {
@@ -51,6 +169,19 @@ it('paints rows as runs that cover only the globe', () => {
   expect(last[0] + last[1]).toBe(56);
   // Runs are contiguous.
   middle.slice(1).forEach(([start], i) => expect(start).toBe(middle[i][0] + middle[i][1]));
+});
+
+it('merges runs that stack into rectangles, and can leave a backdrop colour out', () => {
+  const lines = ['0:4:5', '0:2:5,2:2:2', '0:2:5,2:2:2', '', '1:1:2'];
+  expect(commonestColour(lines)).toBe(5);
+  // column, row, width, height, colour
+  expect(meshRows(lines)).toEqual([
+    0, 0, 4, 1, 5,
+    0, 1, 2, 2, 5,
+    2, 1, 2, 2, 2,
+    1, 4, 1, 1, 2,
+  ]);
+  expect(meshRows(lines, 5)).toEqual([2, 1, 2, 2, 2, 1, 4, 1, 1, 2]);
 });
 
 it('skips stickers that have no location', () => {
@@ -82,9 +213,11 @@ it('zooms in further the more photos are nearby, and the closer they are', () =>
 
   // Photos in another city do not count.
   expect(zoomWith([point('far', 34, -118)])).toBe(alone);
-  // A crowd on one block still stops at the limit.
-  const crowd = Array.from({ length: 20 }, (_, i) => nearPittsburgh(`c${i}`, 0.01 * i));
-  expect(zoomWith(crowd)).toBe(MAX_ZOOM);
+  // A crowd on one block flies to street level and no further.
+  const crowd = (n) => Array.from({ length: n }, (_, i) => nearPittsburgh(`c${i}`, 0.01 * i));
+  expect(zoomWith(crowd(20))).toBeGreaterThan(10000);
+  expect(zoomWith(crowd(20))).toBeLessThanOrEqual(MAX_ZOOM);
+  expect(zoomWith(crowd(40))).toBe(zoomWith(crowd(20)));
 });
 
 it('clusters photos that would overlap, keyed by the newest', () => {
