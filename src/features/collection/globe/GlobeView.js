@@ -13,9 +13,10 @@ import { COLORS, RADIUS, SHADOW } from '../../../theme';
 import { PixelIcon } from '../../../components';
 import {
   MAP_ATTRIBUTION,
-  TILE_MAX_ZOOM,
   cachedMapTile,
   loadMapTiles,
+  mapTilesPending,
+  warmMapTiles,
 } from '../../../services/mapService';
 import { selectFeedback, tapFeedback } from '../../../utils/haptics';
 import {
@@ -32,11 +33,11 @@ import {
   levelRadius,
   locatedPoints,
   meshRows,
+  levelTiles,
   paintGlobe,
-  project,
+  paintLevel,
+  projectLevel,
   snapScene,
-  tileZoomFor,
-  visibleTiles,
   wrapLongitude,
 } from './geo';
 import PlaceSheet from './PlaceSheet';
@@ -54,8 +55,9 @@ import PlaceSheet from './PlaceSheet';
  * hands back each row as runs, merged into rectangles, which keeps a frame of
  * open sea to a few dozen Views and a city's streets to about a thousand.
  *
- * Far out, the land comes from a small mask built into the app. Zoomed in,
- * coastlines, parks, buildings and streets are filled in from map tiles
+ * Far out it is a ball, with land from a small mask built into the app.
+ * Close in it becomes a flat map at fixed levels (see geo.js), filled in with
+ * coastlines, parks, buildings and streets from map tiles
  * (services/mapService.js) as they arrive; offline it simply stays coarse.
  */
 
@@ -329,13 +331,13 @@ export default function GlobeView({
     let y = 0;
     let scale = 1;
     if (m) {
-      const now = sceneFor(view, w, h, m);
-      const at = project(now, was.lat, was.lon);
-      if (at) {
-        x = (at.x - now.cx) * CELL;
-        y = (at.y - now.cy) * CELL;
-      }
-      scale = now.radius / was.radius;
+      scale = sceneFor(view, w, h, m).radius / was.radius;
+      // How far, on the flat map it was drawn from, its centre is from the
+      // view's now.
+      const here = { lon: view.lon, lat: view.lat, cx: 0, cy: 0 };
+      const at = projectLevel(here, was.level, was.lat, was.lon);
+      x = at.x * scale * CELL;
+      y = at.y * scale * CELL;
     }
     if (x !== was.x || y !== was.y) shift.setValue({ x, y });
     if (scale !== was.scale) stretch.setValue(scale);
@@ -351,8 +353,6 @@ export default function GlobeView({
     drawn.current.level = level;
     slide();
   });
-
-  const detail = level == null ? null : { ...tileZoomFor(scene), tile: cachedMapTile };
 
   const settle = useRef({ timer: null, arm: null });
   useEffect(() => () => clearTimeout(settle.current.timer), []);
@@ -472,7 +472,7 @@ export default function GlobeView({
     const { innerWidth: w, openHeight: h } = live.current;
     const zoom = levelRadius(level, lat) / openRadius(w);
     const at = snapScene(sceneFor({ lon, lat, zoom, open: 1 }, w, h, LEVEL_MARGIN), level);
-    return visibleTiles(at, at.cols, at.rows, Math.min(level, TILE_MAX_ZOOM));
+    return levelTiles(at, level, at.cols, at.rows);
   }, []);
 
   // When everything has come to rest: ease onto the nearest whole level, then
@@ -494,27 +494,51 @@ export default function GlobeView({
         return;
       }
       loadMapTiles(tilesAround(view.lon, view.lat, nearest), repaint);
+      // Put the "loading" sign up if that left anything to wait for.
+      if (mapTilesPending()) repaint();
     }, SETTLE_MS);
   };
+
+  /**
+   * Where opening the globe will fly to: the newest photo, the zoom to land
+   * at, and the tiles the dive needs - a coarse overview of the whole view
+   * first, since that alone is enough to draw from, then the landing level,
+   * then the level passed further out.
+   */
+  const flightPlan = useCallback(() => {
+    const focus = focusOnLatest(live.current.points);
+    if (!focus) return null;
+    const base = openRadius(live.current.innerWidth);
+    const exact = levelFor(base * focus.zoom, focus.latitude);
+    if (exact < MIN_LEVEL) return { focus, zoom: focus.zoom, landing: null, tiles: [] };
+    const landing = clamp(Math.round(exact), MIN_LEVEL, FLY_MAX_LEVEL);
+    const tiles = [landing - 3, landing, landing - 6]
+      .filter((l) => l >= MIN_LEVEL)
+      .flatMap((l) => tilesAround(focus.longitude, focus.latitude, l));
+    return { focus, zoom: levelRadius(landing, focus.latitude) / base, landing, tiles };
+  }, [tilesAround]);
+
+  // While the globe is still closed, get that map onto the phone. Opening it
+  // then waits on neither the network nor on decoding tiles mid-flight - and
+  // one level further in is ready too, for the first pinch.
+  useEffect(() => {
+    if (!active || isOpen) return;
+    const plan = flightPlan();
+    if (!plan || plan.landing == null) return;
+    const { longitude, latitude } = plan.focus;
+    const deeper = Math.min(plan.landing + 1, MAX_LEVEL);
+    warmMapTiles([...plan.tiles, ...tilesAround(longitude, latitude, deeper)]);
+  }, [active, isOpen, points, flightPlan, tilesAround]);
 
   /** Spin round to the newest photo, then fly in. */
   const flyToLatest = useCallback(
     async (spin) => {
-      const focus = focusOnLatest(live.current.points);
-      if (!focus) return;
-      // Land on a whole level, and start now on the tiles for it and for the
-      // levels passed on the way down, so the dive is through real map.
-      const base = openRadius(live.current.innerWidth);
-      const exact = levelFor(base * focus.zoom, focus.latitude);
-      let { zoom } = focus;
-      if (exact >= MIN_LEVEL) {
-        const landing = clamp(Math.round(exact), MIN_LEVEL, FLY_MAX_LEVEL);
-        zoom = levelRadius(landing, focus.latitude) / base;
-        const wanted = [landing - 6, landing - 3, landing]
-          .filter((l) => l >= MIN_LEVEL)
-          .flatMap((l) => tilesAround(focus.longitude, focus.latitude, l));
-        loadMapTiles(wanted, repaint);
-      }
+      const plan = flightPlan();
+      if (!plan) return;
+      const { focus, zoom } = plan;
+      // Whatever the warm-up did not get to, fetch now, so the dive is
+      // through real map.
+      loadMapTiles(plan.tiles, repaint);
       const ahead = (((focus.longitude - view.lon) % 360) + 360) % 360;
       let turn = ahead > 180 ? ahead - 360 : ahead;
       // On opening, always arrive with a good eastward spin.
@@ -532,7 +556,7 @@ export default function GlobeView({
       }
       await tween({ zoom }, clamp(300 + 55 * Math.log2(zoom), 350, 950));
     },
-    [view, tween, tilesAround]
+    [view, tween, flightPlan]
   );
 
   const open = useCallback(() => {
@@ -668,13 +692,16 @@ export default function GlobeView({
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
   }, [isOpen, open, pick, cancelTweens, kick, paint, slide, view]);
 
-  const lines = paintGlobe(scene, scene.cols, scene.rows, extraLand, detail);
+  const lines =
+    level == null
+      ? paintGlobe(scene, scene.cols, scene.rows, extraLand)
+      : paintLevel(scene, level, scene.cols, scene.rows, extraLand, cachedMapTile);
   // Close in, the globe fills the whole picture: whatever colour most of it is
   // goes down as one backdrop, which also shows where a drag outruns it.
   const backdrop = margin ? commonestColour(lines) : -1;
   const rects = meshRows(lines, backdrop);
   const photos = isOpen && view.open === 1 && view.zoom >= PHOTO_ZOOM;
-  const clusters = clusterPoints(points, scene, scene.cols, scene.rows, photos ? 8 : 2.5);
+  const clusters = clusterPoints(points, scene, scene.cols, scene.rows, photos ? 8 : 2.5, level);
   clustersRef.current = { list: clusters, photos };
   live.current.canvas = { width: scene.cols * CELL, height: scene.rows * CELL };
 
@@ -716,7 +743,7 @@ export default function GlobeView({
         <Text style={styles.labelText}>{isOpen ? pinnedLabel : 'WORD MAP'}</Text>
       </View>
 
-      {detail ? (
+      {level != null ? (
         <Text style={styles.attribution} pointerEvents="none">
           {MAP_ATTRIBUTION}
         </Text>
@@ -749,6 +776,12 @@ export default function GlobeView({
                   <PixelIcon name="target" size={14} color={COLORS.secondary} />
                 </TouchableOpacity>
               ) : null}
+            </View>
+          ) : null}
+
+          {level != null && !selected && mapTilesPending() > 0 ? (
+            <View style={styles.loading} pointerEvents="none">
+              <Text style={styles.labelText}>LOADING MAP...</Text>
             </View>
           ) : null}
 
@@ -890,6 +923,17 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 12,
     gap: 8,
+  },
+  loading: {
+    position: 'absolute',
+    left: 8,
+    bottom: 12,
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
   },
   hint: {
     position: 'absolute',

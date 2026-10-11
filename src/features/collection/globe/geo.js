@@ -72,20 +72,6 @@ export function project(scene, latitude, longitude) {
   return { x: scene.cx + scene.radius * x, y: scene.cy - scene.radius * y };
 }
 
-/** The coordinate under a point on the cell grid, or null if it misses the globe. */
-export function unproject(scene, x, y) {
-  const nx = (x - scene.cx) / scene.radius;
-  const ny = -(y - scene.cy) / scene.radius;
-  const d2 = nx * nx + ny * ny;
-  if (d2 > 1) return null;
-  const nz = Math.sqrt(1 - d2);
-  const phi0 = scene.lat * RAD;
-  const latitude = Math.asin(clamp(ny * Math.cos(phi0) + nz * Math.sin(phi0), -1, 1)) / RAD;
-  const longitude =
-    scene.lon + Math.atan2(nx, nz * Math.cos(phi0) - ny * Math.sin(phi0)) / RAD;
-  return { latitude, longitude: wrapLongitude(longitude) };
-}
-
 // Colour slots. Ocean, land and ice come in three tones (lit, mid, shaded);
 // the rest only appear close up, where the globe is no longer shaded.
 // See GLOBE_COLORS.
@@ -104,235 +90,47 @@ TERRAIN_SLOT[TERRAIN.LAND] = LAND + 1;
 TERRAIN_SLOT[TERRAIN.WATER] = OCEAN + 1;
 TERRAIN_SLOT[TERRAIN.WOOD] = LAND + 2;
 TERRAIN_SLOT[TERRAIN.GRASS] = LAND;
-TERRAIN_SLOT[TERRAIN.ICE] = ICE;
+TERRAIN_SLOT[TERRAIN.ICE] = ICE + 1;
 TERRAIN_SLOT[TERRAIN.SAND] = SAND;
 TERRAIN_SLOT[TERRAIN.BUILDING] = BUILDING;
 TERRAIN_SLOT[TERRAIN.ROAD] = ROAD;
 TERRAIN_SLOT[TERRAIN.STREET] = STREET;
 
-// Map tiles are Web Mercator, which runs out towards the poles.
-const TILE_LAT_LIMIT = 85;
-// The shallowest tiles worth fetching; below this the built-in land mask is
-// as good, and the tiles are at their heaviest.
-const TILE_MIN_ZOOM = 4;
-// A tile that has not arrived is drawn from a coarser one covering the same
-// ground, up to this many levels up.
-const TILE_FALLBACK_LEVELS = 3;
-
-// When several tile cells fall under one screen cell, the one that would be
-// missed most wins: a road must not vanish because it fell between samples.
-const TERRAIN_PRIORITY = new Array(Object.keys(TERRAIN).length).fill(0);
-TERRAIN_PRIORITY[TERRAIN.BUILDING] = 1;
-TERRAIN_PRIORITY[TERRAIN.WATER] = 2;
-TERRAIN_PRIORITY[TERRAIN.STREET] = 3;
-TERRAIN_PRIORITY[TERRAIN.ROAD] = 4;
-
-/**
- * Close in, the globe is drawn at fixed levels, like any map: at level L one
- * screen cell is exactly one cell of a zoom-L map tile. Each level is then a
- * fixed picture, which dragging only slides and pinching only stretches -
- * rather than a fresh sampling of the map every frame, which shimmers.
- *
- * Levels start where tiles become worth having and run one past the deepest
- * tiles, where each tile cell is drawn two screen cells across.
- */
-export const MIN_LEVEL = TILE_MIN_ZOOM;
-export const MAX_LEVEL = TILE_MAX_ZOOM + 1;
-
-const tileStretch = (lat) => Math.cos(clamp(lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT) * RAD);
-
-/** The level, fractional, that a globe of this radius (in cells) is at. */
-export function levelFor(radius, lat) {
-  return Math.log2((radius * 360 * tileStretch(lat)) / (TILE_SIZE * 57.2958));
-}
-
-/** The radius, in cells, at which the globe is exactly at `level`. */
-export function levelRadius(level, lat) {
-  return (2 ** level * TILE_SIZE * 57.2958) / (360 * tileStretch(lat));
-}
-
-/**
- * The scene redrawn at exactly `level`, nudged by less than a cell so that
- * its cells sit squarely on the map's. Whatever is drawn from it is the
- * tiles' own pixels, and stays the same picture however the view got there.
- */
-export function snapScene(scene, level) {
-  const around = TILE_SIZE * 2 ** level; // cells round the world at this level
-  const [u, v] = tileXY(clamp(scene.lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT), scene.lon, around);
-  const x = Math.round(u - scene.cx) + scene.cx;
-  const y = Math.round(v - scene.cy) + scene.cy;
-  const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / around))) / RAD;
-  return { ...scene, lon: (x / around) * 360 - 180, lat, radius: levelRadius(level, lat) };
-}
-
-/**
- * Which map tiles suit the globe at this scene: { z, spread }, or null while
- * it is too far out for tiles to add anything. `z` is the shallowest zoom
- * whose cells are no bigger than the globe's, and `spread` how many of them
- * (1 to 2, or fewer past the deepest zoom) lie across one screen cell.
- */
-export function tileZoomFor(scene) {
-  const exact = levelFor(scene.radius, scene.lat);
-  // A scene snapped to a level is a hair off a whole number either way.
-  const z = Math.min(Math.ceil(exact - 1e-6), TILE_MAX_ZOOM);
-  return z < TILE_MIN_ZOOM ? null : { z, spread: 2 ** (z - exact) };
-}
-
-function tileXY(latitude, longitude, n) {
-  const sin = Math.sin(latitude * RAD);
-  return [
-    ((longitude + 180) / 360) * n,
-    (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * n,
-  ];
-}
-
-/**
- * The tiles at zoom `z` that the grid is looking at, nearest the middle
- * first: [{ z, x, y }].
- */
-export function visibleTiles(scene, cols, rows, z) {
-  const n = 2 ** z;
-  const found = new Map();
-  const STEP = 6;
-  for (let r = 0; r <= rows + STEP; r += STEP) {
-    for (let c = 0; c <= cols + STEP; c += STEP) {
-      const at = unproject(scene, Math.min(c, cols), Math.min(r, rows));
-      if (!at || Math.abs(at.latitude) >= TILE_LAT_LIMIT) continue;
-      const [xt, yt] = tileXY(at.latitude, at.longitude, n);
-      const x = Math.floor(xt);
-      const y = Math.floor(yt);
-      const key = y * n + x;
-      if (!found.has(key)) {
-        const distance = (c - scene.cx) ** 2 + (r - scene.cy) ** 2;
-        found.set(key, { z, x, y, distance });
-      } else {
-        const tile = found.get(key);
-        tile.distance = Math.min(tile.distance, (c - scene.cx) ** 2 + (r - scene.cy) ** 2);
-      }
-    }
-  }
-  return [...found.values()]
-    .sort((a, b) => a.distance - b.distance)
-    .map(({ x, y }) => ({ z, x, y }));
-}
-
 // Cheap integer hash to [0, 100), for the specks that give flat sea and land
 // some texture - and make it visible that the globe is turning.
-function speckle(i, j, level) {
-  let h = (Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(level, 83492791)) >>> 0;
+function speckle(i, j) {
+  let h = (Math.imul(i, 73856093) ^ Math.imul(j, 19349663)) >>> 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
   return h % 100;
 }
+// Specks sit on a lattice in map space, this many degrees across.
+const SPECK_DEGREES = 2;
+
+function isLandAt(mask, extraLand, lat, lon) {
+  const cell = landCellIndex(lat, lon);
+  return mask[cell] === 1 || (extraLand ? extraLand.has(cell) : false);
+}
 
 /**
- * Paint the globe onto a `cols` x `rows` grid. Returns one string per row:
- * runs of same-coloured cells as "start:length:colour" joined by commas, with
- * empty space left out. Strings, so a row that did not change between frames
- * compares equal and is not drawn again.
+ * Paint the globe, seen as a ball, onto a `cols` x `rows` grid. Returns one
+ * string per row: runs of same-coloured cells as "start:length:colour" joined
+ * by commas, with empty space left out.
  *
  * `extraLand` is a Set of land-mask cells to treat as land whatever the map
  * says - the mask is too coarse to know a harbour city from open sea.
- *
- * `detail`, when given, is { z, spread, tile(z, x, y) }: draw from map tiles
- * at zoom `z` (see tileZoomFor) wherever `tile` has one, or a coarser one over
- * the same ground, to hand - and from the land mask wherever it does not.
  */
-export function paintGlobe(scene, cols, rows, extraLand, detail) {
+export function paintGlobe(scene, cols, rows, extraLand) {
   const mask = landMask();
   const { radius, cx, cy } = scene;
   const phi0 = scene.lat * RAD;
   const sinPhi0 = Math.sin(phi0);
   const cosPhi0 = Math.cos(phi0);
-  // Seen whole, the globe is shaded as a ball. Close up that shading would
-  // just be a diagonal stripe across the map, so `scene.shading` fades it out.
+  // Seen whole, the globe is shaded as a ball. Closer, that shading would
+  // just be a diagonal stripe across the view, so `scene.shading` fades it
+  // out - and the specks with it.
   const shading = scene.shading ?? 1;
   const outer = (radius + 1) * (radius + 1);
   const inner = radius * radius;
-
-  // Specks sit on a fixed lattice in map space, and only while the globe is
-  // still a ball: close up they would be noise over the map.
-  const level = 1;
-  const lattice = 2;
-  const specks = shading > 0;
-
-  // Neighbouring cells nearly always share a tile, so remember the last one.
-  const tilesAcross = detail ? 2 ** detail.z : 0;
-  let lastX = -1;
-  let lastY = -1;
-  let lastTile = null;
-  let lastLevelsUp = 0;
-  const terrainAt = (xt, yt) => {
-    const x = Math.floor(xt);
-    const y = Math.floor(yt);
-    if (x !== lastX || y !== lastY) {
-      lastX = x;
-      lastY = y;
-      lastTile = null;
-      for (let up = 0; up <= TILE_FALLBACK_LEVELS && up <= detail.z && !lastTile; up += 1) {
-        lastTile = detail.tile(detail.z - up, x >> up, y >> up) || null;
-        lastLevelsUp = up;
-      }
-    }
-    if (!lastTile) return -1;
-    const shrink = 2 ** lastLevelsUp;
-    // Position inside the tile, in its cells.
-    const u = (xt / shrink - Math.floor(xt / shrink)) * TILE_SIZE;
-    const v = (yt / shrink - Math.floor(yt / shrink)) * TILE_SIZE;
-    // The tile cells this screen cell covers: one, or up to two each way.
-    const half = Math.min(1, detail.spread / shrink) / 2 - 0.001;
-    const u1 = Math.min(TILE_SIZE - 1, Math.floor(u + half));
-    const v1 = Math.min(TILE_SIZE - 1, Math.floor(v + half));
-    const u0 = Math.max(0, Math.floor(u - half));
-    let best = lastTile[Math.floor(v) * TILE_SIZE + Math.floor(u)];
-    for (let tv = Math.max(0, Math.floor(v - half)); tv <= v1; tv += 1) {
-      for (let tu = u0; tu <= u1; tu += 1) {
-        const terrain = lastTile[tv * TILE_SIZE + tu];
-        if (TERRAIN_PRIORITY[terrain] > TERRAIN_PRIORITY[best]) best = terrain;
-      }
-    }
-    return best;
-  };
-
-  // Working out which tile cell lies under a screen cell takes a handful of
-  // trig calls, and there are thousands of cells in every frame. Close in,
-  // the answer varies so smoothly across the grid that it only needs working
-  // out at every PATCH-th cell each way, and reading off in between.
-  const PATCH = 8;
-  const nodesAcross = Math.ceil(cols / PATCH) + 1;
-  const nodesDown = Math.ceil(rows / PATCH) + 1;
-  const nodes = detail ? new Float64Array(nodesAcross * nodesDown * 2) : null;
-  if (nodes) {
-    for (let j = 0; j < nodesDown; j += 1) {
-      for (let i = 0; i < nodesAcross; i += 1) {
-        const at = unproject(scene, i * PATCH + 0.5, j * PATCH + 0.5);
-        const ok = at && Math.abs(at.latitude) < TILE_LAT_LIMIT;
-        const [xt, yt] = ok ? tileXY(at.latitude, at.longitude, tilesAcross) : [NaN, NaN];
-        nodes[(j * nodesAcross + i) * 2] = xt;
-        nodes[(j * nodesAcross + i) * 2 + 1] = yt;
-      }
-    }
-  }
-  // The terrain under cell (c, r) read off its patch, or -2 if the patch
-  // cannot be trusted: off the globe, near a pole, or across the date line.
-  const terrainByPatch = (c, r) => {
-    const i = Math.floor(c / PATCH);
-    const j = Math.floor(r / PATCH);
-    const a = (j * nodesAcross + i) * 2;
-    const b = a + nodesAcross * 2;
-    const x00 = nodes[a];
-    const x10 = nodes[a + 2];
-    const x01 = nodes[b];
-    const x11 = nodes[b + 2];
-    // NaN fails every comparison, so one test covers bad corners and wraps.
-    if (!(Math.abs(x10 - x00) < 1 && Math.abs(x01 - x00) < 1 && Math.abs(x11 - x00) < 1)) return -2;
-    const fx = (c - i * PATCH) / PATCH;
-    const fy = (r - j * PATCH) / PATCH;
-    const top = x00 + (x10 - x00) * fx;
-    const xt = top + (x01 + (x11 - x01) * fx - top) * fy;
-    const y0 = nodes[a + 1] + (nodes[a + 3] - nodes[a + 1]) * fx;
-    const yt = y0 + (nodes[b + 1] + (nodes[b + 3] - nodes[b + 1]) * fx - y0) * fy;
-    return terrainAt(xt, yt);
-  };
 
   const out = new Array(rows);
   for (let r = 0; r < rows; r += 1) {
@@ -346,10 +144,7 @@ export function paintGlobe(scene, cols, rows, extraLand, detail) {
         if (c < cols) {
           const dx = c + 0.5 - cx;
           const d2 = dx * dx + dy * dy;
-          const patched = d2 <= inner && nodes ? terrainByPatch(c, r) : -2;
-          if (patched >= 0) {
-            colour = TERRAIN_SLOT[patched];
-          } else if (d2 <= inner) {
+          if (d2 <= inner) {
             const nx = dx / radius;
             const ny = -dy / radius;
             const nz = Math.sqrt(1 - nx * nx - ny * ny);
@@ -357,38 +152,204 @@ export function paintGlobe(scene, cols, rows, extraLand, detail) {
             const lon = wrapLongitude(
               scene.lon + Math.atan2(nx, nz * cosPhi0 - ny * sinPhi0) / RAD
             );
-            // No tile for this cell came back from its patch (-1), or the
-            // patch was no use (-2) and the cell has to be looked up itself.
-            let terrain = -1;
-            if (patched === -2 && detail && lat < TILE_LAT_LIMIT && lat > -TILE_LAT_LIMIT) {
-              const [xt, yt] = tileXY(lat, lon, tilesAcross);
-              terrain = terrainAt(xt, yt);
+
+            // Lit from the upper left, in three hard bands.
+            const light = 0.5 + (-0.45 * nx + 0.55 * ny + 0.7 * nz - 0.5) * shading;
+            let tone = light > 0.72 ? 0 : light > 0.3 ? 1 : 2;
+
+            let base;
+            if (isLandAt(mask, extraLand, lat, lon)) base = lat > 72 || lat < -62 ? ICE : LAND;
+            else base = lat > 84 ? ICE : OCEAN;
+
+            if (
+              shading > 0 &&
+              speckle(Math.floor(lon / SPECK_DEGREES), Math.floor(lat / SPECK_DEGREES)) < 3
+            ) {
+              // Darker flecks on land, lighter glints on water.
+              tone = base === OCEAN ? Math.max(0, tone - 1) : Math.min(2, tone + 1);
             }
-            if (terrain >= 0) {
-              colour = TERRAIN_SLOT[terrain];
-            } else {
-              const cell = landCellIndex(lat, lon);
-              const isLand = mask[cell] === 1 || (extraLand ? extraLand.has(cell) : false);
-
-              // Lit from the upper left, in three hard bands.
-              const light = 0.5 + (-0.45 * nx + 0.55 * ny + 0.7 * nz - 0.5) * shading;
-              let tone = light > 0.72 ? 0 : light > 0.3 ? 1 : 2;
-
-              let base;
-              if (isLand) base = lat > 72 || lat < -62 ? ICE : LAND;
-              else base = lat > 84 ? ICE : OCEAN;
-
-              if (
-                specks &&
-                speckle(Math.floor(lon / lattice), Math.floor(lat / lattice), level) < 3
-              ) {
-                // Darker flecks on land, lighter glints on water.
-                tone = base === OCEAN ? Math.max(0, tone - 1) : Math.min(2, tone + 1);
-              }
-              colour = base + tone;
-            }
+            colour = base + tone;
           } else if (d2 <= outer) {
             colour = OUTLINE;
+          }
+        }
+        if (colour !== runColour) {
+          if (runColour !== -1) {
+            line += `${line ? ',' : ''}${runStart}:${c - runStart}:${runColour}`;
+          }
+          runStart = c;
+          runColour = colour;
+        }
+      }
+    }
+    out[r] = line;
+  }
+  return out;
+}
+
+/*
+ * Close in, the globe stops being a ball.
+ *
+ * It is drawn as a flat map at fixed levels, like any map app: at level L one
+ * screen cell is exactly one cell of a zoom-L map tile, everywhere on screen.
+ * A level is then one fixed picture. Dragging slides it, pinching stretches
+ * it, and nothing about it depends on where the view happens to be - unlike a
+ * ball, where the same river is squeezed differently at the edge of the
+ * screen than in the middle, and so changes as it is dragged across.
+ *
+ * Map tiles are Web Mercator, so that is the flat map. A position on it is
+ * counted in the level's cells: east from 180 W, south from about 85 N.
+ */
+
+// Mercator runs out towards the poles.
+const TILE_LAT_LIMIT = 85;
+// Levels start where tiles are worth having - below that the built-in land
+// mask is as good and the tiles are at their heaviest - and run one past the
+// deepest tiles, where each tile cell is drawn two screen cells across.
+export const MIN_LEVEL = 4;
+export const MAX_LEVEL = TILE_MAX_ZOOM + 1;
+// A tile that has not arrived is drawn from a coarser one covering the same
+// ground, up to this many levels up. Far enough that the overview fetched
+// first on the way in stands in for everything below it.
+const TILE_FALLBACK_LEVELS = 6;
+
+const cellsAround = (level) => TILE_SIZE * 2 ** level;
+const tileStretch = (lat) => Math.cos(clamp(lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT) * RAD);
+
+/** A coordinate's position on the flat map at `level`, in cells: [east, south]. */
+function levelXY(latitude, longitude, level) {
+  const around = cellsAround(level);
+  const sin = Math.sin(clamp(latitude, -TILE_LAT_LIMIT, TILE_LAT_LIMIT) * RAD);
+  return [
+    ((wrapLongitude(longitude) + 180) / 360) * around,
+    (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * around,
+  ];
+}
+const latitudeAt = (y, around) => Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / around))) / RAD;
+
+/** The level, fractional, that a globe of this radius (in cells) is at. */
+export function levelFor(radius, lat) {
+  return Math.log2((radius * 360 * tileStretch(lat)) / (TILE_SIZE * 57.2958));
+}
+
+/**
+ * The radius, in cells, at which the globe is exactly at `level`: where the
+ * ball, at the middle of the screen, is the same size as the flat map.
+ */
+export function levelRadius(level, lat) {
+  return (cellsAround(level) * 57.2958) / (360 * tileStretch(lat));
+}
+
+/**
+ * The scene as it is drawn at `level`: moved by less than a cell so that its
+ * cells sit squarely on the map's, and sized to the level exactly.
+ */
+export function snapScene(scene, level) {
+  const around = cellsAround(level);
+  const [u, v] = levelXY(scene.lat, scene.lon, level);
+  const x = Math.round(u - scene.cx) + scene.cx;
+  const y = Math.round(v - scene.cy) + scene.cy;
+  const lat = latitudeAt(y, around);
+  return { ...scene, lon: (x / around) * 360 - 180, lat, radius: levelRadius(level, lat) };
+}
+
+/**
+ * Where a coordinate lands on the grid of a scene drawn at `level`. Always
+ * somewhere - a flat map has no far side - though possibly far off the grid.
+ */
+export function projectLevel(scene, level, latitude, longitude) {
+  const around = cellsAround(level);
+  const [u0, v0] = levelXY(scene.lat, scene.lon, level);
+  const [u, v] = levelXY(latitude, longitude, level);
+  // The short way round the world.
+  const dx = ((((u - u0 + around / 2) % around) + around) % around) - around / 2;
+  return { x: scene.cx + dx, y: scene.cy + (v - v0) };
+}
+
+/**
+ * The tiles a scene drawn at `level` is looking at, nearest the middle
+ * first: [{ z, x, y }]. Past the deepest tiles, those are what is drawn.
+ */
+export function levelTiles(scene, level, cols, rows) {
+  const z = Math.min(level, TILE_MAX_ZOOM);
+  const perTile = TILE_SIZE * 2 ** (level - z); // screen cells across one tile
+  const across = 2 ** z;
+  const [u0, v0] = levelXY(scene.lat, scene.lon, level);
+  const left = Math.floor((u0 - scene.cx) / perTile);
+  const right = Math.floor((u0 - scene.cx + cols - 1) / perTile);
+  const top = Math.max(0, Math.floor((v0 - scene.cy) / perTile));
+  const bottom = Math.min(across - 1, Math.floor((v0 - scene.cy + rows - 1) / perTile));
+  const tiles = [];
+  for (let y = top; y <= bottom; y += 1) {
+    for (let x = left; x <= right; x += 1) {
+      const distance = ((x + 0.5) * perTile - u0) ** 2 + ((y + 0.5) * perTile - v0) ** 2;
+      tiles.push({ z, x: ((x % across) + across) % across, y, distance });
+    }
+  }
+  return tiles.sort((a, b) => a.distance - b.distance).map(({ x, y }) => ({ z, x, y }));
+}
+
+/**
+ * Paint a scene drawn at `level` (see snapScene) onto a `cols` x `rows` grid,
+ * as rows of runs like paintGlobe. `tile(z, x, y)` hands back a map tile if
+ * it has one to hand; where it has neither that tile nor a coarser one over
+ * the same ground, the cell falls back to the land mask.
+ */
+export function paintLevel(scene, level, cols, rows, extraLand, tile) {
+  const mask = landMask();
+  const around = cellsAround(level);
+  const z = Math.min(level, TILE_MAX_ZOOM);
+  const perTile = TILE_SIZE * 2 ** (level - z);
+  const across = 2 ** z;
+  const [u0, v0] = levelXY(scene.lat, scene.lon, level);
+  const left = Math.round(u0 - scene.cx); // the map cell under grid column 0
+  const top = Math.round(v0 - scene.cy);
+
+  // The mask needs real coordinates, but only one per column and per row.
+  const longitudes = new Float64Array(cols);
+  for (let c = 0; c < cols; c += 1) {
+    longitudes[c] = wrapLongitude(((left + c + 0.5) / around) * 360 - 180);
+  }
+
+  // Neighbouring cells nearly always share a tile, so remember the last one.
+  let lastX = NaN;
+  let lastY = NaN;
+  let raster = null;
+  let levelsUp = 0;
+
+  const out = new Array(rows);
+  for (let r = 0; r < rows; r += 1) {
+    const v = top + r;
+    let line = '';
+    if (v >= 0 && v < around) {
+      const lat = latitudeAt(v + 0.5, around);
+      const ty = Math.floor(v / perTile);
+      let runStart = 0;
+      let runColour = -1;
+      for (let c = 0; c <= cols; c += 1) {
+        let colour = -1;
+        if (c < cols) {
+          const u = (((left + c) % around) + around) % around;
+          const tx = Math.floor(u / perTile);
+          if (tx !== lastX || ty !== lastY) {
+            lastX = tx;
+            lastY = ty;
+            raster = null;
+            for (let up = 0; up <= TILE_FALLBACK_LEVELS && up <= z && !raster; up += 1) {
+              raster = tile(z - up, tx >> up, ty >> up) || null;
+              levelsUp = up;
+            }
+          }
+          if (raster) {
+            // This cell's place in that tile, which may be a coarser one.
+            const span = perTile * 2 ** levelsUp;
+            const x = Math.floor(((u % span) / span) * TILE_SIZE);
+            const y = Math.floor(((v % span) / span) * TILE_SIZE);
+            colour = TERRAIN_SLOT[raster[y * TILE_SIZE + x]];
+          } else if (isLandAt(mask, extraLand, lat, longitudes[c])) {
+            colour = (lat > 72 || lat < -62 ? ICE : LAND) + 1;
+          } else {
+            colour = (lat > 84 ? ICE : OCEAN) + 1;
           }
         }
         if (colour !== runColour) {
@@ -505,13 +466,17 @@ export function focusOnLatest(points) {
  * Group the points that would overlap on screen. Each cluster sits where its
  * newest member is, so it does not slide about as the globe turns, and is
  * keyed by that member. `spacing` is in cells; points off the grid or behind
- * the globe are dropped. `points` are newest first.
+ * the globe are dropped. `points` are newest first. Pass `level` for a scene
+ * drawn flat at that level.
  */
-export function clusterPoints(points, scene, cols, rows, spacing) {
+export function clusterPoints(points, scene, cols, rows, spacing, level = null) {
   const clusters = [];
   const reach = spacing * spacing;
   points.forEach((point) => {
-    const at = project(scene, point.latitude, point.longitude);
+    const at =
+      level == null
+        ? project(scene, point.latitude, point.longitude)
+        : projectLevel(scene, level, point.latitude, point.longitude);
     if (!at || at.x < 0 || at.x > cols || at.y < 0 || at.y > rows) return;
     const home = clusters.find((c) => (c.x - at.x) ** 2 + (c.y - at.y) ** 2 <= reach);
     if (home) home.items.push(point.sticker);

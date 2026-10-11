@@ -1,7 +1,14 @@
 import { buildVectorTile } from '../../../test/vectorTile';
 import { fetchMapTile } from '../../api/mapTilesClient';
 import { TERRAIN } from '../../utils/tileRaster';
-import { TILE_SIZE, cachedMapTile, clearMapTiles, loadMapTiles } from '../mapService';
+import {
+  TILE_SIZE,
+  cachedMapTile,
+  clearMapTiles,
+  loadMapTiles,
+  mapTilesPending,
+  warmMapTiles,
+} from '../mapService';
 
 jest.mock('../../api/mapTilesClient', () => ({
   MAP_ATTRIBUTION: 'test',
@@ -73,8 +80,10 @@ it('draws from the phone, not the network, after a restart', async () => {
 
 it('stays quiet offline and does not hammer a tile that just failed', async () => {
   fetchMapTile.mockRejectedValue(new Error('offline'));
-  const landed = await load([tile]);
-  expect(landed).not.toHaveBeenCalled();
+  const settled = await load([tile]);
+  // Told once that it gave up, so a "loading" sign can come down.
+  expect(settled).toHaveBeenCalledTimes(1);
+  expect(mapTilesPending()).toBe(0);
   expect(cachedMapTile(12, 1138, 1544)).toBeUndefined();
 
   await load([tile]);
@@ -86,9 +95,50 @@ it('carries on past a tile that cannot be had', async () => {
     if (x === 1) throw new Error('missing');
     return lake;
   });
-  const landed = await load([{ z: 5, x: 1, y: 1 }, { z: 5, x: 2, y: 1 }]);
-  expect(landed).toHaveBeenCalledTimes(1);
+  const settled = await load([{ z: 5, x: 1, y: 1 }, { z: 5, x: 2, y: 1 }]);
+  expect(settled).toHaveBeenCalledTimes(2);
+  expect(cachedMapTile(5, 1, 1)).toBeUndefined();
   expect(cachedMapTile(5, 2, 1)).toBeDefined();
+});
+
+it('downloads a few tiles at once, but only a few', async () => {
+  let inFlight = 0;
+  let most = 0;
+  fetchMapTile.mockImplementation(async () => {
+    inFlight += 1;
+    most = Math.max(most, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    inFlight -= 1;
+    return lake;
+  });
+  const row = Array.from({ length: 8 }, (_, x) => ({ z: 9, x, y: 0 }));
+  loadMapTiles(row, () => {});
+  expect(mapTilesPending()).toBe(8);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(most).toBe(3);
+  expect(mapTilesPending()).toBe(0);
+  row.forEach(({ z, x, y }) => expect(cachedMapTile(z, x, y)).toBeDefined());
+});
+
+it('warms tiles up in the background, behind whatever is on screen', async () => {
+  const order = [];
+  fetchMapTile.mockImplementation(async (z, x) => {
+    order.push(x);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    return lake;
+  });
+  warmMapTiles(Array.from({ length: 6 }, (_, i) => ({ z: 7, x: 100 + i, y: 0 })));
+  loadMapTiles([{ z: 7, x: 1, y: 0 }, { z: 7, x: 2, y: 0 }], () => {});
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // Everything arrives, and what is on screen went ahead of the rest of the
+  // warm-up even though it was asked for second.
+  expect(cachedMapTile(7, 105, 0)).toBeDefined();
+  expect(cachedMapTile(7, 2, 0)).toBeDefined();
+  expect(order.indexOf(1)).toBeLessThan(order.indexOf(105));
+  expect(order.indexOf(2)).toBeLessThan(order.indexOf(105));
+  // Warming up is not what a "loading" sign is for.
+  expect(mapTilesPending()).toBe(0);
 });
 
 it('erasing forgets tiles in memory and on the phone', async () => {
