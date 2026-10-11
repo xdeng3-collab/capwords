@@ -1,5 +1,6 @@
 import { STORAGE_KEYS, removeKeys, removeKeysIfPresent } from '../data/storage';
 import { deleteAllStickerImages, readStickers, writeStickers } from '../data/stickerStore';
+import { clearMapTiles } from './mapService';
 
 /**
  * Housekeeping for everything this phone stores.
@@ -35,4 +36,6 @@ export async function removeDemoData() {
 export async function eraseDeviceData() {
   await removeKeys(Object.values(STORAGE_KEYS));
   await deleteAllStickerImages();
+  // Cached map tiles show where the globe has been looked at.
+  await clearMapTiles();
 }
