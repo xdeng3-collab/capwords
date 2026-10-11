@@ -12,7 +12,11 @@ import {
 import { PRICING, PRODUCT_TO_PLAN } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PixelIcon, useAlert } from '../../components';
-import { getSubscription, redeemPromoCode } from '../../services/subscriptionService';
+import {
+  getSubscription,
+  redeemPromoCode,
+  removePromoCode,
+} from '../../services/subscriptionService';
 import {
   buyWordPack,
   getStoreProducts,
@@ -86,7 +90,26 @@ const PromoCard = React.memo(function PromoCard({ subscription, onRedeemed }) {
   const [promoResult, setPromoResult] = useState(null);
   const [redeeming, setRedeeming] = useState(false);
 
+  const showAlert = useAlert();
   const hasUnlimited = subscription?.type === 'unlimited';
+
+  const handleRemove = () => {
+    showAlert(
+      'Remove promo code?',
+      `You will go back to the free plan: ${PRICING.freeWordsPerDay} words a day, and Poop Battle levels cost poops again. You can redeem the code again later.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Remove',
+          onPress: async () => {
+            const result = await removePromoCode();
+            setPromoResult(result);
+            onRedeemed(result.subscription);
+          },
+        },
+      ]
+    );
+  };
 
   const handleRedeem = async () => {
     if (redeeming) return;
@@ -115,8 +138,14 @@ const PromoCard = React.memo(function PromoCard({ subscription, onRedeemed }) {
           <View style={styles.promoActiveText}>
             <Text style={styles.promoActiveTitle}>UNLIMITED PLAN ACTIVE</Text>
             <Text style={styles.promoActiveDetail}>
-              Redeemed with code {subscription?.promoCode}. Unlimited words, no expiry.
+              {subscription?.promoCode ? `Redeemed with code ${subscription.promoCode}. ` : ''}
+              Unlimited words and unlimited battle poops, no expiry.
             </Text>
+            {subscription?.promoCode ? (
+              <TouchableOpacity onPress={handleRemove} hitSlop={8}>
+                <Text style={styles.promoRemove}>REMOVE CODE</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       ) : (
@@ -479,6 +508,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   promoActiveText: { flex: 1 },
+  promoRemove: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: COLORS.danger,
+    letterSpacing: 0.8,
+    textDecorationLine: 'underline',
+    marginTop: 8,
+  },
   promoActiveTitle: {
     fontSize: 13,
     fontWeight: '900',

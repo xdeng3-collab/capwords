@@ -1,9 +1,11 @@
 import { DEFAULT_DAILY_GOAL, OUTFITS, PET } from '../config';
+import { getBattle } from '../data/battleStore';
 import { getPet, updatePet } from '../data/petStore';
 import { getUserProfile } from '../data/profileStore';
 import { getStreak, getWordCountOn } from '../data/progressStore';
 import { getCoins, spendCoins } from '../data/walletStore';
 import { todayKey, yesterdayKey } from '../utils/date';
+import { hasUnlimitedAmmo } from './subscriptionService';
 
 /**
  * The buddy: its name and species, the wardrobe, and the mood that makes it
@@ -26,12 +28,14 @@ export function setPetSpecies(species) {
 }
 
 /**
- * Buy an outfit with coins. Returns { ok, reason, pet, coins }.
- * On success the outfit is also equipped.
+ * Buy an everyday outfit with coins. Returns { ok, reason, pet, coins }.
+ * On success the outfit is also equipped. Battle rewards and premium outfits
+ * are not for sale here: see battleService and purchaseService.
  */
 export async function buyOutfit(outfitId) {
   const outfit = OUTFITS.find((o) => o.id === outfitId);
   if (!outfit) return { ok: false, reason: 'unknown_outfit' };
+  if (outfit.source !== 'coins') return { ok: false, reason: 'not_for_coins' };
 
   const pet = await getPet();
   if (pet.ownedOutfits.includes(outfitId)) return { ok: false, reason: 'owned', pet };
@@ -44,6 +48,16 @@ export async function buyOutfit(outfitId) {
     equippedOutfit: outfitId,
   });
   return { ok: true, pet: updated, coins };
+}
+
+/**
+ * Put an outfit in the closet without charging for it: a battle reward, or a
+ * premium outfit the App Store says is owned. Does not equip it.
+ */
+export async function grantOutfit(outfitId) {
+  const pet = await getPet();
+  if (!OUTFITS.some((o) => o.id === outfitId) || pet.ownedOutfits.includes(outfitId)) return pet;
+  return updatePet({ ownedOutfits: [...pet.ownedOutfits, outfitId] });
 }
 
 /** Equip an owned outfit ('none' to undress). */
@@ -77,12 +91,14 @@ export function derivePetMood({ wordsToday, dailyGoal, streak, today, yesterday 
  * Everything the Buddy and Wardrobe screens draw, in one read.
  */
 export async function getPetState() {
-  const [pet, profile, streak, wordsToday, coins] = await Promise.all([
+  const [pet, profile, streak, wordsToday, coins, battle, unlimitedAmmo] = await Promise.all([
     getPet(),
     getUserProfile(),
     getStreak(),
     getWordCountOn(todayKey()),
     getCoins(),
+    getBattle(),
+    hasUnlimitedAmmo(),
   ]);
 
   const dailyGoal = profile.dailyGoal || DEFAULT_DAILY_GOAL;
@@ -102,6 +118,9 @@ export async function getPetState() {
     equippedOutfit: pet.equippedOutfit,
     ownedOutfits: pet.ownedOutfits,
     coins: coins.balance,
+    ammo: battle.ammo,
+    unlimitedAmmo,
+    battleLevel: battle.highestCleared + 1,
     wordsToday,
     dailyGoal,
     goalReached: wordsToday >= dailyGoal,

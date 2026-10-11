@@ -40,6 +40,14 @@ export async function canLearnWord() {
   return { allowed: false, reason: 'limit_reached' };
 }
 
+/**
+ * Whether Poop Battle is free to enter. Only a promo grant gives this: the
+ * store plans sell words, and the battle's poops are meant to be earned.
+ */
+export async function hasUnlimitedAmmo() {
+  return (await getSubscription()).type === 'unlimited';
+}
+
 /** Charge one word against a per-word balance. Other plans are not metered. */
 export async function consumeWord() {
   const sub = await getSubscription();
@@ -76,4 +84,22 @@ export async function redeemPromoCode(rawCode) {
   });
 
   return { ok: true, message: promo.message, subscription };
+}
+
+/**
+ * Take an active promo code off again, back to the free plan. A plan that came
+ * from the App Store is left alone - there is no code on it to remove.
+ * Returns { ok, message, subscription }.
+ */
+export async function removePromoCode() {
+  const current = await getSubscription();
+  if (!current.promoCode) {
+    return { ok: false, message: 'There is no promo code on your account.', subscription: current };
+  }
+  const subscription = await updateSubscription({
+    type: 'free',
+    expiresAt: null,
+    promoCode: null,
+  });
+  return { ok: true, message: `Code ${current.promoCode} removed.`, subscription };
 }

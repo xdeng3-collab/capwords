@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
+import { OUTFIT_SPRITES } from './outfitSprites';
 import PixelSprite from './PixelSprite';
 
 /**
@@ -10,7 +11,7 @@ import PixelSprite from './PixelSprite';
  *
  * Species: 'cat' | 'dog' | 'bunny'
  * Moods:   'happy' | 'content' | 'neutral' | 'sad' | 'sleepy'
- * Outfits: 'none' | 'bow' | 'scarf' | 'cap' | 'crown' (see config OUTFITS)
+ * Outfits: see config OUTFITS; their sprites are in ./outfitSprites.js
  */
 
 // Shared palette keys used by every species' grid.
@@ -122,36 +123,20 @@ export function tallestPetSpriteHeight(pixelSize = 9) {
 }
 
 /**
- * Outfit overlays. `x` is a column in the 18-wide grid; `y` is relative to
- * the blob's top row (ears occupy negative space), so outfits sit correctly
- * on every species regardless of ear height.
+ * How far an outfit rises above the sprite's own box, in points: a wizard hat
+ * on a short-eared dog sticks out four rows. PetSprite pads itself by this, so
+ * a tall hat is never clipped; a screen that swaps outfits in place can reserve
+ * tallestOutfitHeadroom() to keep its layout still.
  */
-const OUTFIT_SPRITES = {
-  bow: {
-    x: 6,
-    y: -2,
-    grid: ['rr..rr', 'rrkkrr', 'rr..rr'],
-    palette: { r: '#D96C6C', k: '#B54A4A' },
-  },
-  scarf: {
-    x: 3,
-    y: 5,
-    grid: ['cccccccccccc', '.........cc.', '........cc..'],
-    palette: { c: '#D96C6C' },
-  },
-  cap: {
-    x: 3,
-    y: -2,
-    grid: ['..bbbbbbbb..', '.bbbbbbbbbb.', 'bbbbbbbbbbbbb'],
-    palette: { b: '#5D8FC4' },
-  },
-  crown: {
-    x: 6,
-    y: -2,
-    grid: ['g.gg.g', 'gggggg'],
-    palette: { g: '#F2C14E' },
-  },
-};
+export function outfitHeadroom(species, outfit, pixelSize = 9) {
+  const ears = (HEAD_ROWS[species] || HEAD_ROWS.cat).length;
+  const top = Math.min(0, ...(OUTFIT_SPRITES[outfit] || []).map((part) => ears + part.y));
+  return -top * pixelSize;
+}
+
+export function tallestOutfitHeadroom(species, pixelSize = 9) {
+  return Math.max(...Object.keys(OUTFIT_SPRITES).map((o) => outfitHeadroom(species, o, pixelSize)));
+}
 
 // Boing keyframes: crouch, launch, hang, fall, land-squash, settle.
 const KEYS = [0, 0.18, 0.35, 0.5, 0.75, 0.85, 1];
@@ -244,26 +229,27 @@ export default function PetSprite({
   });
 
   const palette = SPECIES_PALETTE[species] || SPECIES_PALETTE.cat;
-  const outfitSprite = OUTFIT_SPRITES[outfit];
+  const outfitParts = OUTFIT_SPRITES[outfit] || [];
 
   return (
-    <View style={{ alignItems: 'center' }}>
+    <View style={{ alignItems: 'center', paddingTop: outfitHeadroom(species, outfit, pixelSize) }}>
       <Animated.View
         style={{ transform: [{ translateY }, { scaleX }, { scaleY }], zIndex: 2 }}
       >
         <PixelSprite grid={grid} palette={palette} pixelSize={pixelSize} />
-        {outfitSprite ? (
+        {outfitParts.map((part, i) => (
           <PixelSprite
-            grid={outfitSprite.grid}
-            palette={outfitSprite.palette}
+            key={i}
+            grid={part.grid}
+            palette={part.palette}
             pixelSize={pixelSize}
             style={{
               position: 'absolute',
-              left: outfitSprite.x * pixelSize,
-              top: (headOffset + outfitSprite.y) * pixelSize,
+              left: part.x * pixelSize,
+              top: (headOffset + part.y) * pixelSize,
             }}
           />
-        ) : null}
+        ))}
       </Animated.View>
       <Animated.View style={{ marginTop: -pixelSize, transform: [{ scaleX: shadowScale }] }}>
         <PixelSprite grid={SHADOW_GRID} palette={BASE_PALETTE} pixelSize={pixelSize} />

@@ -19,6 +19,7 @@ export const STORAGE_KEYS = {
   COINS: 'capwords_coins',
   LAST_CHECK_IN: 'capwords_last_check_in',
   PRACTICED_STICKERS: 'capwords_practiced_stickers',
+  BATTLE: 'capwords_battle',
   // Retired: pals and cheers moved to Supabase. Kept so the legacy sweep and
   // eraseDeviceData() still clear what older builds left behind.
   FRIENDS: 'capwords_friends',

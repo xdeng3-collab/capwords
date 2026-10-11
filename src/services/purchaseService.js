@@ -1,5 +1,6 @@
 import StoreKitBilling from '../../modules/store-kit';
-import { IAP_PRODUCTS, PRODUCT_TO_PLAN } from '../config';
+import { IAP_OUTFITS, IAP_PRODUCTS, OUTFITS, PRODUCT_TO_PLAN } from '../config';
+import { equipOutfit, grantOutfit } from './petService';
 import { getSubscription, updateSubscription } from './subscriptionService';
 import { addCoins } from './walletService';
 
@@ -45,6 +46,74 @@ export async function buyCoinPack(coins) {
 /** Whether real billing is wired up in this build. */
 export function isBillingAvailable() {
   return !!StoreKitBilling?.isAvailable?.();
+}
+
+// ==================== Premium outfits (non-consumables) ====================
+//
+// Unlike the packs above these are real App Store products (IAP_OUTFITS), so
+// a build with StoreKit charges for them. Where StoreKit is missing - Expo Go,
+// Android - development builds hand them out so the Wardrobe and the battle
+// bonuses can be tried, and release builds refuse.
+
+export function arePremiumOutfitsForSale() {
+  return isBillingAvailable() || __DEV__;
+}
+
+/**
+ * Localised prices for the premium outfits, as { [outfitId]: '$1.99' }.
+ * Empty when the store has nothing to say; callers fall back to `usd`.
+ */
+export async function getOutfitPrices() {
+  if (!isBillingAvailable()) return {};
+  try {
+    const products = await StoreKitBilling.getProducts(Object.values(IAP_OUTFITS));
+    const prices = {};
+    Object.entries(IAP_OUTFITS).forEach(([outfitId, productId]) => {
+      const product = products.find((p) => p.id === productId);
+      if (product) prices[outfitId] = product.price;
+    });
+    return prices;
+  } catch (e) {
+    console.warn('Could not load outfit prices', e);
+    return {};
+  }
+}
+
+/**
+ * Buy a premium outfit with real money and put it on. Returns { status }:
+ * 'purchased', 'cancelled', 'pending' or 'unavailable'.
+ */
+export async function buyPremiumOutfit(outfitId) {
+  const outfit = OUTFITS.find((o) => o.id === outfitId && o.source === 'premium');
+  const productId = IAP_OUTFITS[outfitId];
+  if (!outfit || !productId) return { status: 'unavailable' };
+
+  if (isBillingAvailable()) {
+    let result;
+    try {
+      result = await StoreKitBilling.purchase(productId);
+    } catch (e) {
+      // The product does not exist in this storefront yet, or the store is
+      // unreachable. Either way nothing was charged.
+      console.warn('Could not buy outfit', e);
+      return { status: 'unavailable' };
+    }
+    if (result?.status !== 'purchased') return { status: result?.status || 'unknown' };
+  } else if (!__DEV__) {
+    return { status: 'unavailable' };
+  }
+
+  await grantOutfit(outfitId);
+  await equipOutfit(outfitId);
+  return { status: 'purchased' };
+}
+
+/** Put every premium outfit the App Store says is owned into the closet. */
+async function grantOwnedOutfits(owned) {
+  const ownedProducts = (owned || []).map((e) => e.productId);
+  for (const [outfitId, productId] of Object.entries(IAP_OUTFITS)) {
+    if (ownedProducts.includes(productId)) await grantOutfit(outfitId);
+  }
 }
 
 /**
@@ -114,10 +183,15 @@ export async function restorePurchases() {
 }
 
 /**
- * Map owned products onto our subscription shape. Exported so the entitlement
- * listener can reuse it.
+ * Map owned products onto local state: the subscription shape, and the
+ * premium outfits in the closet. Exported so the entitlement listener can
+ * reuse it.
  */
 export async function applyEntitlements(owned) {
+  // Outfits bought once are owned for good: this is what brings them back on
+  // a reinstall or another device.
+  await grantOwnedOutfits(owned);
+
   const current = await getSubscription();
 
   // Newest wins, so an upgrade from monthly to yearly reads correctly.

@@ -143,6 +143,18 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', '.c.c.', 'ccccc', '..c..', 'c.c.c'],
     map: { c: 'C' },
   },
+  sword: {
+    grid: ['....c', '...cc', '..cc.', 'c.c..', '.c...', 'c.c..'],
+    map: { c: 'C' },
+  },
+  bolt: {
+    grid: ['..cc.', '.cc..', 'cccc.', '..cc.', '.cc..', '.c...'],
+    map: { c: 'C' },
+  },
+  dice: {
+    grid: ['ccccc', 'cLcLc', 'ccccc', 'ccLcc', 'cLcLc', 'ccccc'],
+    map: { c: 'C', L: 'L' },
+  },
   coin: {
     grid: ['.ccc.', 'ccccc', 'ccLcc', 'ccLcc', 'ccccc', '.ccc.'],
     map: { c: 'C', L: 'L' },

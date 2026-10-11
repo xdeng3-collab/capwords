@@ -5,7 +5,9 @@ import {
   canLearnWord,
   consumeWord,
   getSubscription,
+  hasUnlimitedAmmo,
   redeemPromoCode,
+  removePromoCode,
   updateSubscription,
 } from '../subscriptionService';
 
@@ -71,6 +73,30 @@ describe('redeemPromoCode', () => {
     expect((await redeemPromoCode('NOT-A-CODE')).ok).toBe(false);
     await redeemPromoCode(code);
     expect((await redeemPromoCode(code)).ok).toBe(false);
+  });
+});
+
+describe('removePromoCode', () => {
+  const [code] = Object.keys(PROMO_CODES);
+
+  it('puts the account back on the free plan, and the code can be redeemed again', async () => {
+    await useFreeWords();
+    await redeemPromoCode(code);
+    expect((await canLearnWord()).allowed).toBe(true);
+    expect(await hasUnlimitedAmmo()).toBe(true);
+
+    expect((await removePromoCode()).ok).toBe(true);
+    expect(await getSubscription()).toMatchObject({ type: 'free', promoCode: null });
+    expect((await canLearnWord()).allowed).toBe(false);
+    expect(await hasUnlimitedAmmo()).toBe(false);
+
+    expect((await redeemPromoCode(code)).ok).toBe(true);
+  });
+
+  it('leaves a plan that did not come from a code alone', async () => {
+    await updateSubscription({ type: 'yearly', expiresAt: '2999-01-01T00:00:00.000Z' });
+    expect((await removePromoCode()).ok).toBe(false);
+    expect((await getSubscription()).type).toBe('yearly');
   });
 });
 

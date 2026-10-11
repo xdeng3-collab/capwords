@@ -11,7 +11,14 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { COINS, PET, PET_MOODS, PET_SPECIES, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PetSprite, PixelButton, PixelIcon, PixelPanel, ProgressBar } from '../../components';
+import {
+  PetSprite,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  PoopSprite,
+  ProgressBar,
+} from '../../components';
 import { getPetState, namePet } from '../../services/petService';
 import { claimDailyGift, isDailyGiftAvailable } from '../../services/walletService';
 import { successFeedback, tapFeedback } from '../../utils/haptics';
@@ -122,6 +129,24 @@ export default function PetScreen({ navigation }) {
             <Text style={styles.giftAmount}>+{COINS.checkInBonus}</Text>
           </TouchableOpacity>
         ) : null}
+
+        {/* Poop Battle */}
+        <TouchableOpacity
+          style={styles.battleCard}
+          onPress={() => navigation.navigate(ROUTES.BATTLE)}
+          activeOpacity={0.85}
+        >
+          <PoopSprite pixelSize={3} />
+          <View style={styles.giftTextWrap}>
+            <Text style={styles.battleTitle}>POOP BATTLE · LEVEL {state.battleLevel}</Text>
+            <Text style={styles.battleHint}>
+              {state.unlimitedAmmo
+                ? 'Unlimited poops with your promo code. Throw away!'
+                : `${state.ammo} ${state.ammo === 1 ? 'poop' : 'poops'} ready. Every word you learn is one more to throw.`}
+            </Text>
+          </View>
+          <PixelIcon name="sword" size={20} color={COLORS.sun} />
+        </TouchableOpacity>
 
         {/* Daily goal meter */}
         <PixelPanel style={styles.card}>
@@ -364,6 +389,21 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     ...SHADOW.soft,
   },
+  battleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.outline,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    ...SHADOW.soft,
+  },
+  battleTitle: { fontSize: 12, fontWeight: '900', color: COLORS.sun, letterSpacing: 1 },
+  battleHint: { fontSize: 12, color: '#EADBBB', fontWeight: '600', marginTop: 2 },
   giftTextWrap: { flex: 1 },
   giftTitle: { fontSize: 12, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
   giftHint: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },

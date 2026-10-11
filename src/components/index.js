@@ -7,7 +7,13 @@
 // Pixel-art primitives, drawn from grids - no image assets.
 export { default as PixelSprite } from './pixel/PixelSprite';
 export { default as PixelIcon } from './pixel/PixelIcon';
-export { default as PetSprite, petSpriteHeight, tallestPetSpriteHeight } from './pixel/PetSprite';
+export { default as PoopSprite } from './pixel/PoopSprite';
+export {
+  default as PetSprite,
+  petSpriteHeight,
+  tallestPetSpriteHeight,
+  tallestOutfitHeadroom,
+} from './pixel/PetSprite';
 
 // Building blocks for screens.
 export { PixelPanel } from './ui/PixelPanel';

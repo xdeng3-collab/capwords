@@ -1,7 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { OUTFITS } from '../../config';
+import { OUTFITS, RETIRED_OUTFITS } from '../../config';
 import { addCoins, getCoins } from '../walletService';
-import { buyOutfit, derivePetMood, equipOutfit, getPet, namePet } from '../petService';
+import {
+  buyOutfit,
+  derivePetMood,
+  equipOutfit,
+  getPet,
+  grantOutfit,
+  namePet,
+  updatePet,
+} from '../petService';
 
 beforeEach(() => AsyncStorage.clear());
 
@@ -45,6 +53,48 @@ describe('wardrobe', () => {
   it('only equips outfits that are owned', async () => {
     await equipOutfit(outfit.id);
     expect((await getPet()).equippedOutfit).toBe('none');
+  });
+});
+
+describe('outfits that coins cannot buy', () => {
+  it.each(OUTFITS.filter((o) => o.source !== 'coins').map((o) => [o.name, o.id]))(
+    'will not sell the %s for coins',
+    async (_, id) => {
+      await addCoins(100000);
+      expect(await buyOutfit(id)).toMatchObject({ ok: false, reason: 'not_for_coins' });
+      expect((await getCoins()).balance).toBe(100000);
+      expect((await getPet()).ownedOutfits).not.toContain(id);
+    }
+  );
+
+  it('grants one for free, once, without putting it on', async () => {
+    const reward = OUTFITS.find((o) => o.source === 'battle');
+    await grantOutfit(reward.id);
+    await grantOutfit(reward.id);
+    const pet = await getPet();
+    expect(pet.ownedOutfits.filter((id) => id === reward.id)).toHaveLength(1);
+    expect(pet.equippedOutfit).toBe('none');
+
+    await grantOutfit('not-an-outfit');
+    expect((await getPet()).ownedOutfits).not.toContain('not-an-outfit');
+  });
+});
+
+describe('retired outfits', () => {
+  it('takes the Snap Cap back and refunds it, once', async () => {
+    await updatePet({ ownedOutfits: ['none', 'bow', 'cap'], equippedOutfit: 'cap' });
+
+    // Screens read the pet in parallel; the refund must not multiply.
+    const [pet] = await Promise.all([getPet(), getPet(), getPet()]);
+    expect(pet).toMatchObject({ ownedOutfits: ['none', 'bow'], equippedOutfit: 'none' });
+    expect((await getCoins()).balance).toBe(RETIRED_OUTFITS.cap);
+
+    await getPet();
+    expect((await getCoins()).balance).toBe(RETIRED_OUTFITS.cap);
+  });
+
+  it('is gone from the catalog', () => {
+    expect(OUTFITS.some((o) => o.id in RETIRED_OUTFITS)).toBe(false);
   });
 });
 

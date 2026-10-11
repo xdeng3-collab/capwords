@@ -64,10 +64,11 @@ The two rules that matter most:
 | `collectionService`      | Stickers: save (which counts the word), list, group by day, delete   |
 | `progressService`        | Words per day, the streak, and what happens when a word is learned   |
 | `petService`             | Name, species, outfits, and the mood ladder (`derivePetMood` is pure) |
-| `walletService`          | Coins, daily gift, practice bonus                                    |
+| `battleService`          | Poop Battle: levels, dice hands, outfit bonuses (all pure), plus the ammo stockpile and ladder progress |
+| `walletService`          | Coins, daily gift, practice bonus (spent on everyday outfits and battle retries) |
 | `profileService`         | Local profile, onboarding state, goal-change cooldown                |
 | `subscriptionService`    | Daily allowance, per-word balance, promo codes                       |
-| `purchaseService`        | StoreKit subscriptions; word/coin packs (dev builds only until they have App Store products) |
+| `purchaseService`        | StoreKit subscriptions and premium outfits; word/coin packs (dev builds only until they have App Store products) |
 | `accountService`         | Supabase auth, the profile row, the progress mirror pals can read    |
 | `friendService`          | Pals: search, requests, cheers (all via RPCs)                        |
 | `aiService`              | Recognition and pronunciation prompts, parsing the answers           |
@@ -97,6 +98,11 @@ only on programmer error.
   because the app container path changes on every reinstall.
 - **Haptics go through `utils/haptics.js`** (`tapFeedback()`,
   `successFeedback()`, ...), which swallow the error a simulator throws.
+- **Outfits are drawn twice**: `components/pixel/outfitSprites.js` for the
+  app and `outfitParts` in `targets/widget/PixelPet.swift` for the widget.
+  The catalog (price, source, battle bonus) is `OUTFITS` in
+  `config/economy.js`. Never delete an outfit people may own: move it to
+  `RETIRED_OUTFITS`, and `petStore` refunds it on read.
 - **Mood logic lives in three places** that must agree: `derivePetMood` in
   `services/petService.js`, `moodForProgress` in `services/widgetService.js`,
   and `WidgetState` in `targets/widget/index.swift`.

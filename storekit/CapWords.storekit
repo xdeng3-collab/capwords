@@ -3,6 +3,51 @@
   "nonRenewingSubscriptions" : [
   ],
   "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "21520551",
+      "localizations" : [
+        {
+          "description" : "A starry wizard hat for your buddy. +30% attack and 15% crit in Poop Battle.",
+          "displayName" : "Arcane Wizard",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.outfit.wizard",
+      "referenceName" : "Outfit - Arcane Wizard",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "21520552",
+      "localizations" : [
+        {
+          "description" : "Neon optics for your buddy. +20% attack and an extra reroll in Poop Battle.",
+          "displayName" : "Cyber Visor",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.outfit.cyber",
+      "referenceName" : "Outfit - Cyber Visor",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "21520553",
+      "localizations" : [
+        {
+          "description" : "A plumed knight helm for your buddy. +25% attack, +40 health and 10% crit in Poop Battle.",
+          "displayName" : "Dragon Knight",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.outfit.knight",
+      "referenceName" : "Outfit - Dragon Knight",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_askToBuyEnabled" : false,

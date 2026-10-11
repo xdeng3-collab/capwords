@@ -1,4 +1,5 @@
-import { COINS } from '../config';
+import { BATTLE, COINS } from '../config';
+import { addAmmo } from '../data/battleStore';
 import { getUserProfile } from '../data/profileStore';
 import {
   getStreak,
@@ -44,8 +45,8 @@ export async function updateStreak() {
 
 /**
  * Book-keeping for one newly learned word: count it, pay the learning coins
- * (plus the bonus on the word that reaches the goal), and move the streak.
- * Returns the coins earned.
+ * (plus the bonus on the word that reaches the goal), drop a poop into the
+ * battle stockpile, and move the streak. Returns the coins earned.
  */
 export async function recordWordLearned() {
   const wordsToday = await incrementWordCountOn(todayKey());
@@ -54,6 +55,7 @@ export async function recordWordLearned() {
   let earned = COINS.perWord;
   if (wordsToday === profile.dailyGoal) earned += COINS.goalBonus;
   await addCoins(earned);
+  await addAmmo(BATTLE.ammoPerWord);
 
   await updateStreak();
   return earned;

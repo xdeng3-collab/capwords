@@ -8,5 +8,6 @@ export * from './pricing';
 export * from './goals';
 export * from './pet';
 export * from './economy';
+export * from './battle';
 export * from './copy';
 export * from './routes';

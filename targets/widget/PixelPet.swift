@@ -92,22 +92,78 @@ private struct Outfit {
     let palette: [Character: Color]
 }
 
-private func outfitSprite(_ outfit: String) -> Outfit? {
+/// The parts of an outfit - the Swift twin of outfitSprites.js. Keep the two
+/// in step: an outfit missing here simply is not drawn on the widget.
+private func outfitParts(_ outfit: String) -> [Outfit] {
     switch outfit {
     case "bow":
-        return Outfit(x: 6, y: -2, grid: ["rr..rr", "rrkkrr", "rr..rr"],
-                      palette: ["r": Color(hex: 0xD96C6C), "k": Color(hex: 0xB54A4A)])
+        return [Outfit(x: 6, y: -2, grid: ["rr..rr", "rrkkrr", "rr..rr"],
+                       palette: ["r": Color(hex: 0xD96C6C), "k": Color(hex: 0xB54A4A)])]
     case "scarf":
-        return Outfit(x: 3, y: 5, grid: ["cccccccccccc", ".........cc.", "........cc.."],
-                      palette: ["c": Color(hex: 0xD96C6C)])
-    case "cap":
-        return Outfit(x: 3, y: -2, grid: ["..bbbbbbbb..", ".bbbbbbbbbb.", "bbbbbbbbbbbbb"],
-                      palette: ["b": Color(hex: 0x5D8FC4)])
+        return [Outfit(x: 3, y: 5, grid: ["cccccccccccc", ".........cc.", "........cc.."],
+                       palette: ["c": Color(hex: 0xD96C6C)])]
     case "crown":
-        return Outfit(x: 6, y: -2, grid: ["g.gg.g", "gggggg"],
-                      palette: ["g": Color(hex: 0xF2C14E)])
+        return [Outfit(x: 6, y: -2, grid: ["g.gg.g", "gggggg"],
+                       palette: ["g": Color(hex: 0xF2C14E)])]
+    case "headband":
+        return [Outfit(x: 1, y: 1,
+                       grid: ["rrrrrrsssrrrrrrrr..",
+                              "kkkkkksksskkkkkk.rr",
+                              ".................rr",
+                              "..................r"],
+                       palette: ["r": Color(hex: 0xD94A4A), "k": Color(hex: 0xA63232),
+                                 "s": Color(hex: 0xC9D1D9)])]
+    case "viking":
+        return [Outfit(x: 0, y: -4,
+                       grid: ["h................h",
+                              "hh..oooooooooo..hh",
+                              ".hhosswsssssssohh.",
+                              "..hossssssssssoh..",
+                              "..odgddgddgddgdo.."],
+                       palette: ["o": Color(hex: 0x3A2A1A), "h": Color(hex: 0xF4E8C8),
+                                 "s": Color(hex: 0x9AA7B5), "w": Color(hex: 0xD5DDE5),
+                                 "d": Color(hex: 0x5E6B7A), "g": Color(hex: 0xF2C14E)])]
+    case "halo":
+        let wing: [Character: Color] = ["w": Color(hex: 0xFFFFFF), "s": Color(hex: 0xD8E6F2)]
+        return [Outfit(x: 5, y: -6, grid: [".gggggg.", "gy....yg", ".gggggg."],
+                       palette: ["g": Color(hex: 0xF2C14E), "y": Color(hex: 0xFBE7A8)]),
+                Outfit(x: -3, y: 2, grid: [".ww.", "wwww", "wsww", ".ss."], palette: wing),
+                Outfit(x: 17, y: 2, grid: [".ww.", "wwww", "wwsw", ".ss."], palette: wing)]
+    case "wizard":
+        return [Outfit(x: 2, y: -6,
+                       grid: ["......pq......",
+                              ".....pppq.....",
+                              ".....pspq.....",
+                              "....pppppq....",
+                              "...pppppspq...",
+                              "...gggggggg...",
+                              "pppppppppppppq"],
+                       palette: ["p": Color(hex: 0x7B4FC9), "q": Color(hex: 0x55329A),
+                                 "s": Color(hex: 0xFBE7A8), "g": Color(hex: 0xF2C14E)]),
+                Outfit(x: 16, y: -4, grid: [".s.", "sws", ".s."],
+                       palette: ["s": Color(hex: 0xF7A8F0), "w": Color(hex: 0xFFFFFF)])]
+    case "cyber":
+        let neon: [Character: Color] = ["m": Color(hex: 0xFF4FD8), "d": Color(hex: 0x1B2238)]
+        return [Outfit(x: 1, y: 2, grid: ["dwcccccddwcccccd", "dccccccddccccccd"],
+                       palette: ["d": Color(hex: 0x1B2238), "c": Color(hex: 0x3DF0FF),
+                                 "w": Color(hex: 0xFFFFFF)]),
+                Outfit(x: 8, y: -3, grid: ["mm", "dd", "dd"], palette: neon),
+                Outfit(x: 0, y: 2, grid: ["m", "m"], palette: neon),
+                Outfit(x: 17, y: 2, grid: ["m", "m"], palette: neon)]
+    case "knight":
+        return [Outfit(x: 2, y: -5,
+                       grid: [".......rr.....",
+                              ".....rrrrr....",
+                              "....rrRrrr....",
+                              "...ssssssss...",
+                              "..sswsssssss..",
+                              "ssssssssssssss",
+                              "dggggggggggggd"],
+                       palette: ["r": Color(hex: 0xD94A4A), "R": Color(hex: 0xF08A80),
+                                 "s": Color(hex: 0xB8C2CC), "w": Color(hex: 0xEEF3F7),
+                                 "d": Color(hex: 0x7C8794), "g": Color(hex: 0xF2C14E)])]
     default:
-        return nil
+        return []
     }
 }
 
@@ -143,14 +199,14 @@ struct PixelPet: View {
     var body: some View {
         let grid = bodyGrid(species: species, mood: mood)
         let headOffset = headRows(species).count
-        let sprite = outfitSprite(outfit)
+        let parts = outfitParts(outfit)
 
         ZStack(alignment: .topLeading) {
             PixelGrid(grid: grid, palette: speciesPalette(species), pixel: pixel)
-            if let sprite {
-                PixelGrid(grid: sprite.grid, palette: sprite.palette, pixel: pixel)
-                    .offset(x: CGFloat(sprite.x) * pixel,
-                            y: CGFloat(headOffset + sprite.y) * pixel)
+            ForEach(Array(parts.enumerated()), id: \.offset) { _, part in
+                PixelGrid(grid: part.grid, palette: part.palette, pixel: pixel)
+                    .offset(x: CGFloat(part.x) * pixel,
+                            y: CGFloat(headOffset + part.y) * pixel)
             }
         }
         .frame(width: 18 * pixel, height: CGFloat(grid.count) * pixel)

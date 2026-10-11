@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COINS } from '../../config';
+import { BATTLE, COINS } from '../../config';
+import { getBattleState } from '../battleService';
 import { getCoins } from '../walletService';
 import { updateUserProfile } from '../profileService';
 import { getDailyWordCount, getStreak, recordWordLearned } from '../progressService';
@@ -67,5 +68,12 @@ describe('recordWordLearned', () => {
     await learn(2);
     jest.setSystemTime(day(1));
     expect(await getDailyWordCount()).toBe(0);
+  });
+});
+
+describe('battle ammo', () => {
+  it('drops one poop into the stockpile per word learned', async () => {
+    await learn(4);
+    expect((await getBattleState()).ammo).toBe(BATTLE.starterAmmo + 4 * BATTLE.ammoPerWord);
   });
 });
