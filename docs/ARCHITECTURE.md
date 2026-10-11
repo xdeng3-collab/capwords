@@ -13,8 +13,8 @@ app          App shell: lifecycle effects, RootNavigator, TabNavigator, deep lin
        ├─ components   Shared presentational UI (no data access)
        └─ hooks        Shared React hooks
             └─ services     Business rules - the only way into data/ and api/
-                 ├─ data        On-device persistence (AsyncStorage, photo files)
-                 └─ api         Remote clients (Supabase, DeepSeek)
+                 ├─ data        On-device persistence (AsyncStorage, photo files, map tile cache)
+                 └─ api         Remote clients (Supabase, DeepSeek, map tiles)
                       └─ utils        Pure helpers
 theme        Design tokens          (imports nothing)
 config       Product configuration  (imports nothing)
@@ -72,6 +72,7 @@ The two rules that matter most:
 | `friendService`          | Pals: search, requests, cheers (all via RPCs)                        |
 | `aiService`              | Recognition and pronunciation prompts, parsing the answers           |
 | `widgetService`          | The home screen widget snapshot                                      |
+| `mapService`             | Map tiles for the Book's globe: what is ready to draw, loading the rest (phone cache, then network), warming up ahead |
 | `deviceDataService`      | Legacy cleanup, erasing everything on the phone                      |
 
 Services that talk to a backend return `{ ok, error, ... }` rather than
@@ -97,6 +98,20 @@ only on programmer error.
   because the app container path changes on every reinstall.
 - **Haptics go through `utils/haptics.js`** (`tapFeedback()`,
   `successFeedback()`, ...), which swallow the error a simulator throws.
+- **The Book's globe is two drawings.** Far out it is a ball, painted from
+  the land mask built into the app (`paintGlobe`). Past `MIN_LEVEL` it is a
+  flat map at fixed levels, one screen cell to one map-tile cell
+  (`paintLevel`) - so a level is one fixed picture that a drag only slides
+  and a pinch only stretches. Both are in
+  `features/collection/globe/geo.js`; keep anything that samples the map
+  per frame out of the flat half, or it shimmers again.
+- **Map tiles are drawn on the phone.** `utils/tileRaster.js` turns a vector
+  tile into a grid of terrain classes, `mapService` caches the grids. Change
+  what the rasteriser draws and you must bump `FORMAT` in `mapService`, or
+  phones keep showing the old grids from their cache. Tiles come from
+  OpenFreeMap: show `MAP_ATTRIBUTION` wherever they are on screen, and
+  remember that asking for one tells that server roughly where is being
+  looked at.
 - **Mood logic lives in three places** that must agree: `derivePetMood` in
   `services/petService.js`, `moodForProgress` in `services/widgetService.js`,
   and `WidgetState` in `targets/widget/index.swift`.
@@ -104,7 +119,9 @@ only on programmer error.
 ## Tests
 
 Service rules are unit tested with Jest (`jest-expo` preset) in
-`src/services/__tests__/`. AsyncStorage is an in-memory mock, the app's own
+`src/services/__tests__/`; the globe's geometry and the tile rasteriser are
+pure and tested next to their code (`features/collection/globe/__tests__/`,
+`utils/__tests__/`). AsyncStorage is an in-memory mock, the app's own
 native modules resolve to null (as they do in Expo Go), and the suite runs in
 Asia/Shanghai so UTC and local days differ - see `jest.config.js` and
 `test/`. When you change a rule - the streak, the free limit, a price, the mood
