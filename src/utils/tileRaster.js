@@ -45,11 +45,11 @@ const ROADS = {
 // each kind of road only appears from the zoom where there is room for it.
 const ROAD_FROM_ZOOM = {
   motorway: 6,
-  trunk: 9,
-  primary: 9,
-  secondary: 10,
-  tertiary: 12,
-  minor: 13,
+  trunk: 8,
+  primary: 12,
+  secondary: 13,
+  tertiary: 13,
+  minor: 14,
 };
 
 /** Even-odd fill of a polygon's rings, sampled at cell centres. */

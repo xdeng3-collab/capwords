@@ -29,7 +29,7 @@ const MEMORY_TILES = 160;
 // Do not ask again straight away for a tile that just failed.
 const RETRY_AFTER_MS = 30000;
 // Bump when the rasteriser changes what a cell means, to orphan old files.
-const FORMAT = 'v1';
+const FORMAT = 'v2';
 
 const memory = new Map(); // key -> Uint8Array, least recently used first
 const failed = new Map(); // key -> time of failure

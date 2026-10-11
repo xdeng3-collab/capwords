@@ -11,20 +11,30 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
 import { PixelIcon } from '../../../components';
-import { MAP_ATTRIBUTION, cachedMapTile, loadMapTiles } from '../../../services/mapService';
+import {
+  MAP_ATTRIBUTION,
+  TILE_MAX_ZOOM,
+  cachedMapTile,
+  loadMapTiles,
+} from '../../../services/mapService';
 import { selectFeedback, tapFeedback } from '../../../utils/haptics';
 import {
+  MAX_LEVEL,
   MAX_ZOOM,
+  MIN_LEVEL,
   MIN_ZOOM,
   clamp,
   clusterPoints,
   focusOnLatest,
   landCellIndex,
   commonestColour,
+  levelFor,
+  levelRadius,
   locatedPoints,
   meshRows,
   paintGlobe,
   project,
+  snapScene,
   tileZoomFor,
   visibleTiles,
   wrapLongitude,
@@ -67,9 +77,9 @@ const GLOBE_COLORS = [
   '#DDE3E2',
   '#AEBBC6',
   '#E8D6AE',
-  '#B08A5B',
-  '#FBF3E0',
-  '#EADBBB',
+  '#D3BF9B',
+  '#F5DFA0',
+  '#F6ECD4',
 ];
 const NIGHT = '#2B2748';
 const STAR_COLORS = ['#FBF3E0', '#F2C14E', '#8FC6E8'];
@@ -81,21 +91,38 @@ const DRIFT_FRAME_MS = 90;
 // Below this zoom pins are dots; from here on they show the photo.
 const PHOTO_ZOOM = 3;
 const PHOTO_SIZE = 40;
-// Map tiles are only asked for once the view has held still this long.
+// Once the view has held still this long it snaps to the nearest level and
+// fetches the map tiles it is looking at.
 const SETTLE_MS = 150;
 // However heavy the picture, never draw slower than this while moving.
 const MAX_FRAME_MS = 80;
-// Close in, the globe is as good as flat, so dragging and pinching slide and
-// stretch the picture already drawn (which costs nothing) and only redraw it
-// now and then. It is drawn this many cells bigger all round so there is
-// something to slide in.
-const GLIDE_ZOOM = 8;
-const GLIDE_MARGIN = 6;
-const GLIDE_FRAME_MS = 120;
+// Close in, the globe is drawn at fixed levels (see geo.js) and the picture
+// is slid and stretched to follow the finger, so it only has to be redrawn
+// on reaching a new level or the edge of what was drawn - which is this many
+// cells beyond the screen on every side.
+const LEVEL_MARGIN = 8;
+const LEVEL_FRAME_MS = 60;
+// Opening flies no deeper than this: a neighbourhood's rivers and main roads.
+// Streets and buildings are a pinch further in.
+const FLY_MAX_LEVEL = 13;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+/** The open globe's radius in cells at zoom 1. */
+const openRadius = (innerWidth) => (innerWidth / CELL) * 0.42;
+
+/**
+ * The level the globe is at, fractional - or null while it is closed or
+ * still far enough out to be drawn as a ball.
+ */
+function levelOf(view, innerWidth) {
+  if (view.open !== 1) return null;
+  const exact = levelFor(openRadius(innerWidth) * view.zoom, view.lat);
+  return exact >= MIN_LEVEL - 1e-6 ? exact : null;
+}
+const wholeLevel = (exact) => Math.min(MAX_LEVEL, Math.floor(exact + 1e-6));
 
 /**
  * Where the globe sits on the cell grid for a given view and panel size.
@@ -110,7 +137,7 @@ function sceneFor(view, innerWidth, openHeight, margin = 0) {
     lon: view.lon,
     lat: view.lat,
     // Closed, the centre sits just under the strip so about half shows.
-    radius: lerp(closedRows - 1, cols * 0.42, view.open) * view.zoom,
+    radius: lerp(closedRows - 1, openRadius(innerWidth), view.open) * view.zoom,
     shading: clamp(1 - (view.zoom - 1) / 2, 0, 1),
     cx: cols / 2 + margin,
     cy: lerp(closedRows + 2, openRows / 2, view.open) + margin,
@@ -233,8 +260,22 @@ export default function GlobeView({
   const pace = useRef({ cost: 0, last: 0, pending: null });
   const paint = useCallback(() => {
     const state = pace.current;
-    const gap = live.current.margin
-      ? Math.max(GLIDE_FRAME_MS, state.cost * 3)
+    const { margin: m, innerWidth: w } = live.current;
+    if (m) {
+      // At a level, the picture drawn is still good until the view reaches
+      // another level or the edge of it.
+      const was = drawn.current;
+      const exact = levelOf(view, w);
+      const reach = (m - 2) * CELL * was.scale;
+      const good =
+        exact != null &&
+        wholeLevel(exact) === was.level &&
+        Math.abs(was.x) < reach &&
+        Math.abs(was.y) < reach;
+      if (good) return;
+    }
+    const gap = m
+      ? Math.max(LEVEL_FRAME_MS, state.cost * 1.5)
       : Math.min(MAX_FRAME_MS, state.cost * 1.5);
     const wait = gap - (performance.now() - state.last);
     if (wait <= 0) {
@@ -258,22 +299,29 @@ export default function GlobeView({
   const tweens = useRef([]);
   const fling = useRef({ x: 0, y: 0 });
   const drag = useRef(null);
+  const pinching = useRef(false);
   const loop = useRef({ raf: null, last: 0, painted: 0 });
   const live = useRef({});
   // Open with nothing pinned, the globe keeps drifting until it is touched.
   const drifting = useRef(false);
   const clustersRef = useRef({ list: [], photos: false });
 
-  const margin = isOpen && view.open === 1 && view.zoom >= GLIDE_ZOOM ? GLIDE_MARGIN : 0;
-  const scene = sceneFor(view, innerWidth, openHeight, margin);
+  // Far out the globe is drawn afresh wherever the view is. Close in it is
+  // drawn at a whole level, squared up to the map, with room to spare round
+  // the edges - and then moved about rather than redrawn.
+  const exactLevel = isOpen ? levelOf(view, innerWidth) : null;
+  const level = exactLevel == null ? null : wholeLevel(exactLevel);
+  const margin = level == null ? 0 : LEVEL_MARGIN;
+  const seen = sceneFor(view, innerWidth, openHeight, margin);
+  const scene = level == null ? seen : snapScene(seen, level);
   live.current = { points, innerWidth, openHeight, active, isOpen, margin };
 
   // How the picture on screen has been moved since it was drawn: slid to
   // wherever the point it was centred on has got to, and stretched by however
-  // much the zoom has changed.
+  // much closer the view is than the level it was drawn at.
   const shift = useRef(new Animated.ValueXY()).current;
   const stretch = useRef(new Animated.Value(1)).current;
-  const drawn = useRef({ lon: view.lon, lat: view.lat, zoom: 1, x: 0, y: 0, scale: 1 });
+  const drawn = useRef({ lon: 0, lat: 0, radius: 1, level: null, x: 0, y: 0, scale: 1 });
   const slide = useCallback(() => {
     const { margin: m, innerWidth: w, openHeight: h } = live.current;
     const was = drawn.current;
@@ -287,7 +335,7 @@ export default function GlobeView({
         x = (at.x - now.cx) * CELL;
         y = (at.y - now.cy) * CELL;
       }
-      scale = view.zoom / was.zoom;
+      scale = now.radius / was.radius;
     }
     if (x !== was.x || y !== was.y) shift.setValue({ x, y });
     if (scale !== was.scale) stretch.setValue(scale);
@@ -297,29 +345,17 @@ export default function GlobeView({
   }, [view, shift, stretch]);
   useLayoutEffect(() => {
     pace.current.cost = performance.now() - renderStarted;
-    drawn.current.lon = view.lon;
-    drawn.current.lat = view.lat;
-    drawn.current.zoom = view.zoom;
+    drawn.current.lon = scene.lon;
+    drawn.current.lat = scene.lat;
+    drawn.current.radius = scene.radius;
+    drawn.current.level = level;
     slide();
   });
 
-  // Tiles replace the mask once the globe is open and close enough that it is
-  // no longer shaded as a ball.
-  const tiles = isOpen && view.open === 1 && scene.shading === 0 ? tileZoomFor(scene) : null;
-  const detail = tiles && { ...tiles, tile: cachedMapTile };
+  const detail = level == null ? null : { ...tileZoomFor(scene), tile: cachedMapTile };
 
-  // When the view comes to rest, fetch the tiles it is looking at. Every
-  // repaint restarts the wait, so nothing is fetched mid-gesture.
-  const settle = useRef(null);
-  useEffect(() => {
-    clearTimeout(settle.current);
-    if (!tiles || !active) return undefined;
-    settle.current = setTimeout(() => {
-      if (tweens.current.length || drag.current) return;
-      loadMapTiles(visibleTiles(scene, scene.cols, scene.rows, tiles.z), repaint);
-    }, SETTLE_MS);
-    return () => clearTimeout(settle.current);
-  });
+  const settle = useRef({ timer: null, arm: null });
+  useEffect(() => () => clearTimeout(settle.current.timer), []);
 
   useEffect(() => onOpenChange?.(isOpen), [isOpen, onOpenChange]);
 
@@ -390,6 +426,7 @@ export default function GlobeView({
 
       const keepGoing = live.current.active && (tweens.current.length || drift || fling.current.x || fling.current.y);
       state.raf = keepGoing ? requestAnimationFrame(frame) : null;
+      if (!keepGoing) settle.current.arm?.();
     },
     [view, paint, slide]
   );
@@ -430,19 +467,54 @@ export default function GlobeView({
     [view, kick]
   );
 
+  /** The tiles a view at `level` centred here would be looking at. */
+  const tilesAround = useCallback((lon, lat, level) => {
+    const { innerWidth: w, openHeight: h } = live.current;
+    const zoom = levelRadius(level, lat) / openRadius(w);
+    const at = snapScene(sceneFor({ lon, lat, zoom, open: 1 }, w, h, LEVEL_MARGIN), level);
+    return visibleTiles(at, at.cols, at.rows, Math.min(level, TILE_MAX_ZOOM));
+  }, []);
+
+  // When everything has come to rest: ease onto the nearest whole level, then
+  // fetch the tiles in view. Armed whenever the animation loop runs dry.
+  settle.current.arm = () => {
+    clearTimeout(settle.current.timer);
+    settle.current.timer = setTimeout(() => {
+      const { innerWidth: w, active: on, isOpen: opened } = live.current;
+      if (!on || !opened || tweens.current.length || drag.current || pinching.current) return;
+      const exact = levelOf(view, w);
+      if (exact == null) return;
+      let nearest = clamp(Math.round(exact), MIN_LEVEL, MAX_LEVEL);
+      while (nearest > MIN_LEVEL && levelRadius(nearest, view.lat) / openRadius(w) > MAX_ZOOM) {
+        nearest -= 1;
+      }
+      const zoom = levelRadius(nearest, view.lat) / openRadius(w);
+      if (Math.abs(Math.log2(zoom / view.zoom)) > 0.01) {
+        tween({ zoom }, 220, easeOut);
+        return;
+      }
+      loadMapTiles(tilesAround(view.lon, view.lat, nearest), repaint);
+    }, SETTLE_MS);
+  };
+
   /** Spin round to the newest photo, then fly in. */
   const flyToLatest = useCallback(
     async (spin) => {
       const focus = focusOnLatest(live.current.points);
       if (!focus) return;
-      // Start on the destination's tiles now, so they are there on arrival.
-      const arrival = sceneFor(
-        { lon: focus.longitude, lat: focus.latitude, zoom: focus.zoom, open: 1 },
-        live.current.innerWidth,
-        live.current.openHeight
-      );
-      const there = tileZoomFor(arrival);
-      if (there) loadMapTiles(visibleTiles(arrival, arrival.cols, arrival.rows, there.z), repaint);
+      // Land on a whole level, and start now on the tiles for it and for the
+      // levels passed on the way down, so the dive is through real map.
+      const base = openRadius(live.current.innerWidth);
+      const exact = levelFor(base * focus.zoom, focus.latitude);
+      let { zoom } = focus;
+      if (exact >= MIN_LEVEL) {
+        const landing = clamp(Math.round(exact), MIN_LEVEL, FLY_MAX_LEVEL);
+        zoom = levelRadius(landing, focus.latitude) / base;
+        const wanted = [landing - 6, landing - 3, landing]
+          .filter((l) => l >= MIN_LEVEL)
+          .flatMap((l) => tilesAround(focus.longitude, focus.latitude, l));
+        loadMapTiles(wanted, repaint);
+      }
       const ahead = (((focus.longitude - view.lon) % 360) + 360) % 360;
       let turn = ahead > 180 ? ahead - 360 : ahead;
       // On opening, always arrive with a good eastward spin.
@@ -458,9 +530,9 @@ export default function GlobeView({
         if (!turned) return;
         view.lon = wrapLongitude(view.lon);
       }
-      await tween({ zoom: focus.zoom }, clamp(500 + 200 * Math.log2(focus.zoom), 500, 2200));
+      await tween({ zoom }, clamp(300 + 55 * Math.log2(zoom), 350, 950));
     },
-    [view, tween]
+    [view, tween, tilesAround]
   );
 
   const open = useCallback(() => {
@@ -573,12 +645,17 @@ export default function GlobeView({
       .onStart(() => {
         cancelTweens(false);
         drifting.current = false;
+        pinching.current = true;
         pinchFrom = view.zoom;
       })
       .onUpdate((event) => {
         view.zoom = clamp(pinchFrom * event.scale, MIN_ZOOM, MAX_ZOOM);
         slide();
         paint();
+      })
+      .onFinalize(() => {
+        pinching.current = false;
+        kick();
       });
 
     const tap = Gesture.Tap()
@@ -653,10 +730,10 @@ export default function GlobeView({
 
           {!selected ? (
             <View style={styles.controls}>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(3)} hitSlop={4}>
+              <TouchableOpacity style={styles.button} onPress={() => zoomBy(2)} hitSlop={4}>
                 <PixelIcon name="plus" size={14} color={COLORS.text} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(1 / 3)} hitSlop={4}>
+              <TouchableOpacity style={styles.button} onPress={() => zoomBy(1 / 2)} hitSlop={4}>
                 <PixelIcon name="minus" size={14} color={COLORS.text} />
               </TouchableOpacity>
               {points.length ? (

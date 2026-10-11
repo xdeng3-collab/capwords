@@ -15,7 +15,7 @@ const RAD = Math.PI / 180;
 const EARTH_RADIUS_KM = 6371;
 
 /** How far the globe can be pinched in; a few blocks across the screen. */
-export const MAX_ZOOM = 26000;
+export const MAX_ZOOM = 40000;
 export const MIN_ZOOM = 1;
 
 // Opening the globe flies to the newest photo. How close it flies depends on
@@ -128,16 +128,53 @@ TERRAIN_PRIORITY[TERRAIN.STREET] = 3;
 TERRAIN_PRIORITY[TERRAIN.ROAD] = 4;
 
 /**
+ * Close in, the globe is drawn at fixed levels, like any map: at level L one
+ * screen cell is exactly one cell of a zoom-L map tile. Each level is then a
+ * fixed picture, which dragging only slides and pinching only stretches -
+ * rather than a fresh sampling of the map every frame, which shimmers.
+ *
+ * Levels start where tiles become worth having and run one past the deepest
+ * tiles, where each tile cell is drawn two screen cells across.
+ */
+export const MIN_LEVEL = TILE_MIN_ZOOM;
+export const MAX_LEVEL = TILE_MAX_ZOOM + 1;
+
+const tileStretch = (lat) => Math.cos(clamp(lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT) * RAD);
+
+/** The level, fractional, that a globe of this radius (in cells) is at. */
+export function levelFor(radius, lat) {
+  return Math.log2((radius * 360 * tileStretch(lat)) / (TILE_SIZE * 57.2958));
+}
+
+/** The radius, in cells, at which the globe is exactly at `level`. */
+export function levelRadius(level, lat) {
+  return (2 ** level * TILE_SIZE * 57.2958) / (360 * tileStretch(lat));
+}
+
+/**
+ * The scene redrawn at exactly `level`, nudged by less than a cell so that
+ * its cells sit squarely on the map's. Whatever is drawn from it is the
+ * tiles' own pixels, and stays the same picture however the view got there.
+ */
+export function snapScene(scene, level) {
+  const around = TILE_SIZE * 2 ** level; // cells round the world at this level
+  const [u, v] = tileXY(clamp(scene.lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT), scene.lon, around);
+  const x = Math.round(u - scene.cx) + scene.cx;
+  const y = Math.round(v - scene.cy) + scene.cy;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / around))) / RAD;
+  return { ...scene, lon: (x / around) * 360 - 180, lat, radius: levelRadius(level, lat) };
+}
+
+/**
  * Which map tiles suit the globe at this scene: { z, spread }, or null while
  * it is too far out for tiles to add anything. `z` is the shallowest zoom
  * whose cells are no bigger than the globe's, and `spread` how many of them
  * (1 to 2, or fewer past the deepest zoom) lie across one screen cell.
  */
 export function tileZoomFor(scene) {
-  const degreesPerCell = 57.2958 / scene.radius;
-  const stretch = Math.cos(clamp(scene.lat, -TILE_LAT_LIMIT, TILE_LAT_LIMIT) * RAD);
-  const exact = Math.log2((360 * stretch) / (TILE_SIZE * degreesPerCell));
-  const z = Math.min(Math.ceil(exact), TILE_MAX_ZOOM);
+  const exact = levelFor(scene.radius, scene.lat);
+  // A scene snapped to a level is a hair off a whole number either way.
+  const z = Math.min(Math.ceil(exact - 1e-6), TILE_MAX_ZOOM);
   return z < TILE_MIN_ZOOM ? null : { z, spread: 2 ** (z - exact) };
 }
 
@@ -212,10 +249,11 @@ export function paintGlobe(scene, cols, rows, extraLand, detail) {
   const outer = (radius + 1) * (radius + 1);
   const inner = radius * radius;
 
-  // Specks sit on a lattice in map space, about one screen cell across, that
-  // steps finer as the globe is zoomed.
-  const level = Math.ceil(Math.log2(57.3 / radius));
-  const lattice = 2 ** level;
+  // Specks sit on a fixed lattice in map space, and only while the globe is
+  // still a ball: close up they would be noise over the map.
+  const level = 1;
+  const lattice = 2;
+  const specks = shading > 0;
 
   // Neighbouring cells nearly always share a tile, so remember the last one.
   const tilesAcross = detail ? 2 ** detail.z : 0;
@@ -340,7 +378,10 @@ export function paintGlobe(scene, cols, rows, extraLand, detail) {
               if (isLand) base = lat > 72 || lat < -62 ? ICE : LAND;
               else base = lat > 84 ? ICE : OCEAN;
 
-              if (speckle(Math.floor(lon / lattice), Math.floor(lat / lattice), level) < 3) {
+              if (
+                specks &&
+                speckle(Math.floor(lon / lattice), Math.floor(lat / lattice), level) < 3
+              ) {
                 // Darker flecks on land, lighter glints on water.
                 tone = base === OCEAN ? Math.max(0, tone - 1) : Math.min(2, tone + 1);
               }

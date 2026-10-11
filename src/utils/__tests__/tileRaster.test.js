@@ -75,8 +75,8 @@ it('brings roads in gradually with zoom', () => {
   };
   expect(roads(4)).toEqual([false, false, false]);
   expect(roads(7)).toEqual([true, false, false]);
-  expect(roads(10)).toEqual([true, true, false]);
-  expect(roads(13)).toEqual([true, true, true]);
+  expect(roads(12)).toEqual([true, true, false]);
+  expect(roads(14)).toEqual([true, true, true]);
 });
 
 it('rejects bytes that are not a tile', () => {

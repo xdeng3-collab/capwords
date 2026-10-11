@@ -6,6 +6,9 @@ import {
   clusterPoints,
   focusOnLatest,
   landCellIndex,
+  levelFor,
+  levelRadius,
+  snapScene,
   locatedPoints,
   paintGlobe,
   placeName,
@@ -127,6 +130,86 @@ describe('map tiles', () => {
     expect(row.split(',').every((run) => ['2', '5', '6'].includes(run.split(':')[2]))).toBe(true);
   });
 
+  describe('at a fixed level', () => {
+    // A tile whose every cell differs from its neighbours, so a picture that
+    // is even slightly resampled gives itself away. The pattern repeats every
+    // four cells, so it carries on unbroken from one tile into the next.
+    const PATTERN = [TERRAIN.LAND, TERRAIN.WOOD, TERRAIN.GRASS, TERRAIN.SAND];
+    const tile = Uint8Array.from({ length: TILE_SIZE * TILE_SIZE }, (_, i) => {
+      const [x, y] = [i % TILE_SIZE, Math.floor(i / TILE_SIZE)];
+      return PATTERN[(x + 2 * y) % 4];
+    });
+    // The colour slots those four are drawn in, in the same order.
+    const order = [5, 6, 4, 10];
+    const colourAt = (rows, c, r) => {
+      const run = rows[r].split(',').find((text) => {
+        const [start, length] = text.split(':').map(Number);
+        return c >= start && c < start + length;
+      });
+      return Number(run.split(':')[2]);
+    };
+    const drawAt = (view, level) => {
+      const scene = snapScene(view, level);
+      const lines = paintGlobe(scene, 58, 97, null, { ...tileZoomFor(scene), tile: () => tile });
+      return { scene, lines };
+    };
+
+    it('radius and level convert both ways', () => {
+      expect(levelFor(levelRadius(12, 40.444), 40.444)).toBeCloseTo(12, 9);
+      // The same level is a bigger globe nearer the poles, where tiles cover less ground.
+      expect(levelRadius(12, 60)).toBeGreaterThan(levelRadius(12, 0));
+    });
+
+    it('uses exactly one tile cell per screen cell, and half of one past the deepest tiles', () => {
+      expect(tileZoomFor(snapScene(over(3000), 12))).toMatchObject({ z: 12 });
+      expect(tileZoomFor(snapScene(over(3000), 12)).spread).toBeCloseTo(1, 6);
+      expect(tileZoomFor(snapScene(over(3000), 15)).z).toBe(14);
+      expect(tileZoomFor(snapScene(over(3000), 15)).spread).toBeCloseTo(0.5, 6);
+    });
+
+    it('moves the view by less than a cell to square it up', () => {
+      const view = over(3000);
+      const { scene } = drawAt(view, 13);
+      const moved = project(scene, view.lat, view.lon);
+      expect(Math.abs(moved.x - scene.cx)).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(moved.y - scene.cy)).toBeLessThanOrEqual(0.5);
+    });
+
+    it("draws the tile's own cells, one for one", () => {
+      const { lines } = drawAt(over(3000), 13);
+      // Neighbouring screen cells show neighbouring tile cells: the pattern
+      // survives intact, which no resampling would manage.
+      for (let r = 30; r < 66; r += 1) {
+        for (let c = 12; c < 46; c += 1) {
+          const here = order.indexOf(colourAt(lines, c, r));
+          expect(here).toBeGreaterThanOrEqual(0);
+          expect(order.indexOf(colourAt(lines, c + 1, r))).toBe((here + 1) % 4);
+          expect(order.indexOf(colourAt(lines, c, r + 1))).toBe((here + 2) % 4);
+        }
+      }
+    });
+
+    it('is the same picture after a drag, just moved by whole cells', () => {
+      const from = over(3000);
+      const first = drawAt(from, 13);
+      // Dragged a few hundred metres, by no round number of cells.
+      const second = drawAt({ ...from, lon: from.lon + 0.00731, lat: from.lat - 0.00412 }, 13);
+      const at = project(second.scene, first.scene.lat, first.scene.lon);
+      const dx = at.x - second.scene.cx;
+      const dy = at.y - second.scene.cy;
+      expect(dx).toBeCloseTo(Math.round(dx), 2);
+      expect(dy).toBeCloseTo(Math.round(dy), 2);
+      expect(Math.abs(Math.round(dx)) + Math.abs(Math.round(dy))).toBeGreaterThan(5);
+      for (let r = 35; r < 60; r += 3) {
+        for (let c = 30; c < 52; c += 3) {
+          expect(colourAt(second.lines, c + Math.round(dx), r + Math.round(dy))).toBe(
+            colourAt(first.lines, c, r)
+          );
+        }
+      }
+    });
+  });
+
   it('asks for the few tiles in view, the middle one first', () => {
     const close = over(14000);
     const tiles = visibleTiles(close, 58, 97, 14);
@@ -149,8 +232,8 @@ describe('map tiles', () => {
           .map((run) => run.split(':')[2])
       );
 
-    // No tiles yet: plain land (and its flecks).
-    expect([...colours({ z: 14, spread: 1, tile: () => undefined })].sort()).toEqual(['5', '6']);
+    // No tiles yet: plain land.
+    expect([...colours({ z: 14, spread: 1, tile: () => undefined })]).toEqual(['5']);
     // Every tile is all street.
     expect([...colours({ z: 14, spread: 1, tile: () => street })]).toEqual(['13']);
     // Only a coarser tile over the same ground has arrived: use that.
