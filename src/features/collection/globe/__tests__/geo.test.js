@@ -2,6 +2,7 @@ import { TERRAIN, TILE_SIZE } from '../../../../utils/tileRaster';
 import {
   MAX_ZOOM,
   commonestColour,
+  dragOnLevel,
   meshRows,
   clusterPoints,
   focusOnLatest,
@@ -134,6 +135,28 @@ describe('close in, as a flat map at fixed levels', () => {
         }
       }
     });
+  });
+
+  it('a drag moves the map exactly with the finger, and stays on its level', () => {
+    [5, 11.4, 13].forEach((level) => {
+      const from = { lat: 40.444, lon: -79.943 };
+      // Dragged right and a long way down: the view moves west and north.
+      const to = dragOnLevel(level, from.lat, from.lon, 30, 200);
+      expect(to.lon).toBeLessThan(from.lon);
+      expect(to.lat).toBeGreaterThan(from.lat);
+      // The place that was in the middle is now 30 cells right, 200 down.
+      const moved = projectLevel({ ...to, cx: 0, cy: 0 }, level, from.lat, from.lon);
+      expect(moved.x).toBeCloseTo(30, 6);
+      expect(moved.y).toBeCloseTo(200, 6);
+      // The ball that matches the map is a different size up there - which
+      // is why the zoom has to follow the level rather than the other way.
+      expect(levelRadius(level, to.lat)).toBeGreaterThan(levelRadius(level, from.lat));
+      expect(levelFor(levelRadius(level, to.lat), to.lat)).toBeCloseTo(level, 9);
+      expect(levelFor(levelRadius(level, from.lat), to.lat)).toBeLessThan(level);
+    });
+    // It stops short of the poles, and wraps round the date line.
+    expect(dragOnLevel(4, 80, 0, 0, 5000).lat).toBe(85);
+    expect(dragOnLevel(4, 0, 179, -100, 0).lon).toBeCloseTo(-163.42, 1);
   });
 
   it('past the deepest tiles, draws each tile cell two screen cells across', () => {

@@ -29,6 +29,7 @@ import {
   focusOnLatest,
   landCellIndex,
   commonestColour,
+  dragOnLevel,
   levelFor,
   levelRadius,
   locatedPoints,
@@ -371,6 +372,22 @@ export default function GlobeView({
     tweens.current = kept;
   }, []);
 
+  // Close in, the view is moved across the flat map, and stays at the level
+  // it was at. The zoom that level corresponds to depends on latitude - it is
+  // the size of the ball that matches the map there - so it is kept in step:
+  // otherwise dragging north or south would drift off the level, stretching
+  // the picture or dropping it to the coarser one below.
+  const moveOnLevel = useCallback(
+    (exact, lat, lon, dx, dy) => {
+      const to = dragOnLevel(exact, lat, lon, dx, dy);
+      view.lat = to.lat;
+      view.lon = to.lon;
+      const zoom = levelRadius(exact, to.lat) / openRadius(live.current.innerWidth);
+      view.zoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
+    },
+    [view]
+  );
+
   const frame = useCallback(
     (now) => {
       const state = loop.current;
@@ -399,10 +416,15 @@ export default function GlobeView({
 
       const { x, y } = fling.current;
       if (Math.abs(x) + Math.abs(y) > 12) {
-        const radiusPx = sceneFor(view, live.current.innerWidth, live.current.openHeight).radius * CELL;
-        const perPx = 57.3 / radiusPx;
-        view.lon -= (x * dt * perPx) / Math.max(0.3, Math.cos((view.lat * Math.PI) / 180));
-        view.lat = clamp(view.lat + y * dt * perPx, -85, 85);
+        const { innerWidth: w, openHeight: h } = live.current;
+        const exact = levelOf(view, w);
+        if (exact != null) {
+          moveOnLevel(exact, view.lat, view.lon, (x * dt) / CELL, (y * dt) / CELL);
+        } else {
+          const perPx = 57.3 / (sceneFor(view, w, h).radius * CELL);
+          view.lon -= (x * dt * perPx) / Math.max(0.3, Math.cos((view.lat * Math.PI) / 180));
+          view.lat = clamp(view.lat + y * dt * perPx, -85, 85);
+        }
         const decay = Math.exp(-dt * 4);
         fling.current = { x: x * decay, y: y * decay };
         changed = true;
@@ -428,7 +450,7 @@ export default function GlobeView({
       state.raf = keepGoing ? requestAnimationFrame(frame) : null;
       if (!keepGoing) settle.current.arm?.();
     },
-    [view, paint, slide]
+    [view, paint, slide, moveOnLevel]
   );
 
   const kick = useCallback(() => {
@@ -641,16 +663,26 @@ export default function GlobeView({
         drifting.current = false;
         fling.current = { x: 0, y: 0 };
         const { innerWidth: w, openHeight: h } = live.current;
-        drag.current = { lon: view.lon, lat: view.lat, radiusPx: sceneFor(view, w, h).radius * CELL };
+        drag.current = {
+          lon: view.lon,
+          lat: view.lat,
+          radiusPx: sceneFor(view, w, h).radius * CELL,
+          level: levelOf(view, w),
+        };
       })
       .onUpdate((event) => {
         const start = drag.current;
         if (!start) return;
-        const perPx = 57.3 / start.radiusPx;
-        view.lat = clamp(start.lat + event.translationY * perPx, -85, 85);
-        view.lon =
-          start.lon -
-          (event.translationX * perPx) / Math.max(0.3, Math.cos((start.lat * Math.PI) / 180));
+        if (start.level != null) {
+          const { translationX: dx, translationY: dy } = event;
+          moveOnLevel(start.level, start.lat, start.lon, dx / CELL, dy / CELL);
+        } else {
+          const perPx = 57.3 / start.radiusPx;
+          view.lat = clamp(start.lat + event.translationY * perPx, -85, 85);
+          view.lon =
+            start.lon -
+            (event.translationX * perPx) / Math.max(0.3, Math.cos((start.lat * Math.PI) / 180));
+        }
         slide();
         paint();
       })
@@ -690,7 +722,7 @@ export default function GlobeView({
       });
 
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
-  }, [isOpen, open, pick, cancelTweens, kick, paint, slide, view]);
+  }, [isOpen, open, pick, cancelTweens, kick, paint, slide, moveOnLevel, view]);
 
   const lines =
     level == null
