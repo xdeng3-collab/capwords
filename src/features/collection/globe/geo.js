@@ -254,6 +254,20 @@ export function snapScene(scene, level) {
 }
 
 /**
+ * Where the view ends up after the map at `level` (which may be fractional)
+ * is dragged `dx` cells right and `dy` cells down under it: { lat, lon }.
+ * Exact on the flat map, so the point under the finger stays under it.
+ */
+export function dragOnLevel(level, lat, lon, dx, dy) {
+  const around = cellsAround(level);
+  const [u, v] = levelXY(lat, lon, level);
+  return {
+    lat: clamp(latitudeAt(v - dy, around), -TILE_LAT_LIMIT, TILE_LAT_LIMIT),
+    lon: wrapLongitude(((u - dx) / around) * 360 - 180),
+  };
+}
+
+/**
  * Where a coordinate lands on the grid of a scene drawn at `level`. Always
  * somewhere - a flat map has no far side - though possibly far off the grid.
  */
