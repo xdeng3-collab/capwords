@@ -1,6 +1,6 @@
 import { STORAGE_KEYS, removeKeys, removeKeysIfPresent } from '../data/storage';
 import { deleteAllStickerImages, readStickers, writeStickers } from '../data/stickerStore';
-import { clearMapTiles } from './mapService';
+import { deleteAllMapTiles } from '../data/mapTileStore';
 
 /**
  * Housekeeping for everything this phone stores.
@@ -13,9 +13,9 @@ const DEMO_STICKER_PREFIX = 'demo_';
  * Clear data that older versions left on the phone. Idempotent and cheap - it
  * only writes when it actually finds something - so it runs on every launch.
  *
- * Two things get swept: seeded demo stickers, and the local friends list and
- * cheers from before pals moved to Supabase. Those were never real accounts
- * and nothing reads the keys any more.
+ * Three things get swept: seeded demo stickers; the local friends list and
+ * cheers from before pals moved to Supabase, which were never real accounts
+ * and nothing reads any more; and the map tiles the globe used to draw from.
  */
 export async function removeDemoData() {
   const stickers = await readStickers();
@@ -23,6 +23,7 @@ export async function removeDemoData() {
   if (kept.length !== stickers.length) await writeStickers(kept);
 
   await removeKeysIfPresent([STORAGE_KEYS.FRIENDS, STORAGE_KEYS.CHEERS]);
+  await deleteAllMapTiles();
 }
 
 /**
@@ -36,6 +37,5 @@ export async function removeDemoData() {
 export async function eraseDeviceData() {
   await removeKeys(Object.values(STORAGE_KEYS));
   await deleteAllStickerImages();
-  // Cached map tiles show where the globe has been looked at.
-  await clearMapTiles();
+  await deleteAllMapTiles();
 }

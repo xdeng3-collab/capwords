@@ -7,67 +7,52 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
 import { PixelIcon } from '../../../components';
-import {
-  MAP_ATTRIBUTION,
-  cachedMapTile,
-  loadMapTiles,
-  mapTilesPending,
-  warmMapTiles,
-} from '../../../services/mapService';
 import { selectFeedback, tapFeedback } from '../../../utils/haptics';
 import {
-  MAX_LEVEL,
   MAX_ZOOM,
-  MIN_LEVEL,
   MIN_ZOOM,
   clamp,
+  clusterOnRegion,
   clusterPoints,
   focusOnLatest,
+  globeRadiusForRegion,
   landCellIndex,
-  commonestColour,
-  dragOnLevel,
-  levelFor,
-  levelRadius,
   locatedPoints,
   meshRows,
-  levelTiles,
   paintGlobe,
-  paintLevel,
-  projectLevel,
-  snapScene,
+  regionForGlobe,
   wrapLongitude,
 } from './geo';
 import PlaceSheet from './PlaceSheet';
+import RealMap from './RealMap';
 
 /**
  * The Book's globe: a pixel-art Earth with a pin wherever a word was snapped.
  *
  * Closed, it is a strip at the top of the Book with half the globe rising
  * into it, turning slowly. Tapping or pulling it down opens it to full
- * height, spins round to the newest photo and flies in. Open, it can be
- * dragged, pinched, and its pins tapped to see the photos and words there.
+ * height, spins round to the newest photo and zooms in a little - and there
+ * the system map (RealMap: Apple Maps) fades in at the same place and flies
+ * the rest of the way down. From then on it is a real map: dragged, pinched,
+ * and its photo pins tapped to see the photos and words taken there. Zoomed
+ * back out to about a continent, it fades back into the pixel globe.
  *
- * It is drawn the way every other sprite in the app is - square Views on a
- * grid - so it needs no graphics library. geo.js works out the colours and
- * hands back each row as runs, merged into rectangles, which keeps a frame of
- * open sea to a few dozen Views and a city's streets to about a thousand.
- *
- * Far out it is a ball, with land from a small mask built into the app.
- * Close in it becomes a flat map at fixed levels (see geo.js), filled in with
- * coastlines, parks, buildings and streets from map tiles
- * (services/mapService.js) as they arrive; offline it simply stays coarse.
+ * The globe is drawn the way every other sprite in the app is - square Views
+ * on a grid - so it needs no graphics library. geo.js works out the colours
+ * and hands back each row as runs, merged into rectangles.
  */
 
 const CELL = 6;
 const BORDER = 3;
 export const GLOBE_CLOSED_HEIGHT = 132;
 
-// Indexed by the colour slots paintGlobe() writes: outline; ocean, land and
-// ice, each lit / mid / shaded; then sand, buildings, main roads and streets.
+// Indexed by the colour slots paintGlobe() writes: the outline, then ocean,
+// land and ice, each lit / mid / shaded.
 const GLOBE_COLORS = [
   COLORS.outline,
   '#8FC6E8',
@@ -79,10 +64,6 @@ const GLOBE_COLORS = [
   '#FBF3E0',
   '#DDE3E2',
   '#AEBBC6',
-  '#E8D6AE',
-  '#D3BF9B',
-  '#F5DFA0',
-  '#F6ECD4',
 ];
 const NIGHT = '#2B2748';
 const STAR_COLORS = ['#FBF3E0', '#F2C14E', '#8FC6E8'];
@@ -91,23 +72,22 @@ const CLOSED_LAT = 8;
 const DRIFT_DEG_PER_SEC = 9;
 // The idle drift is redrawn at a pixel-art frame rate, not the display's.
 const DRIFT_FRAME_MS = 90;
-// Below this zoom pins are dots; from here on they show the photo.
-const PHOTO_ZOOM = 3;
-const PHOTO_SIZE = 40;
-// Once the view has held still this long it snaps to the nearest level and
-// fetches the map tiles it is looking at.
-const SETTLE_MS = 150;
-// However heavy the picture, never draw slower than this while moving.
+// However big the picture, never draw slower than this while moving.
 const MAX_FRAME_MS = 80;
-// Close in, the globe is drawn at fixed levels (see geo.js) and the picture
-// is slid and stretched to follow the finger, so it only has to be redrawn
-// on reaching a new level or the edge of what was drawn - which is this many
-// cells beyond the screen on every side.
-const LEVEL_MARGIN = 8;
-const LEVEL_FRAME_MS = 60;
-// Opening flies no deeper than this: a neighbourhood's rivers and main roads.
-// Streets and buildings are a pinch further in.
-const FLY_MAX_LEVEL = 13;
+// The drawn globe only goes this close. Opening zooms in to it as the last
+// step of the spin, and then the system map takes over; pinching the drawn
+// globe past it hands over too, once the fingers lift.
+const GLOBE_ZOOM = 2.6;
+// Zoomed back out on the system map until the globe would be this size, it
+// fades back to the drawn globe - which then pulls back to show it whole.
+const HAND_BACK_ZOOM = 2;
+const WHOLE_GLOBE_ZOOM = 1.15;
+const MAP_FADE_MS = 300;
+// Once the view has held still this long, a globe zoomed in far enough is
+// handed over to the system map.
+const SETTLE_MS = 150;
+// The system map's pins are spaced so their photos do not overlap.
+const MAP_PIN_SPACING = 46;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - (1 - t) ** 3;
@@ -116,22 +96,8 @@ const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 /** The open globe's radius in cells at zoom 1. */
 const openRadius = (innerWidth) => (innerWidth / CELL) * 0.42;
 
-/**
- * The level the globe is at, fractional - or null while it is closed or
- * still far enough out to be drawn as a ball.
- */
-function levelOf(view, innerWidth) {
-  if (view.open !== 1) return null;
-  const exact = levelFor(openRadius(innerWidth) * view.zoom, view.lat);
-  return exact >= MIN_LEVEL - 1e-6 ? exact : null;
-}
-const wholeLevel = (exact) => Math.min(MAX_LEVEL, Math.floor(exact + 1e-6));
-
-/**
- * Where the globe sits on the cell grid for a given view and panel size.
- * `margin` grows the grid by that many cells on every side, off screen.
- */
-function sceneFor(view, innerWidth, openHeight, margin = 0) {
+/** Where the globe sits on the cell grid for a given view and panel size. */
+function sceneFor(view, innerWidth, openHeight) {
   const cols = innerWidth / CELL;
   const closedRows = (GLOBE_CLOSED_HEIGHT - BORDER * 2) / CELL;
   const openRows = (openHeight - BORDER * 2) / CELL;
@@ -142,10 +108,10 @@ function sceneFor(view, innerWidth, openHeight, margin = 0) {
     // Closed, the centre sits just under the strip so about half shows.
     radius: lerp(closedRows - 1, openRadius(innerWidth), view.open) * view.zoom,
     shading: clamp(1 - (view.zoom - 1) / 2, 0, 1),
-    cx: cols / 2 + margin,
-    cy: lerp(closedRows + 2, openRows / 2, view.open) + margin,
-    cols: Math.ceil(cols) + margin * 2,
-    rows: Math.ceil((height - BORDER * 2) / CELL) + margin * 2,
+    cx: cols / 2,
+    cy: lerp(closedRows + 2, openRows / 2, view.open),
+    cols: Math.ceil(cols),
+    rows: Math.ceil((height - BORDER * 2) / CELL),
     height,
   };
 }
@@ -155,7 +121,7 @@ function Surface({ rects }) {
   for (let i = 0; i < rects.length; i += 5) {
     views.push(
       <View
-        // Keyed by order, not position: as the globe moves the same Views are
+        // Keyed by order, not position: as the globe turns the same Views are
         // re-styled, which is far cheaper than making new ones.
         key={i}
         style={{
@@ -207,32 +173,27 @@ const Stars = React.memo(function Stars({ width, height }) {
   ));
 });
 
-function Pin({ cluster, photos }) {
+/** A pin on the drawn globe: a dot, bigger where more photos were taken. */
+function Dot({ cluster }) {
   const count = cluster.items.length;
+  const size = count >= 10 ? 14 : count >= 3 ? 12 : 10;
   const x = Math.round(cluster.x) * CELL;
   const y = Math.round(cluster.y) * CELL;
+  return <View style={[styles.dot, { left: x - size / 2, top: y - size / 2, width: size, height: size }]} />;
+}
 
-  if (!photos) {
-    const size = count >= 10 ? 14 : count >= 3 ? 12 : 10;
-    return <View style={[styles.dot, { left: x - size / 2, top: y - size / 2, width: size, height: size }]} />;
-  }
-
-  const [newest] = cluster.items;
+/** A square pixel-framed button holding one of the usual map symbols. */
+function MapButton({ icon, onPress, on = false, label }) {
   return (
-    <View style={[styles.photoPin, { left: x - PHOTO_SIZE / 2, top: y - PHOTO_SIZE / 2 }]}>
-      {newest.imageUri ? (
-        <Image source={{ uri: newest.imageUri }} style={styles.photo} />
-      ) : (
-        <View style={styles.photoFallback}>
-          <PixelIcon name="star" size={18} color={COLORS.primary} />
-        </View>
-      )}
-      {count > 1 ? (
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{count > 99 ? '99+' : count}</Text>
-        </View>
-      ) : null}
-    </View>
+    <TouchableOpacity
+      style={[styles.button, on && styles.buttonOn]}
+      onPress={onPress}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Ionicons name={icon} size={18} color={COLORS.text} />
+    </TouchableOpacity>
   );
 }
 
@@ -245,6 +206,7 @@ export default function GlobeView({
   onOpenSticker,
 }) {
   const innerWidth = width - BORDER * 2;
+  const mapHeight = openHeight - BORDER * 2;
   const points = useMemo(() => locatedPoints(stickers), [stickers]);
   const extraLand = useMemo(
     () => new Set(points.map((p) => landCellIndex(p.latitude, p.longitude))),
@@ -255,32 +217,33 @@ export default function GlobeView({
   const [selected, setSelected] = useState(null);
   const [, repaint] = useReducer((n) => n + 1, 0);
 
-  // A street map is thousands of cells where the open sea is a few dozen, and
-  // drawing it can take longer than a frame. So motion asks for a frame with
-  // paint(), which spaces them out by how long the last one took: the globe
-  // steps a little more coarsely instead of falling behind the finger.
+  // The system map: whether it is mounted (from opening until it has faded
+  // out after closing), whether it is the one showing, whether the drawn
+  // globe under it can stop being drawn (once the map has fully faded in),
+  // standard or satellite, and where it was last moved to.
+  const [mapMounted, setMapMounted] = useState(false);
+  const [onMap, setOnMap] = useState(false);
+  const [globeHidden, setGlobeHidden] = useState(false);
+  const [mapType, setMapType] = useState('standard');
+  const [mapRegion, setMapRegion] = useState(null);
+  const mapRef = useRef(null);
+  const mapFade = useRef(new Animated.Value(0)).current;
+  // Where the map starts out, hidden, when the globe opens; and where it
+  // carries on to after taking over from the opening fly-in.
+  const mapStart = useRef(null);
+  const mapLanding = useRef(null);
+
+  // Motion asks for a frame with paint(), which spaces frames out by how long
+  // the last one took: the globe steps a little more coarsely instead of
+  // falling behind the finger.
   const renderStarted = performance.now();
   const pace = useRef({ cost: 0, last: 0, pending: null });
+  useLayoutEffect(() => {
+    pace.current.cost = performance.now() - renderStarted;
+  });
   const paint = useCallback(() => {
     const state = pace.current;
-    const { margin: m, innerWidth: w } = live.current;
-    if (m) {
-      // At a level, the picture drawn is still good until the view reaches
-      // another level or the edge of it.
-      const was = drawn.current;
-      const exact = levelOf(view, w);
-      const reach = (m - 2) * CELL * was.scale;
-      const good =
-        exact != null &&
-        wholeLevel(exact) === was.level &&
-        Math.abs(was.x) < reach &&
-        Math.abs(was.y) < reach;
-      if (good) return;
-    }
-    const gap = m
-      ? Math.max(LEVEL_FRAME_MS, state.cost * 1.5)
-      : Math.min(MAX_FRAME_MS, state.cost * 1.5);
-    const wait = gap - (performance.now() - state.last);
+    const wait = Math.min(MAX_FRAME_MS, state.cost * 1.5) - (performance.now() - state.last);
     if (wait <= 0) {
       clearTimeout(state.pending);
       state.pending = null;
@@ -307,56 +270,12 @@ export default function GlobeView({
   const live = useRef({});
   // Open with nothing pinned, the globe keeps drifting until it is touched.
   const drifting = useRef(false);
-  const clustersRef = useRef({ list: [], photos: false });
-
-  // Far out the globe is drawn afresh wherever the view is. Close in it is
-  // drawn at a whole level, squared up to the map, with room to spare round
-  // the edges - and then moved about rather than redrawn.
-  const exactLevel = isOpen ? levelOf(view, innerWidth) : null;
-  const level = exactLevel == null ? null : wholeLevel(exactLevel);
-  const margin = level == null ? 0 : LEVEL_MARGIN;
-  const seen = sceneFor(view, innerWidth, openHeight, margin);
-  const scene = level == null ? seen : snapScene(seen, level);
-  live.current = { points, innerWidth, openHeight, active, isOpen, margin };
-
-  // How the picture on screen has been moved since it was drawn: slid to
-  // wherever the point it was centred on has got to, and stretched by however
-  // much closer the view is than the level it was drawn at.
-  const shift = useRef(new Animated.ValueXY()).current;
-  const stretch = useRef(new Animated.Value(1)).current;
-  const drawn = useRef({ lon: 0, lat: 0, radius: 1, level: null, x: 0, y: 0, scale: 1 });
-  const slide = useCallback(() => {
-    const { margin: m, innerWidth: w, openHeight: h } = live.current;
-    const was = drawn.current;
-    let x = 0;
-    let y = 0;
-    let scale = 1;
-    if (m) {
-      scale = sceneFor(view, w, h, m).radius / was.radius;
-      // How far, on the flat map it was drawn from, its centre is from the
-      // view's now.
-      const here = { lon: view.lon, lat: view.lat, cx: 0, cy: 0 };
-      const at = projectLevel(here, was.level, was.lat, was.lon);
-      x = at.x * scale * CELL;
-      y = at.y * scale * CELL;
-    }
-    if (x !== was.x || y !== was.y) shift.setValue({ x, y });
-    if (scale !== was.scale) stretch.setValue(scale);
-    was.x = x;
-    was.y = y;
-    was.scale = scale;
-  }, [view, shift, stretch]);
-  useLayoutEffect(() => {
-    pace.current.cost = performance.now() - renderStarted;
-    drawn.current.lon = scene.lon;
-    drawn.current.lat = scene.lat;
-    drawn.current.radius = scene.radius;
-    drawn.current.level = level;
-    slide();
-  });
-
+  const clustersRef = useRef([]);
   const settle = useRef({ timer: null, arm: null });
   useEffect(() => () => clearTimeout(settle.current.timer), []);
+
+  const scene = sceneFor(view, innerWidth, openHeight);
+  live.current = { points, innerWidth, openHeight, mapHeight, active, isOpen, onMap, mapRegion };
 
   useEffect(() => onOpenChange?.(isOpen), [isOpen, onOpenChange]);
 
@@ -371,22 +290,6 @@ export default function GlobeView({
     });
     tweens.current = kept;
   }, []);
-
-  // Close in, the view is moved across the flat map, and stays at the level
-  // it was at. The zoom that level corresponds to depends on latitude - it is
-  // the size of the ball that matches the map there - so it is kept in step:
-  // otherwise dragging north or south would drift off the level, stretching
-  // the picture or dropping it to the coarser one below.
-  const moveOnLevel = useCallback(
-    (exact, lat, lon, dx, dy) => {
-      const to = dragOnLevel(exact, lat, lon, dx, dy);
-      view.lat = to.lat;
-      view.lon = to.lon;
-      const zoom = levelRadius(exact, to.lat) / openRadius(live.current.innerWidth);
-      view.zoom = clamp(zoom, MIN_ZOOM, MAX_ZOOM);
-    },
-    [view]
-  );
 
   const frame = useCallback(
     (now) => {
@@ -404,7 +307,7 @@ export default function GlobeView({
         Object.keys(tween.to).forEach((key) => {
           const from = tween.from[key];
           const to = tween.to[key];
-          // Zoom spans orders of magnitude, so it is eased by ratio.
+          // Zoom is eased by ratio, so zooming in and out feel the same.
           view[key] = key === 'zoom' ? from * (to / from) ** eased : lerp(from, to, eased);
           if (t === 1) view[key] = to;
         });
@@ -417,14 +320,9 @@ export default function GlobeView({
       const { x, y } = fling.current;
       if (Math.abs(x) + Math.abs(y) > 12) {
         const { innerWidth: w, openHeight: h } = live.current;
-        const exact = levelOf(view, w);
-        if (exact != null) {
-          moveOnLevel(exact, view.lat, view.lon, (x * dt) / CELL, (y * dt) / CELL);
-        } else {
-          const perPx = 57.3 / (sceneFor(view, w, h).radius * CELL);
-          view.lon -= (x * dt * perPx) / Math.max(0.3, Math.cos((view.lat * Math.PI) / 180));
-          view.lat = clamp(view.lat + y * dt * perPx, -85, 85);
-        }
+        const perPx = 57.3 / (sceneFor(view, w, h).radius * CELL);
+        view.lon -= (x * dt * perPx) / Math.max(0.3, Math.cos((view.lat * Math.PI) / 180));
+        view.lat = clamp(view.lat + y * dt * perPx, -85, 85);
         const decay = Math.exp(-dt * 4);
         fling.current = { x: x * decay, y: y * decay };
         changed = true;
@@ -442,15 +340,15 @@ export default function GlobeView({
 
       if (changed && (smooth || now - state.painted >= DRIFT_FRAME_MS)) {
         state.painted = now;
-        slide();
         paint();
       }
 
-      const keepGoing = live.current.active && (tweens.current.length || drift || fling.current.x || fling.current.y);
+      const keepGoing =
+        live.current.active && (tweens.current.length || drift || fling.current.x || fling.current.y);
       state.raf = keepGoing ? requestAnimationFrame(frame) : null;
       if (!keepGoing) settle.current.arm?.();
     },
-    [view, paint, slide, moveOnLevel]
+    [view, paint]
   );
 
   const kick = useCallback(() => {
@@ -489,101 +387,119 @@ export default function GlobeView({
     [view, kick]
   );
 
-  /** The tiles a view at `level` centred here would be looking at. */
-  const tilesAround = useCallback((lon, lat, level) => {
-    const { innerWidth: w, openHeight: h } = live.current;
-    const zoom = levelRadius(level, lat) / openRadius(w);
-    const at = snapScene(sceneFor({ lon, lat, zoom, open: 1 }, w, h, LEVEL_MARGIN), level);
-    return levelTiles(at, level, at.cols, at.rows);
+  /** The region the system map shows for the globe at `zoom` centred here. */
+  const regionAt = useCallback((lat, lon, zoom) => {
+    const { innerWidth: w, mapHeight: h } = live.current;
+    return regionForGlobe(lat, lon, openRadius(w) * zoom, w, h, CELL);
   }, []);
 
-  // When everything has come to rest: ease onto the nearest whole level, then
-  // fetch the tiles in view. Armed whenever the animation loop runs dry.
+  /** Fade the system map in over the drawn globe, at the same place. */
+  const handOver = useCallback(() => {
+    if (live.current.onMap) return;
+    const region = regionAt(view.lat, view.lon, view.zoom);
+    mapRef.current?.animateToRegion(region, 0);
+    setMapRegion(region);
+    setOnMap(true);
+    live.current.onMap = true;
+    Animated.timing(mapFade, { toValue: 1, duration: MAP_FADE_MS, useNativeDriver: true }).start(
+      ({ finished }) => {
+        if (!finished || !live.current.onMap) return;
+        setGlobeHidden(true);
+        // Taking over from the opening fly-in: carry on the rest of the way.
+        const landing = mapLanding.current;
+        mapLanding.current = null;
+        if (landing) mapRef.current?.animateToRegion(landing, 1200);
+      }
+    );
+  }, [view, mapFade, regionAt]);
+
+  /**
+   * From the system map back to the drawn globe, at the place the map was
+   * showing. Unless `closing`, the map fades out and the globe then pulls
+   * back to show itself whole; closing has its own animation.
+   */
+  const handBack = useCallback(
+    (region, closing = false) => {
+      view.lat = clamp(region.latitude, -85, 85);
+      view.lon = wrapLongitude(region.longitude);
+      view.zoom = GLOBE_ZOOM;
+      mapLanding.current = null;
+      live.current.onMap = false;
+      setOnMap(false);
+      setGlobeHidden(false);
+      setSelected(null);
+      repaint();
+      Animated.timing(mapFade, { toValue: 0, duration: MAP_FADE_MS, useNativeDriver: true }).start(
+        ({ finished }) => {
+          if (finished && !live.current.isOpen) setMapMounted(false);
+        }
+      );
+      if (!closing) tween({ zoom: WHOLE_GLOBE_ZOOM }, 700, easeOut);
+    },
+    [view, mapFade, tween]
+  );
+
+  const onMapMoved = useCallback(
+    (region) => {
+      if (!live.current.onMap) return;
+      setMapRegion(region);
+      const zoom = globeRadiusForRegion(region, live.current.innerWidth, CELL) / openRadius(live.current.innerWidth);
+      if (zoom < HAND_BACK_ZOOM) handBack(region);
+    },
+    [handBack]
+  );
+
+  // When everything has come to rest on a globe zoomed in as far as it goes,
+  // hand over to the system map. Armed whenever the animation loop runs dry.
   settle.current.arm = () => {
     clearTimeout(settle.current.timer);
     settle.current.timer = setTimeout(() => {
-      const { innerWidth: w, active: on, isOpen: opened } = live.current;
-      if (!on || !opened || tweens.current.length || drag.current || pinching.current) return;
-      const exact = levelOf(view, w);
-      if (exact == null) return;
-      let nearest = clamp(Math.round(exact), MIN_LEVEL, MAX_LEVEL);
-      while (nearest > MIN_LEVEL && levelRadius(nearest, view.lat) / openRadius(w) > MAX_ZOOM) {
-        nearest -= 1;
-      }
-      const zoom = levelRadius(nearest, view.lat) / openRadius(w);
-      if (Math.abs(Math.log2(zoom / view.zoom)) > 0.01) {
-        tween({ zoom }, 220, easeOut);
-        return;
-      }
-      loadMapTiles(tilesAround(view.lon, view.lat, nearest), repaint);
-      // Put the "loading" sign up if that left anything to wait for.
-      if (mapTilesPending()) repaint();
+      const { active: on, isOpen: opened, onMap: mapShowing } = live.current;
+      if (!on || !opened || mapShowing || view.open !== 1) return;
+      if (tweens.current.length || drag.current || pinching.current) return;
+      if (view.zoom >= GLOBE_ZOOM * 0.95) handOver();
     }, SETTLE_MS);
   };
 
-  /**
-   * Where opening the globe will fly to: the newest photo, the zoom to land
-   * at, and the tiles the dive needs - a coarse overview of the whole view
-   * first, since that alone is enough to draw from, then the landing level,
-   * then the level passed further out.
-   */
-  const flightPlan = useCallback(() => {
-    const focus = focusOnLatest(live.current.points);
-    if (!focus) return null;
-    const base = openRadius(live.current.innerWidth);
-    const exact = levelFor(base * focus.zoom, focus.latitude);
-    if (exact < MIN_LEVEL) return { focus, zoom: focus.zoom, landing: null, tiles: [] };
-    const landing = clamp(Math.round(exact), MIN_LEVEL, FLY_MAX_LEVEL);
-    const tiles = [landing - 3, landing, landing - 6]
-      .filter((l) => l >= MIN_LEVEL)
-      .flatMap((l) => tilesAround(focus.longitude, focus.latitude, l));
-    return { focus, zoom: levelRadius(landing, focus.latitude) / base, landing, tiles };
-  }, [tilesAround]);
-
-  // While the globe is still closed, get that map onto the phone. Opening it
-  // then waits on neither the network nor on decoding tiles mid-flight - and
-  // one level further in is ready too, for the first pinch.
-  useEffect(() => {
-    if (!active || isOpen) return;
-    const plan = flightPlan();
-    if (!plan || plan.landing == null) return;
-    const { longitude, latitude } = plan.focus;
-    const deeper = Math.min(plan.landing + 1, MAX_LEVEL);
-    warmMapTiles([...plan.tiles, ...tilesAround(longitude, latitude, deeper)]);
-  }, [active, isOpen, points, flightPlan, tilesAround]);
-
-  /** Spin round to the newest photo, then fly in. */
+  /** Spin round to the newest photo, zoom in, and let the map fly on from there. */
   const flyToLatest = useCallback(
     async (spin) => {
-      const plan = flightPlan();
-      if (!plan) return;
-      const { focus, zoom } = plan;
-      // Whatever the warm-up did not get to, fetch now, so the dive is
-      // through real map.
-      loadMapTiles(plan.tiles, repaint);
+      const focus = focusOnLatest(live.current.points);
+      if (!focus) return;
+      const landing = regionAt(focus.latitude, focus.longitude, Math.max(focus.zoom, GLOBE_ZOOM));
+      // Already on the system map: it makes the whole trip.
+      if (live.current.onMap) {
+        mapRef.current?.animateToRegion(landing, 1000);
+        return;
+      }
+      mapLanding.current = landing;
       const ahead = (((focus.longitude - view.lon) % 360) + 360) % 360;
       let turn = ahead > 180 ? ahead - 360 : ahead;
       // On opening, always arrive with a good eastward spin.
       if (spin) turn = ahead < 120 ? ahead + 360 : ahead;
-      // Pull back first if we are zoomed in somewhere else.
-      const far = Math.abs(turn) > 1 || Math.abs(focus.latitude - view.lat) > 1;
-      if (far && view.zoom > 1.5 && !(await tween({ zoom: 1 }, 450))) return;
-      if (far) {
+      if (Math.abs(turn) > 1 || Math.abs(focus.latitude - view.lat) > 1) {
         const turned = await tween(
-          { lon: view.lon + turn, lat: focus.latitude },
+          { lon: view.lon + turn, lat: focus.latitude, zoom: 1 },
           spin ? 1300 : 800
         );
         if (!turned) return;
         view.lon = wrapLongitude(view.lon);
       }
-      await tween({ zoom }, clamp(300 + 55 * Math.log2(zoom), 350, 950));
+      if (await tween({ zoom: GLOBE_ZOOM }, 500, easeInOut)) handOver();
     },
-    [view, tween, flightPlan]
+    [view, tween, regionAt, handOver]
   );
 
   const open = useCallback(() => {
     if (live.current.isOpen) return;
     tapFeedback();
+    // The system map goes in place now, hidden, where the fly-in will hand
+    // over to it - so it has its map loaded by the time it is shown.
+    const focus = focusOnLatest(live.current.points);
+    mapStart.current = focus
+      ? regionAt(focus.latitude, focus.longitude, GLOBE_ZOOM)
+      : regionAt(view.lat, view.lon, GLOBE_ZOOM);
+    setMapMounted(true);
     setIsOpen(true);
     cancelTweens(true);
     fling.current = { x: 0, y: 0 };
@@ -595,39 +511,46 @@ export default function GlobeView({
       drifting.current = true;
       tween({ lat: 18 }, 420, easeOut);
     }
-  }, [cancelTweens, tween, flyToLatest]);
+  }, [cancelTweens, tween, flyToLatest, regionAt, view]);
 
   const close = useCallback(() => {
     tapFeedback();
+    // The map fades out over the globe as it shrinks back into the strip.
+    if (live.current.onMap && live.current.mapRegion) handBack(live.current.mapRegion, true);
+    else setMapMounted(false);
     setIsOpen(false);
     setSelected(null);
     cancelTweens(true);
     fling.current = { x: 0, y: 0 };
     drifting.current = false;
-    tween({ open: 0, zoom: 1, lat: CLOSED_LAT }, 420, easeInOut, true);
-  }, [cancelTweens, tween]);
+    tween({ open: 0, zoom: 1, lat: CLOSED_LAT }, 520, easeInOut, true);
+  }, [cancelTweens, tween, handBack]);
 
   const zoomBy = useCallback(
     (factor) => {
       selectFeedback();
-      tween({ zoom: clamp(view.zoom * factor, MIN_ZOOM, MAX_ZOOM) }, 280, easeOut);
+      const region = live.current.mapRegion;
+      if (live.current.onMap && region) {
+        mapRef.current?.animateToRegion(
+          {
+            ...region,
+            latitudeDelta: region.latitudeDelta / factor,
+            longitudeDelta: region.longitudeDelta / factor,
+          },
+          280
+        );
+        return;
+      }
+      tween({ zoom: clamp(view.zoom * factor, MIN_ZOOM, GLOBE_ZOOM) }, 280, easeOut);
     },
     [view, tween]
   );
 
   const pick = useCallback((x, y) => {
-    const { list, photos } = clustersRef.current;
-    const reach = photos ? PHOTO_SIZE / 2 + 6 : 18;
     let best = null;
-    let bestDistance = reach * reach;
-    // Clusters are where they were drawn; the tap is on the screen, and the
-    // picture may have been slid and stretched since.
-    const { margin: m, canvas } = live.current;
-    const was = drawn.current;
-    const px = canvas.width / 2 + (x + m * CELL - was.x - canvas.width / 2) / was.scale;
-    const py = canvas.height / 2 + (y + m * CELL - was.y - canvas.height / 2) / was.scale;
-    list.forEach((cluster) => {
-      const d = (cluster.x * CELL - px) ** 2 + (cluster.y * CELL - py) ** 2;
+    let bestDistance = 18 * 18;
+    clustersRef.current.forEach((cluster) => {
+      const d = (cluster.x * CELL - x) ** 2 + (cluster.y * CELL - y) ** 2;
       if (d <= bestDistance) {
         best = cluster;
         bestDistance = d;
@@ -663,27 +586,16 @@ export default function GlobeView({
         drifting.current = false;
         fling.current = { x: 0, y: 0 };
         const { innerWidth: w, openHeight: h } = live.current;
-        drag.current = {
-          lon: view.lon,
-          lat: view.lat,
-          radiusPx: sceneFor(view, w, h).radius * CELL,
-          level: levelOf(view, w),
-        };
+        drag.current = { lon: view.lon, lat: view.lat, radiusPx: sceneFor(view, w, h).radius * CELL };
       })
       .onUpdate((event) => {
         const start = drag.current;
         if (!start) return;
-        if (start.level != null) {
-          const { translationX: dx, translationY: dy } = event;
-          moveOnLevel(start.level, start.lat, start.lon, dx / CELL, dy / CELL);
-        } else {
-          const perPx = 57.3 / start.radiusPx;
-          view.lat = clamp(start.lat + event.translationY * perPx, -85, 85);
-          view.lon =
-            start.lon -
-            (event.translationX * perPx) / Math.max(0.3, Math.cos((start.lat * Math.PI) / 180));
-        }
-        slide();
+        const perPx = 57.3 / start.radiusPx;
+        view.lat = clamp(start.lat + event.translationY * perPx, -85, 85);
+        view.lon =
+          start.lon -
+          (event.translationX * perPx) / Math.max(0.3, Math.cos((start.lat * Math.PI) / 180));
         paint();
       })
       .onEnd((event) => {
@@ -705,8 +617,7 @@ export default function GlobeView({
         pinchFrom = view.zoom;
       })
       .onUpdate((event) => {
-        view.zoom = clamp(pinchFrom * event.scale, MIN_ZOOM, MAX_ZOOM);
-        slide();
+        view.zoom = clamp(pinchFrom * event.scale, MIN_ZOOM, GLOBE_ZOOM);
         paint();
       })
       .onFinalize(() => {
@@ -722,20 +633,17 @@ export default function GlobeView({
       });
 
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
-  }, [isOpen, open, pick, cancelTweens, kick, paint, slide, moveOnLevel, view]);
+  }, [isOpen, open, pick, cancelTweens, kick, paint, view]);
 
-  const lines =
-    level == null
-      ? paintGlobe(scene, scene.cols, scene.rows, extraLand)
-      : paintLevel(scene, level, scene.cols, scene.rows, extraLand, cachedMapTile);
-  // Close in, the globe fills the whole picture: whatever colour most of it is
-  // goes down as one backdrop, which also shows where a drag outruns it.
-  const backdrop = margin ? commonestColour(lines) : -1;
-  const rects = meshRows(lines, backdrop);
-  const photos = isOpen && view.open === 1 && view.zoom >= PHOTO_ZOOM;
-  const clusters = clusterPoints(points, scene, scene.cols, scene.rows, photos ? 8 : 2.5, level);
-  clustersRef.current = { list: clusters, photos };
-  live.current.canvas = { width: scene.cols * CELL, height: scene.rows * CELL };
+  // Under the system map, once it has fully faded in, the globe is not drawn.
+  const lines = globeHidden ? [] : paintGlobe(scene, scene.cols, scene.rows, extraLand);
+  const rects = meshRows(lines);
+  const clusters = globeHidden ? [] : clusterPoints(points, scene, scene.cols, scene.rows, 2.5);
+  clustersRef.current = clusters;
+  const mapClusters =
+    onMap && mapRegion
+      ? clusterOnRegion(points, mapRegion, innerWidth, mapHeight, MAP_PIN_SPACING)
+      : [];
 
   const pinnedLabel = `${points.length} ${points.length === 1 ? 'PIN' : 'PINS'}`;
 
@@ -745,75 +653,79 @@ export default function GlobeView({
 
       <GestureHandlerRootView style={StyleSheet.absoluteFill}>
         <GestureDetector gesture={gesture}>
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              backdrop >= 0 ? { backgroundColor: GLOBE_COLORS[backdrop] } : null,
-            ]}
-            collapsable={false}
-          >
-            <Animated.View
-              style={{
-                position: 'absolute',
-                left: -margin * CELL,
-                top: -margin * CELL,
-                width: scene.cols * CELL,
-                height: scene.rows * CELL,
-                transform: [...shift.getTranslateTransform(), { scale: stretch }],
-              }}
-            >
-              <Surface rects={rects} />
-              {clusters.map((cluster) => (
-                <Pin key={cluster.id} cluster={cluster} photos={photos} />
-              ))}
-            </Animated.View>
+          <View style={StyleSheet.absoluteFill} collapsable={false}>
+            <Surface rects={rects} />
+            {clusters.map((cluster) => (
+              <Dot key={cluster.id} cluster={cluster} />
+            ))}
           </View>
         </GestureDetector>
       </GestureHandlerRootView>
+
+      {mapMounted ? (
+        <Animated.View
+          style={[styles.map, { height: mapHeight, opacity: mapFade }]}
+          pointerEvents={onMap ? 'auto' : 'none'}
+        >
+          <RealMap
+            ref={mapRef}
+            initialRegion={mapStart.current}
+            mapType={mapType}
+            clusters={mapClusters}
+            onRegionChangeComplete={onMapMoved}
+            onPickCluster={(cluster) => {
+              selectFeedback();
+              setSelected({ id: cluster.id, items: cluster.items });
+            }}
+            onPressMap={() => setSelected(null)}
+          />
+        </Animated.View>
+      ) : null}
 
       <View style={styles.label} pointerEvents="none">
         <Text style={styles.labelText}>{isOpen ? pinnedLabel : 'WORD MAP'}</Text>
       </View>
 
-      {level != null ? (
-        <Text style={styles.attribution} pointerEvents="none">
-          {MAP_ATTRIBUTION}
-        </Text>
-      ) : null}
-
       {isOpen ? (
         <>
-          <TouchableOpacity style={[styles.button, styles.closeButton]} onPress={close} hitSlop={8}>
-            <PixelIcon name="close" size={14} color={COLORS.text} />
+          <TouchableOpacity
+            style={[styles.button, styles.closeButton]}
+            onPress={close}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Close map"
+          >
+            <Ionicons name="close" size={20} color={COLORS.text} />
           </TouchableOpacity>
 
           {!selected ? (
             <View style={styles.controls}>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(2)} hitSlop={4}>
-                <PixelIcon name="plus" size={14} color={COLORS.text} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={() => zoomBy(1 / 2)} hitSlop={4}>
-                <PixelIcon name="minus" size={14} color={COLORS.text} />
-              </TouchableOpacity>
+              {onMap ? (
+                <MapButton
+                  icon="layers-outline"
+                  label={mapType === 'standard' ? 'Show satellite' : 'Show map'}
+                  on={mapType !== 'standard'}
+                  onPress={() => {
+                    selectFeedback();
+                    setMapType((type) => (type === 'standard' ? 'hybrid' : 'standard'));
+                  }}
+                />
+              ) : null}
               {points.length ? (
-                <TouchableOpacity
-                  style={styles.button}
+                <MapButton
+                  icon="locate-outline"
+                  label="Go to newest photo"
                   onPress={() => {
                     selectFeedback();
                     cancelTweens(false);
                     flyToLatest(false);
                   }}
-                  hitSlop={4}
-                >
-                  <PixelIcon name="target" size={14} color={COLORS.secondary} />
-                </TouchableOpacity>
+                />
               ) : null}
-            </View>
-          ) : null}
-
-          {level != null && !selected && mapTilesPending() > 0 ? (
-            <View style={styles.loading} pointerEvents="none">
-              <Text style={styles.labelText}>LOADING MAP...</Text>
+              <View style={styles.zoomPair}>
+                <MapButton icon="add" label="Zoom in" onPress={() => zoomBy(2)} />
+                <MapButton icon="remove" label="Zoom out" onPress={() => zoomBy(1 / 2)} />
+              </View>
             </View>
           ) : null}
 
@@ -851,47 +763,19 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     overflow: 'hidden',
   },
+  // Full open height from the top, so the map keeps its size - and so its
+  // place - while the panel around it shrinks on closing.
+  map: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
   dot: {
     position: 'absolute',
     backgroundColor: COLORS.sun,
     borderWidth: 2,
     borderColor: COLORS.outline,
-  },
-  photoPin: {
-    position: 'absolute',
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
-    backgroundColor: COLORS.surface,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.sm,
-    ...SHADOW.soft,
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-  photoFallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    minWidth: 18,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    backgroundColor: COLORS.sun,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.sm,
-  },
-  countText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.text,
   },
   label: {
     position: 'absolute',
@@ -918,25 +802,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 0.8,
   },
-  attribution: {
-    position: 'absolute',
-    top: 40,
-    left: 8,
-    fontSize: 8,
-    fontWeight: '700',
-    color: COLORS.text,
-    backgroundColor: `${COLORS.surface}CC`,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: RADIUS.sm,
-    overflow: 'hidden',
-  },
   chevronDown: {
     transform: [{ rotate: '90deg' }],
   },
   button: {
-    width: 34,
-    height: 34,
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.surface,
@@ -944,6 +815,9 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     borderRadius: RADIUS.sm,
     ...SHADOW.soft,
+  },
+  buttonOn: {
+    backgroundColor: COLORS.sun,
   },
   closeButton: {
     position: 'absolute',
@@ -955,22 +829,16 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 12,
     gap: 8,
+    alignItems: 'center',
   },
-  loading: {
-    position: 'absolute',
-    left: 8,
-    bottom: 12,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.sm,
+  // Zoom in and out sit together, as on any map.
+  zoomPair: {
+    gap: 4,
   },
   hint: {
     position: 'absolute',
     left: 16,
-    right: 56,
+    right: 60,
     bottom: 14,
     backgroundColor: COLORS.surface,
     padding: 8,
