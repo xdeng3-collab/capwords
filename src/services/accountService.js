@@ -336,10 +336,47 @@ export async function updateMyProfile(patch) {
  */
 export async function setUsername(username) {
   const clean = (username || '').trim().toLowerCase();
-  if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+  if (!isValidUsername(clean)) {
     return { ok: false, error: 'Usernames need 3-20 characters: letters, numbers, or underscores.' };
   }
   return updateMyProfile({ username: clean });
+}
+
+/** The handle rule, shared by the live check and the save. */
+export function isValidUsername(username) {
+  return /^[a-z0-9_]{3,20}$/.test(username || '');
+}
+
+/**
+ * Is this handle free? For the live hint while someone types - the unique
+ * constraint behind setUsername() is still what actually decides. Reuses the
+ * pals search, which ranks an exact handle match first and never returns
+ * the caller, so your own handle comes back as available.
+ * Returns { ok, available, suggestion? }.
+ */
+export async function checkUsername(username) {
+  if (!supabase) return NO_BACKEND;
+  const clean = (username || '').trim().toLowerCase();
+  if (!isValidUsername(clean)) return { ok: true, available: false };
+
+  const taken = async (handle) => {
+    const { data, error } = await supabase.rpc('search_profiles', { q: handle });
+    if (error) throw error;
+    return (data || []).some((row) => row.username === handle);
+  };
+
+  try {
+    if (!(await taken(clean))) return { ok: true, available: true };
+    // Offer one free alternative, the way signup picks a handle.
+    const base = clean.slice(0, 17);
+    for (let i = 0; i < 3; i += 1) {
+      const candidate = `${base}${Math.floor(Math.random() * 900) + 100}`;
+      if (!(await taken(candidate))) return { ok: true, available: false, suggestion: candidate };
+    }
+    return { ok: true, available: false };
+  } catch (error) {
+    return { ok: false, error: friendlyError(error) };
+  }
 }
 
 // ==================== progress mirror ====================
