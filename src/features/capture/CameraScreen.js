@@ -22,7 +22,14 @@ import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
 import { LANGUAGES, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS } from '../../theme';
-import { PaywallModal, PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
+import {
+  PaywallModal,
+  PetSprite,
+  PixelButton,
+  PixelIcon,
+  PixelSprite,
+  useAlert,
+} from '../../components';
 import { recognizeAndTranslate, RecognitionFailedError } from '../../services/aiService';
 import { recordLearnedWord } from '../../services/learningService';
 import { getPet } from '../../services/petService';
@@ -30,9 +37,28 @@ import { getUserProfile, updateUserProfile } from '../../services/profileService
 import { getDailyWordCount } from '../../services/progressService';
 import { canLearnWord } from '../../services/subscriptionService';
 import { pressFeedback, selectFeedback } from '../../utils/haptics';
+import { CARET_DOWN, FLIP_ICON, PHOTOS_ICON } from './cameraArt';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FRAME_SIZE = SCREEN_WIDTH * 0.68;
+const ZOOM_PRESETS = [1, 2, 3];
+
+/** A labelled round button beside the shutter (Photos, Flip). */
+function SideControl({ label, onPress, disabled, accessibilityLabel, children }) {
+  return (
+    <TouchableOpacity
+      style={styles.sideControl}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <View style={[styles.sideButton, disabled && styles.sideButtonDisabled]}>{children}</View>
+      <Text style={styles.sideLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
 
 /**
  * Best-effort capture of where the photo was taken. Returns
@@ -201,9 +227,10 @@ export default function CameraScreen({ navigation }) {
   };
 
   const clampZoom = (z) => Math.min(Math.max(z, 0), 0.6);
-  const nudgeZoom = (delta) => {
+  // expo-camera zoom runs 0..1; the label shows it as 1x + 5x per unit.
+  const setZoomFactor = (factor) => {
     selectFeedback();
-    setZoom((z) => clampZoom(z + delta));
+    setZoom(clampZoom((factor - 1) / 5));
   };
 
   // Pinch anywhere on the viewfinder to zoom, like the native camera.
@@ -340,6 +367,11 @@ export default function CameraScreen({ navigation }) {
   // turn the camera on from the shutter.
   const cameraActive = permission.granted;
 
+  const zoomFactor = 1 + zoom * 5;
+  // The preset the current zoom has reached; pinching between presets shows
+  // the exact factor on that pill, like the system camera.
+  const activePreset = [...ZOOM_PRESETS].reverse().find((p) => zoomFactor >= p - 0.05) || 1;
+
   const overlay = (
     <>
       {/* Freeze the shot while we look up the word */}
@@ -350,6 +382,7 @@ export default function CameraScreen({ navigation }) {
         <TouchableOpacity
           style={styles.langButton}
           activeOpacity={0.85}
+          accessibilityLabel={`Learning ${currentLang?.name}. Change language`}
           onPress={() =>
             navigation.navigate(ROUTES.LANGUAGE_SELECT, {
               current: targetLanguage,
@@ -360,30 +393,28 @@ export default function CameraScreen({ navigation }) {
             })
           }
         >
-          <Text style={styles.langShort}>{currentLang?.short}</Text>
-          <Text style={styles.langName}>{currentLang?.name}</Text>
-          <PixelIcon name="chevron" size={12} color="#FBF3E0" />
+          <View>
+            <Text style={styles.langKicker}>LEARNING</Text>
+            <Text style={styles.langName}>{currentLang?.name}</Text>
+          </View>
+          <PixelSprite grid={CARET_DOWN.grid} palette={CARET_DOWN.palette} pixelSize={2} />
         </TouchableOpacity>
 
-        {cameraActive ? (
-          <TouchableOpacity
-            style={styles.flipButton}
-            onPress={() => {
-              selectFeedback();
-              setFacing((f) => (f === 'back' ? 'front' : 'back'));
-            }}
-          >
-            <PixelIcon name="flip" size={18} color="#FBF3E0" />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      <View style={styles.goalChip}>
-        <Text style={styles.goalChipText}>
-          {remaining > 0
-            ? `${remaining} MORE TO REACH TODAY'S GOAL`
-            : 'DAILY GOAL COMPLETE'}
-        </Text>
+        <View
+          style={[styles.goalPill, remaining === 0 && styles.goalPillDone]}
+          accessible
+          accessibilityLabel={`${wordsToday} of ${dailyGoal} words today`}
+        >
+          <PixelIcon
+            name={remaining === 0 ? 'check' : 'target'}
+            size={16}
+            color={remaining === 0 ? COLORS.leaf : COLORS.sun}
+            light="#FBF3E0"
+          />
+          <Text style={styles.goalPillText}>
+            {Math.min(wordsToday, dailyGoal)}/{dailyGoal}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.guideContainer}>
@@ -402,7 +433,7 @@ export default function CameraScreen({ navigation }) {
 
           {!isProcessing && !cameraActive ? (
             <View style={styles.libraryHint}>
-              <PixelIcon name="images" size={28} color="#FBF3E0" />
+              <PixelSprite grid={PHOTOS_ICON.grid} palette={PHOTOS_ICON.palette} pixelSize={5} />
             </View>
           ) : null}
         </View>
@@ -410,44 +441,73 @@ export default function CameraScreen({ navigation }) {
         {!isProcessing ? (
           <Text style={styles.guideText}>
             {cameraActive
-              ? 'POINT AT AN OBJECT TO LEARN ITS NAME'
-              : 'PICK A PHOTO, OR TAP THE SHUTTER TO USE THE CAMERA'}
+              ? 'Point at something, then tap the yellow button'
+              : 'Pick a photo, or tap the button to use the camera'}
           </Text>
         ) : null}
       </View>
 
-      {/* Zoom controls */}
+      {/* Zoom presets, like the system camera. Pinching still works. */}
       {!isProcessing && cameraActive ? (
-        <View style={styles.zoomControls}>
-          <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(0.1)} hitSlop={6}>
-            <Text style={styles.zoomButtonText}>+</Text>
-          </TouchableOpacity>
-          <Text style={styles.zoomLabel}>{(1 + zoom * 5).toFixed(1)}x</Text>
-          <TouchableOpacity style={styles.zoomButton} onPress={() => nudgeZoom(-0.1)} hitSlop={6}>
-            <Text style={styles.zoomButtonText}>−</Text>
-          </TouchableOpacity>
+        <View style={styles.zoomRow}>
+          {ZOOM_PRESETS.map((p) => {
+            const active = p === activePreset;
+            return (
+              <TouchableOpacity
+                key={p}
+                style={[styles.zoomPill, active && styles.zoomPillActive]}
+                onPress={() => setZoomFactor(p)}
+                hitSlop={6}
+                accessibilityLabel={`Zoom ${p} times`}
+              >
+                <Text style={[styles.zoomPillText, active && styles.zoomPillTextActive]}>
+                  {active ? `${Number(zoomFactor.toFixed(1))}\u00d7` : `${p}\u00d7`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       ) : null}
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.galleryButton} onPress={pickImage} disabled={isProcessing}>
-          <PixelIcon name="images" size={20} color="#FBF3E0" />
-        </TouchableOpacity>
+        <SideControl
+          label="PHOTOS"
+          onPress={pickImage}
+          disabled={isProcessing}
+          accessibilityLabel="Choose a photo from your library"
+        >
+          <PixelSprite grid={PHOTOS_ICON.grid} palette={PHOTOS_ICON.palette} pixelSize={3} />
+        </SideControl>
 
-        <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
-          <TouchableOpacity
-            style={[styles.captureButton, isProcessing && styles.captureButtonDisabled]}
-            onPress={takePicture}
+        <View style={styles.shutterColumn}>
+          <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
+            <TouchableOpacity
+              style={[styles.shutter, isProcessing && styles.shutterDisabled]}
+              onPress={takePicture}
+              disabled={isProcessing}
+              activeOpacity={0.9}
+              accessibilityLabel={cameraActive ? 'Take photo' : 'Turn on the camera'}
+            >
+              <View style={styles.shutterInner} />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {cameraActive ? (
+          <SideControl
+            label="FLIP"
+            onPress={() => {
+              selectFeedback();
+              setFacing((f) => (f === 'back' ? 'front' : 'back'));
+            }}
             disabled={isProcessing}
-            activeOpacity={0.9}
+            accessibilityLabel={facing === 'back' ? 'Switch to front camera' : 'Switch to back camera'}
           >
-            <View style={styles.captureInner}>
-              <PixelIcon name="camera" size={26} color="#FBF3E0" />
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View style={styles.spacer} />
+            <PixelSprite grid={FLIP_ICON.grid} palette={FLIP_ICON.palette} pixelSize={3} />
+          </SideControl>
+        ) : (
+          <View style={styles.sideControl} />
+        )}
       </View>
     </>
   );
@@ -487,34 +547,26 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   frozenPhoto: { ...StyleSheet.absoluteFillObject },
-  zoomControls: {
-    position: 'absolute',
-    right: 16,
-    top: '38%',
-    alignItems: 'center',
-    gap: 8,
+  zoomRow: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    gap: 6,
+    padding: 4,
+    marginBottom: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(20,16,13,0.55)',
   },
-  zoomButton: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.sm,
-    backgroundColor: 'rgba(58,42,26,0.72)',
-    borderWidth: 2,
-    borderColor: COLORS.outline,
+  zoomPill: {
+    minWidth: 34,
+    height: 30,
+    paddingHorizontal: 6,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  zoomButtonText: { color: '#FBF3E0', fontSize: 22, fontWeight: '900', lineHeight: 26 },
-  zoomLabel: {
-    color: '#FBF3E0',
-    fontSize: 11,
-    fontWeight: '900',
-    backgroundColor: 'rgba(58,42,26,0.55)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: RADIUS.sm,
-    overflow: 'hidden',
-  },
+  zoomPillActive: { backgroundColor: 'rgba(20,16,13,0.85)' },
+  zoomPillText: { color: '#FBF3E0', fontSize: 12, fontWeight: '800' },
+  zoomPillTextActive: { color: COLORS.sun, fontWeight: '900' },
   loadingContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -555,39 +607,30 @@ const styles = StyleSheet.create({
   langButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(58,42,26,0.72)',
+    backgroundColor: 'rgba(58,42,26,0.78)',
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    gap: 10,
+  },
+  langKicker: { color: COLORS.sun, fontSize: 9, fontWeight: '900', letterSpacing: 1 },
+  langName: { color: '#FBF3E0', fontSize: 15, fontWeight: '800' },
+  goalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: 'rgba(58,42,26,0.78)',
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    gap: 7,
-  },
-  langShort: {
-    color: COLORS.sun,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  langName: { color: '#FBF3E0', fontSize: 13, fontWeight: '800' },
-  flipButton: {
-    backgroundColor: 'rgba(58,42,26,0.72)',
-    padding: 11,
-    borderRadius: RADIUS.sm,
+    borderRadius: RADIUS.md,
     borderWidth: 2,
     borderColor: COLORS.outline,
   },
-  goalChip: {
-    alignSelf: 'center',
-    marginTop: 14,
-    backgroundColor: 'rgba(58,42,26,0.72)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-  },
-  goalChipText: { color: '#FBF3E0', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+  goalPillDone: { borderColor: COLORS.leaf },
+  goalPillText: { color: '#FBF3E0', fontSize: 15, fontWeight: '900' },
   guideContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   guideFrame: {
     width: FRAME_SIZE,
@@ -618,10 +661,9 @@ const styles = StyleSheet.create({
   },
   guideText: {
     color: '#FBF3E0',
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: 13,
+    fontWeight: '800',
     marginTop: 20,
-    letterSpacing: 0.5,
     backgroundColor: 'rgba(58,42,26,0.55)',
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -631,35 +673,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 120,
-    paddingHorizontal: 40,
+    paddingBottom: 116,
+    paddingHorizontal: 28,
   },
-  galleryButton: {
-    backgroundColor: 'rgba(58,42,26,0.72)',
-    padding: 14,
-    borderRadius: RADIUS.sm,
+  sideControl: { width: 72, alignItems: 'center' },
+  sideButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(58,42,26,0.78)',
     borderWidth: 2,
-    borderColor: COLORS.outline,
-  },
-  captureButton: {
-    width: 82,
-    height: 82,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.sun,
-    justifyContent: 'center',
+    borderColor: 'rgba(251,243,224,0.35)',
     alignItems: 'center',
-    padding: 5,
-    borderWidth: 4,
-    borderColor: COLORS.outline,
+    justifyContent: 'center',
   },
-  captureButtonDisabled: { opacity: 0.55 },
-  captureInner: {
+  sideButtonDisabled: { opacity: 0.5 },
+  sideLabel: {
+    color: '#FBF3E0',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginTop: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  shutterColumn: { alignItems: 'center' },
+  // A round shutter reads as "take a photo" on any phone.
+  shutter: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 5,
+    borderColor: '#FBF3E0',
+    padding: 4,
+    backgroundColor: 'rgba(20,16,13,0.25)',
+  },
+  shutterDisabled: { opacity: 0.55 },
+  shutterInner: {
     flex: 1,
-    width: '100%',
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 34,
+    backgroundColor: COLORS.sun,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
   },
-  spacer: { width: 52 },
 });

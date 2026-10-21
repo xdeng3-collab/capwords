@@ -34,6 +34,7 @@ export const ROUTES = {
   PROFILE_MAIN: 'ProfileMain',
   SUBSCRIPTION: 'Subscription',
   GOAL_SETTING: 'GoalSetting',
+  EDIT_PROFILE: 'EditProfile',
   // Shared by more than one stack
   LANGUAGE_SELECT: 'LanguageSelect',
   AUTH: 'Auth',

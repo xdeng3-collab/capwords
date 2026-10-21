@@ -103,8 +103,9 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', 'cO.Oc', 'cO.Oc', 'ccccc', '.c.c.'],
     map: { c: 'C', O: 'O' },
   },
+  // A bold "<": the old arrow read as a plus sign at button size.
   arrowLeft: {
-    grid: ['..c..', '.cc..', 'ccccc', '.cc..', '..c..', '.....'],
+    grid: ['...cc', '..cc.', '.cc..', '..cc.', '...cc', '.....'],
     map: { c: 'C' },
   },
   close: {

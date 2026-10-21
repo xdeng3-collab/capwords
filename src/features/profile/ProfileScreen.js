@@ -8,57 +8,61 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LANGUAGES, ROUTES } from '../../config';
-import { COLORS, RADIUS } from '../../theme';
-import { PixelIcon, PixelPanel, useAlert } from '../../components';
+import { COLORS, RADIUS, SHADOW } from '../../theme';
+import { PetSprite, PixelIcon, PixelSprite, useAlert } from '../../components';
 import { useSession } from '../../hooks/useSession';
 import { refreshWidget } from '../../services/widgetService';
 import {
   deleteAccount,
   isSupabaseConfigured,
   pushProgress,
-  setUsername,
   signOutAccount,
-  updateMyProfile,
 } from '../../services/accountService';
 import { getStickers } from '../../services/collectionService';
 import { eraseDeviceData } from '../../services/deviceDataService';
-import { getPet } from '../../services/petService';
+import { getPetState } from '../../services/petService';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
-import { getStreak } from '../../services/progressService';
 import { getSubscription } from '../../services/subscriptionService';
-import { getInitials } from '../../utils/text';
 
 const PLAN_LABELS = {
-  free: { title: 'Free Plan', detail: '3 free words each day', icon: 'seed' },
-  per_word: { title: 'Pay Per Word', detail: 'Word pack balance', icon: 'star' },
-  monthly: { title: 'Monthly Pro', detail: 'Unlimited words', icon: 'trophy' },
-  yearly: { title: 'Yearly Pro', detail: 'Unlimited words', icon: 'trophy' },
-  unlimited: { title: 'Unlimited Pro', detail: 'Unlocked with a promo code', icon: 'trophy' },
+  free: { title: 'Free Plan', detail: '3 free words each day', pro: false },
+  per_word: { title: 'Pay Per Word', detail: 'Word pack balance', pro: false },
+  monthly: { title: 'Monthly Pro', detail: 'Unlimited words', pro: true },
+  yearly: { title: 'Yearly Pro', detail: 'Unlimited words', pro: true },
+  unlimited: { title: 'Unlimited Pro', detail: 'Unlocked with a promo code', pro: true },
+};
+
+// A proper ">" for list rows; PixelIcon's chevron reads as a flag at row size.
+const CHEVRON = {
+  grid: ['cc...', '.cc..', '..cc.', '.cc..', 'cc...'],
+  palette: { c: COLORS.textMuted },
+};
+
+const CLOUD = {
+  grid: ['..wwww....', '.wwwwwww..', 'wwwwwwwwww', '.wwwwwwww.'],
+  palette: { w: '#FFFFFF' },
 };
 
 export default function ProfileScreen({ navigation }) {
   const showAlert = useAlert();
-  const { signedOut, user, account, refreshAccount } = useSession();
+  const { signedOut, user, account } = useSession();
   const [profile, setProfile] = useState(null);
-  const [streak, setStreak] = useState({ current: 0, longest: 0 });
+  const [pet, setPet] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [totalWords, setTotalWords] = useState(0);
-  const [petName, setPetName] = useState('');
 
   const loadData = useCallback(async () => {
-    const [p, s, sub, stickers, pet] = await Promise.all([
+    const [p, petState, sub, stickers] = await Promise.all([
       getUserProfile(),
-      getStreak(),
+      getPetState(),
       getSubscription(),
       getStickers(),
-      getPet(),
     ]);
 
     setProfile(p);
-    setStreak(s);
+    setPet(petState);
     setSubscription(sub);
     setTotalWords(stickers.length);
-    setPetName(pet.name);
   }, []);
 
   useFocusEffect(
@@ -152,72 +156,10 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  /**
-   * The display name: what the profile header says and what pals see next to
-   * the handle. It lives on the phone, so this works signed out too; when
-   * there is an account, the copy up there is corrected in the same breath
-   * rather than waiting for the next progress push.
-   */
-  const handleChangeName = () => {
-    showAlert(
-      'Your name',
-      'Shown at the top of this screen, and to your pals. Up to 40 characters.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: async (value) => {
-            const name = (value || '').trim().slice(0, 40);
-            if (!name) {
-              showAlert('Needs a name', 'Type something for us to call you.');
-              return;
-            }
-            await updateUserProfile({ name });
-            if (user) {
-              const result = await updateMyProfile({ display_name: name });
-              if (!result.ok) {
-                // The phone already has the new name; the account catching up
-                // is not worth an error popup.
-                showAlert('Saved on this phone', 'Your pals will see it next time you are online.');
-              }
-              await refreshAccount();
-            }
-            loadData();
-          },
-        },
-      ],
-      { prompt: true, defaultValue: profile?.name || '', placeholder: 'Your name' }
-    );
-  };
-
-  // Handles are how pals find each other, so they are worth being able to
-  // change. Uniqueness is settled by the database, not by a check here.
-  const handleChangeUsername = () => {
-    showAlert(
-      'Choose a username',
-      'This is how pals find you. 3-20 characters: letters, numbers, or underscores.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: async (value) => {
-            const result = await setUsername(value);
-            if (!result.ok) {
-              showAlert('That did not work', result.error);
-              return;
-            }
-            await refreshAccount();
-          },
-        },
-      ],
-      { prompt: true, defaultValue: account?.username || '', placeholder: 'username' }
-    );
-  };
-
   const showComingSoon = (feature) =>
     showAlert(feature, 'This is coming in a future update. Thanks for your patience!');
 
-  if (!profile) {
+  if (!profile || !pet) {
     return <View style={styles.container} />;
   }
 
@@ -229,13 +171,20 @@ export default function ProfileScreen({ navigation }) {
       ? `${subscription?.wordBalance ?? 0} words remaining`
       : plan.detail;
 
-  const initials = getInitials(profile.name);
-
+  // Soft parchment tiles; only the small icon carries the colour.
   const stats = [
-    { label: 'WORDS', value: totalWords, icon: 'book' },
-    { label: 'STREAK', value: streak.current, icon: 'flame' },
-    { label: 'BEST', value: streak.longest, icon: 'trophy' },
+    { label: totalWords === 1 ? 'Word learned' : 'Words learned', value: totalWords, icon: 'book', color: '#6E9CC9' },
+    { label: 'Day streak', value: pet.streak, icon: 'flame', color: '#D9895A' },
   ];
+
+  const pickLanguage = () =>
+    navigation.navigate(ROUTES.LANGUAGE_SELECT, {
+      current: profile.targetLanguage,
+      onSelect: async (code) => {
+        await updateUserProfile({ targetLanguage: code });
+        loadData();
+      },
+    });
 
   return (
     <ScrollView
@@ -243,100 +192,105 @@ export default function ProfileScreen({ navigation }) {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+      {/* A little sky with your buddy in it */}
+      <View style={styles.sky}>
+        {/* Keeps the pull-down bounce sky-coloured instead of beige */}
+        <View style={styles.skyOverscroll} />
+        <PixelSprite grid={CLOUD.grid} palette={CLOUD.palette} pixelSize={5} style={styles.cloudA} />
+        <PixelSprite grid={CLOUD.grid} palette={CLOUD.palette} pixelSize={3} style={styles.cloudB} />
+        <View style={styles.petStage}>
+          <PetSprite mood={pet.mood} species={pet.species} outfit={pet.equippedOutfit} pixelSize={6} />
         </View>
-        <Text style={styles.userName}>{profile.name}</Text>
+        <View style={styles.grass} />
+      </View>
+
+      {/* Who you are: name and handle as one identity, edited together */}
+      <View style={styles.idCard}>
+        <Text style={styles.userName} numberOfLines={1}>
+          {profile.name}
+        </Text>
         {account?.username ? <Text style={styles.userHandle}>@{account.username}</Text> : null}
         <Text style={styles.userSubtext}>
-          LEARNING {targetLang?.name?.toUpperCase()} WITH {petName.toUpperCase()}
+          Learning <Text style={styles.userSubtextStrong}>{targetLang?.name}</Text> with{' '}
+          <Text style={styles.userSubtextStrong}>{pet.name}</Text>
         </Text>
-
-        <View style={styles.statsRow}>
-          {stats.map((stat) => (
-            <PixelPanel key={stat.label} tone="alt" style={styles.statBox}>
-              <PixelIcon name={stat.icon} size={18} color={COLORS.primary} light={COLORS.sun} />
-              <Text style={styles.statNumber}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </PixelPanel>
-          ))}
-        </View>
-      </View>
-
-      {/* Who you are. Outside the account section on purpose: the name is
-          stored on the phone, so it can be changed without signing in. */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>YOU</Text>
-        <MenuRow
-          icon="star"
-          label={profile.name}
-          hint="YOUR NAME"
-          onPress={handleChangeName}
-        />
-      </View>
-
-      {/* Subscription */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>YOUR PLAN</Text>
-        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(ROUTES.SUBSCRIPTION)}>
-          <PixelPanel style={styles.planCard}>
-            <View style={styles.planLeft}>
-              <View style={styles.iconBadge}>
-                <PixelIcon name={plan.icon} size={20} color={COLORS.primary} light={COLORS.sun} />
-              </View>
-              <View style={styles.planTextWrap}>
-                <Text style={styles.planTitle}>{plan.title}</Text>
-                <Text style={styles.planDetail}>{planDetail}</Text>
-              </View>
-            </View>
-            <PixelIcon name="chevron" size={16} color={COLORS.textMuted} />
-          </PixelPanel>
+        <TouchableOpacity
+          style={styles.editButton}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate(ROUTES.EDIT_PROFILE)}
+        >
+          <Text style={styles.editButtonText}>Edit profile</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Learning settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>LEARNING</Text>
-        <MenuRow
+      {/* Stats */}
+      <View style={styles.statsGrid}>
+        {stats.map((stat) => (
+          <View key={stat.label} style={styles.statTile}>
+            <View style={[styles.statIcon, { backgroundColor: stat.color }]}>
+              <PixelIcon name={stat.icon} size={18} color="#FFFFFF" light={stat.color} />
+            </View>
+            <View>
+              <Text style={styles.statNumber}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Plan */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate(ROUTES.SUBSCRIPTION)}
+        style={[styles.planCard, plan.pro ? styles.planCardPro : styles.planCardFree]}
+      >
+        <View style={styles.planIcon}>
+          <PixelIcon
+            name={plan.pro ? 'trophy' : 'star'}
+            size={22}
+            color={plan.pro ? COLORS.sun : '#FFFFFF'}
+            light={COLORS.surface}
+          />
+        </View>
+        <View style={styles.planTextWrap}>
+          <Text style={styles.planTitle}>{plan.title}</Text>
+          <Text style={styles.planDetail}>{planDetail}</Text>
+        </View>
+        <View style={styles.planCta}>
+          <Text style={styles.planCtaText}>{plan.pro ? 'MANAGE' : 'GO PRO'}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Learning */}
+      <Group title="LEARNING">
+        <Row
           icon="target"
-          label={`${profile.dailyGoal} words per day`}
-          hint="DAILY GOAL"
+          color={COLORS.secondary}
+          label="Daily goal"
+          value={`${profile.dailyGoal} words`}
           onPress={handleChangeGoal}
         />
-        <MenuRow
+        <Row
           icon="chat"
-          label={targetLang?.name || 'Choose a language'}
-          hint="TARGET LANGUAGE"
-          onPress={() =>
-            navigation.navigate(ROUTES.LANGUAGE_SELECT, {
-              current: profile.targetLanguage,
-              onSelect: async (code) => {
-                await updateUserProfile({ targetLanguage: code });
-                loadData();
-              },
-            })
-          }
+          color={COLORS.water}
+          label="Language"
+          value={targetLang?.name || 'Choose'}
+          onPress={pickLanguage}
+          last
         />
-      </View>
+      </Group>
 
       {/* Account. Hidden entirely when the app is built without a backend,
           rather than showing rows that cannot do anything. */}
       {isSupabaseConfigured ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
+        <Group title="ACCOUNT">
           {user ? (
             <>
-              <MenuRow
-                icon="people"
-                label={account?.username ? `@${account.username}` : 'Choose a username'}
-                hint="HOW PALS FIND YOU"
-                onPress={handleChangeUsername}
-              />
-              <MenuRow
+              <Row
                 icon="lock"
-                label={user.email || 'Signed in with Apple'}
-                hint="SIGNED IN AS"
+                color={COLORS.berry}
+                label="Signed in"
+                value={user.email || 'Apple ID'}
                 onPress={() =>
                   showAlert(
                     'Signed in',
@@ -346,151 +300,238 @@ export default function ProfileScreen({ navigation }) {
                   )
                 }
               />
-              <MenuRow icon="close" label="Log out" onPress={handleLogOut} />
-              <MenuRow
-                icon="close"
-                label="Delete my account"
-                onPress={handleDeleteAccount}
-                destructive
-              />
+              <Row icon="arrowLeft" color={COLORS.textMuted} label="Log out" onPress={handleLogOut} last />
             </>
           ) : (
-            <MenuRow
+            <Row
               icon="people"
-              label="Sign in or make an account"
-              hint="KEEP YOUR PALS AND PROGRESS"
+              color={COLORS.leaf}
+              label="Sign in or sign up"
+              value="Find your pals"
               onPress={() => navigation.navigate(ROUTES.AUTH)}
+              last
             />
           )}
-        </View>
+        </Group>
       ) : null}
 
       {/* More */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>MORE</Text>
-        <MenuRow icon="gear" label="App settings" onPress={() => showComingSoon('App settings')} />
-        <MenuRow icon="chat" label="Help & support" onPress={() => showComingSoon('Help & support')} />
-        <MenuRow icon="lock" label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} />
-        <MenuRow
-          icon="close"
-          label="Erase everything on this phone"
-          onPress={handleErase}
-          destructive
-        />
+      <Group title="MORE">
+        <Row icon="gear" color={COLORS.primary} label="App settings" onPress={() => showComingSoon('App settings')} />
+        <Row icon="chat" color={COLORS.accent} label="Help & support" onPress={() => showComingSoon('Help & support')} />
+        <Row icon="lock" color={COLORS.outlineSoft} label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} last />
+      </Group>
+
+      {/* The irreversible ones live apart from everything else */}
+      <View style={styles.dangerZone}>
+        <TouchableOpacity onPress={handleErase} hitSlop={8}>
+          <Text style={styles.dangerText}>Erase everything on this phone</Text>
+        </TouchableOpacity>
+        {isSupabaseConfigured && user ? (
+          <TouchableOpacity onPress={handleDeleteAccount} hitSlop={8}>
+            <Text style={styles.dangerText}>Delete my account</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      <Text style={styles.footer}>MADE FOR CURIOUS MINDS</Text>
+      <View style={styles.footer}>
+        <PetSprite mood="content" species={pet.species} pixelSize={2} animate={false} />
+        <Text style={styles.footerText}>MADE FOR CURIOUS MINDS</Text>
+      </View>
     </ScrollView>
   );
 }
 
-function MenuRow({ icon, label, hint, onPress, destructive }) {
+function Group({ title, children }) {
   return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress}>
-      <PixelPanel style={styles.menuItem}>
-        <View style={styles.menuLeft}>
-          <View style={styles.iconBadge}>
-            <PixelIcon name={icon} size={18} color={COLORS.primary} light={COLORS.sun} />
-          </View>
-          <View>
-            {hint ? <Text style={styles.menuHint}>{hint}</Text> : null}
-            <Text style={[styles.menuText, destructive && styles.menuTextDanger]}>{label}</Text>
-          </View>
-        </View>
-        <PixelIcon name="chevron" size={16} color={COLORS.textMuted} />
-      </PixelPanel>
+    <View style={styles.group}>
+      <Text style={styles.groupTitle}>{title}</Text>
+      <View style={styles.groupCard}>{children}</View>
+    </View>
+  );
+}
+
+function Row({ icon, color, label, value, onPress, last }) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[styles.row, !last && styles.rowDivider]}
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+    >
+      <View style={[styles.rowIcon, { backgroundColor: color }]}>
+        <PixelIcon name={icon} size={16} color="#FFFFFF" light={color} />
+      </View>
+      <Text style={styles.rowLabel}>{label}</Text>
+      {value ? (
+        <Text style={styles.rowValue} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
+      <PixelSprite grid={CHEVRON.grid} palette={CHEVRON.palette} pixelSize={2} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { paddingBottom: 120 },
-  header: {
-    paddingTop: 64,
-    paddingBottom: 22,
-    paddingHorizontal: 20,
+  scrollContent: { paddingBottom: 130 },
+  sky: {
+    height: 224,
+    backgroundColor: COLORS.sky,
     alignItems: 'center',
-    backgroundColor: COLORS.panel,
-    borderBottomWidth: 3,
-    borderBottomColor: COLORS.outline,
+    justifyContent: 'flex-end',
   },
-  avatar: {
-    width: 74,
-    height: 74,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.sun,
+  skyOverscroll: {
+    position: 'absolute',
+    top: -600,
+    left: 0,
+    right: 0,
+    height: 600,
+    backgroundColor: COLORS.sky,
+  },
+  cloudA: { position: 'absolute', top: 70, left: 28, opacity: 0.9 },
+  cloudB: { position: 'absolute', top: 92, right: 46, opacity: 0.8 },
+  // Feet on the grass, clear of the name card that overlaps the bottom edge.
+  petStage: { marginBottom: 24, zIndex: 1 },
+  grass: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 22,
+    backgroundColor: COLORS.leaf,
+    borderTopWidth: 3,
+    borderTopColor: COLORS.leafDark,
+  },
+  idCard: {
+    marginHorizontal: 20,
+    marginTop: -14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
     borderWidth: 3,
     borderColor: COLORS.outline,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: RADIUS.lg,
+    ...SHADOW.card,
   },
-  avatarText: { fontSize: 26, fontWeight: '900', color: COLORS.primaryDark },
-  userName: { fontSize: 22, fontWeight: '900', color: COLORS.text, marginTop: 12, letterSpacing: 0.5 },
-  userHandle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-    marginTop: 2,
-  },
-  userSubtext: {
-    fontSize: 11,
-    color: COLORS.textLight,
-    marginTop: 4,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  statsRow: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 20 },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 12 },
-  statNumber: { fontSize: 20, fontWeight: '900', color: COLORS.text, marginTop: 5 },
-  statLabel: { fontSize: 9, color: COLORS.textLight, marginTop: 1, fontWeight: '900', letterSpacing: 0.5 },
-  section: { marginTop: 22, paddingHorizontal: 20 },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: COLORS.textLight,
-    letterSpacing: 1,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-  planCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  planLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  iconBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: RADIUS.sm,
+  userName: { fontSize: 22, fontWeight: '900', color: COLORS.text, maxWidth: '100%' },
+  userHandle: { fontSize: 14, fontWeight: '700', color: COLORS.textMuted, marginTop: 1 },
+  userSubtext: { fontSize: 13, color: COLORS.textLight, marginTop: 4, fontWeight: '600' },
+  userSubtextStrong: { fontWeight: '900', color: COLORS.text },
+  editButton: {
+    marginTop: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
     backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 2,
+    borderColor: COLORS.outlineSoft,
+    borderRadius: RADIUS.md,
+  },
+  editButtonText: { fontSize: 13, fontWeight: '900', color: COLORS.text },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  statTile: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.surface,
+    borderWidth: 2,
+    borderColor: COLORS.outlineSoft,
+    borderRadius: RADIUS.lg,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.md,
     borderWidth: 2,
     borderColor: COLORS.outline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  planTextWrap: { flex: 1 },
-  planTitle: { fontSize: 15, fontWeight: '900', color: COLORS.text },
-  planDetail: { fontSize: 12, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
-  menuItem: {
+  statNumber: { fontSize: 22, fontWeight: '900', color: COLORS.text, lineHeight: 26 },
+  statLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textLight },
+  planCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    paddingVertical: 11,
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 14,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.lg,
+    ...SHADOW.card,
   },
-  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  menuHint: {
-    fontSize: 9,
-    color: COLORS.textMuted,
-    fontWeight: '900',
-    letterSpacing: 0.6,
-    marginBottom: 2,
+  planCardFree: { backgroundColor: COLORS.berry },
+  planCardPro: { backgroundColor: '#5B4BB5' },
+  planIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  menuText: { fontSize: 15, fontWeight: '800', color: COLORS.text },
-  menuTextDanger: { color: COLORS.danger },
-  footer: {
-    textAlign: 'center',
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 28,
+  planTextWrap: { flex: 1 },
+  planTitle: { fontSize: 16, fontWeight: '900', color: '#FFFFFF' },
+  planDetail: { fontSize: 12, color: '#FFFFFFDD', marginTop: 2, fontWeight: '700' },
+  planCta: {
+    backgroundColor: COLORS.sun,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  planCtaText: { fontSize: 11, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
+  group: { marginTop: 22, paddingHorizontal: 20 },
+  groupTitle: {
+    fontSize: 12,
     fontWeight: '900',
+    color: COLORS.textLight,
     letterSpacing: 1,
+    marginBottom: 8,
+    marginLeft: 4,
   },
+  groupCard: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.lg,
+    overflow: 'hidden',
+    ...SHADOW.soft,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  rowDivider: { borderBottomWidth: 2, borderBottomColor: COLORS.surfaceAlt },
+  rowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowLabel: { flex: 1, fontSize: 15, fontWeight: '800', color: COLORS.text },
+  rowValue: { maxWidth: '45%', fontSize: 14, fontWeight: '700', color: COLORS.textMuted },
+  dangerZone: { marginTop: 26, alignItems: 'center', gap: 14 },
+  dangerText: { fontSize: 13, fontWeight: '800', color: COLORS.danger },
+  footer: { marginTop: 28, alignItems: 'center', gap: 8, opacity: 0.7 },
+  footerText: { color: COLORS.textMuted, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
 });

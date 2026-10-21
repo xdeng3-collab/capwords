@@ -10,7 +10,12 @@ import { PetScreen, WardrobeScreen } from '../../features/buddy';
 import { CameraScreen, StickerResultScreen } from '../../features/capture';
 import { CollectionScreen, StickerDetailScreen } from '../../features/collection';
 import { FriendsScreen, FriendProfileScreen } from '../../features/friends';
-import { GoalSettingScreen, LanguageSelectScreen, ProfileScreen } from '../../features/profile';
+import {
+  EditProfileScreen,
+  GoalSettingScreen,
+  LanguageSelectScreen,
+  ProfileScreen,
+} from '../../features/profile';
 import { SubscriptionScreen } from '../../features/subscription';
 
 const Tab = createBottomTabNavigator();
@@ -65,6 +70,7 @@ function ProfileStack() {
       <Stack.Screen name={ROUTES.SUBSCRIPTION} component={SubscriptionScreen} />
       <Stack.Screen name={ROUTES.LANGUAGE_SELECT} component={LanguageSelectScreen} />
       <Stack.Screen name={ROUTES.GOAL_SETTING} component={GoalSettingScreen} />
+      <Stack.Screen name={ROUTES.EDIT_PROFILE} component={EditProfileScreen} />
     </Stack.Navigator>
   );
 }
