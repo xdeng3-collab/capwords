@@ -1,39 +1,45 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Modal,
-} from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COINS, PET, PET_MOODS, PET_SPECIES, ROUTES, TABS } from '../../config';
+import { COINS, PET_MOODS, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PetSprite, PixelButton, PixelIcon, PixelPanel, ProgressBar } from '../../components';
-import { getPetState, namePet } from '../../services/petService';
+import { PixelIcon } from '../../components';
+import { getPetState } from '../../services/petService';
+import { getJourneyState, landOnIsland } from '../../services/progressService';
 import { claimDailyGift, isDailyGiftAvailable } from '../../services/walletService';
-import { successFeedback, tapFeedback } from '../../utils/haptics';
+import { successFeedback } from '../../utils/haptics';
+import DailyGiftModal from './journey/DailyGiftModal';
+import { StatsRow, ZoneBanner } from './journey/HomeHeader';
+import SeaMap from './journey/SeaMap';
+import { zoneOf } from './journey/seaArt';
 
+/**
+ * Home: the stats row up top, and the sea the buddy hops across - one island
+ * for every day the goal was met. The daily gift pops up on the first visit of
+ * the day; a freshly earned island plays its jump once the gift is out of the
+ * way.
+ */
 export default function PetScreen({ navigation }) {
   const [state, setState] = useState(null);
-  const [renaming, setRenaming] = useState(false);
-  const [nameInput, setNameInput] = useState('');
-  const [speciesInput, setSpeciesInput] = useState(PET.defaultSpecies);
-  const [giftAvailable, setGiftAvailable] = useState(false);
+  const [journey, setJourney] = useState(null);
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [jumpTo, setJumpTo] = useState(null);
+
+  const startJumpIfOwed = useCallback((j) => {
+    if (j && j.reached > j.landed) setJumpTo(j.reached);
+  }, []);
 
   const load = useCallback(async () => {
-    const petState = await getPetState();
+    const [petState, j, gift] = await Promise.all([
+      getPetState(),
+      getJourneyState(),
+      isDailyGiftAvailable(),
+    ]);
     setState(petState);
-    setSpeciesInput(petState.species);
-    setGiftAvailable(await isDailyGiftAvailable());
-    // First launch: prompt the user to name their new companion.
-    if (!petState.named) {
-      setNameInput('');
-      setRenaming(true);
-    }
-  }, []);
+    setJourney(j);
+    if (gift) setGiftOpen(true);
+    else startJumpIfOwed(j);
+  }, [startJumpIfOwed]);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,205 +47,78 @@ export default function PetScreen({ navigation }) {
     }, [load])
   );
 
-  const saveName = async () => {
-    const trimmed = nameInput.trim();
-    if (!trimmed) return;
-    successFeedback();
-    await namePet(trimmed, state?.named ? undefined : speciesInput);
-    setRenaming(false);
-    load();
-  };
-
-  const claimGift = async () => {
+  const collectGift = async () => {
     const result = await claimDailyGift();
     if (result.claimed) {
       successFeedback();
+      setState((s) => (s ? { ...s, coins: result.coins.balance } : s));
     }
-    load();
   };
 
-  if (!state) {
+  const closeGift = () => {
+    setGiftOpen(false);
+    startJumpIfOwed(journey);
+  };
+
+  const jumpDone = async () => {
+    const landed = await landOnIsland(jumpTo);
+    setJourney(landed);
+    setJumpTo(null);
+  };
+
+  if (!state || !journey) {
     return <View style={styles.container} />;
   }
 
   const mood = PET_MOODS[state.mood] || PET_MOODS.neutral;
-  const progress = state.dailyGoal > 0 ? state.wordsToday / state.dailyGoal : 0;
+  // While a jump is owed the buddy waits on the island before the new one.
+  const petIsland = journey.reached > journey.landed ? journey.reached - 1 : journey.reached;
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Title bar */}
-        <View style={styles.titleBar}>
-          <Text style={styles.title}>MY BUDDY</Text>
-          <View style={styles.titleActions}>
-            <View style={styles.coinChip}>
-              <PixelIcon name="coin" size={14} color={COLORS.sun} light={COLORS.surface} />
-              <Text style={styles.coinChipText}>{state.coins}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.renameChip}
-              onPress={() => {
-                setNameInput(state.name);
-                setRenaming(true);
-              }}
-            >
-              <PixelIcon name="gear" size={14} color={COLORS.textLight} />
-              <Text style={styles.renameChipText}>RENAME</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Pet stage */}
-        <PixelPanel tone="panel" style={styles.stage}>
-          <View style={styles.skyStrip} />
-          <PetSprite
-            mood={state.mood}
-            species={state.species}
-            outfit={state.equippedOutfit}
-            pixelSize={12}
-          />
-          <Text style={styles.petName}>{state.name}</Text>
-          <Text style={styles.petMood}>{state.name} {mood.label}</Text>
-
-          <View style={styles.speech}>
-            <Text style={styles.speechText}>{mood.line}</Text>
-          </View>
-        </PixelPanel>
-
-        {/* Daily check-in gift */}
-        {giftAvailable ? (
-          <TouchableOpacity style={styles.giftCard} onPress={claimGift} activeOpacity={0.85}>
-            <PixelIcon name="coin" size={20} color={COLORS.sun} light={COLORS.surface} />
-            <View style={styles.giftTextWrap}>
-              <Text style={styles.giftTitle}>DAILY GIFT</Text>
-              <Text style={styles.giftHint}>
-                {state.name} found some coins for you — tap to collect!
-              </Text>
-            </View>
-            <Text style={styles.giftAmount}>+{COINS.checkInBonus}</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Daily goal meter */}
-        <PixelPanel style={styles.card}>
-          <View style={styles.cardHeader}>
-            <PixelIcon name="target" size={16} color={COLORS.primary} />
-            <Text style={styles.cardTitle}>TODAY'S GOAL</Text>
-            <Text style={styles.cardCount}>
-              {state.wordsToday}/{state.dailyGoal}
-            </Text>
-          </View>
-          <ProgressBar progress={progress} color={state.goalReached ? COLORS.leaf : COLORS.sun} />
-          <Text style={styles.cardHint}>
-            {state.goalReached
-              ? `${state.name} is thrilled — goal complete!`
-              : `Learn ${Math.max(state.dailyGoal - state.wordsToday, 0)} more to make ${state.name} happy.`}
-          </Text>
-        </PixelPanel>
-
-        {/* Streak */}
-        <View style={styles.statsRow}>
-          <PixelPanel style={styles.statCard}>
-            <PixelIcon name="flame" size={20} color={COLORS.streak} light={COLORS.sun} />
-            <Text style={styles.statNumber}>{state.streak}</Text>
-            <Text style={styles.statLabel}>DAY STREAK</Text>
-          </PixelPanel>
-          <PixelPanel style={styles.statCard}>
-            <PixelIcon name="trophy" size={20} color={COLORS.primary} light={COLORS.sun} />
-            <Text style={styles.statNumber}>{state.longestStreak}</Text>
-            <Text style={styles.statLabel}>BEST STREAK</Text>
-          </PixelPanel>
-        </View>
-
-        <PixelButton
-          label={`Feed ${state.name} a word`}
-          icon="camera"
-          color={COLORS.leaf}
-          size="lg"
-          style={styles.cta}
-          onPress={() => navigation.navigate(TABS.CAMERA)}
+    <View style={[styles.container, { backgroundColor: zoneOf(journey.reached).water }]}>
+      <View style={styles.header}>
+        <StatsRow
+          streak={state.streak}
+          streakLitToday={state.goalReached}
+          coins={state.coins}
+          wordsToday={state.wordsToday}
+          dailyGoal={state.dailyGoal}
         />
-        <PixelButton
-          label="Wardrobe"
-          icon="shirt"
-          color={COLORS.berry}
-          style={styles.wardrobeBtn}
+      </View>
+
+      <View style={styles.sea}>
+        <SeaMap
+          petIsland={petIsland}
+          reached={journey.reached}
+          jumpTo={jumpTo}
+          onJumpDone={jumpDone}
+          goalMet={state.goalReached}
+          wordsToday={state.wordsToday}
+          dailyGoal={state.dailyGoal}
+          pet={{ species: state.species, mood: state.mood, outfit: state.equippedOutfit }}
+          speech={mood.line}
+          onSnap={() => navigation.navigate(TABS.CAMERA)}
+        />
+        <View style={styles.bannerWrap} pointerEvents="none">
+          <ZoneBanner reached={journey.reached} />
+        </View>
+        <TouchableOpacity
+          style={styles.wardrobe}
+          activeOpacity={0.85}
+          accessibilityLabel="Wardrobe"
           onPress={() => navigation.navigate(ROUTES.WARDROBE)}
-        />
-      </ScrollView>
+        >
+          <PixelIcon name="shirt" size={22} color={COLORS.berry} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Name / rename modal */}
-      <Modal visible={renaming} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <PixelPanel style={styles.modalCard}>
-            {state.named ? (
-              <View style={styles.modalPet}>
-                <PetSprite mood="content" species={state.species} pixelSize={7} animate={false} />
-              </View>
-            ) : null}
-            <Text style={styles.modalTitle}>
-              {state.named ? 'RENAME YOUR BUDDY' : 'CHOOSE YOUR NEW BUDDY'}
-            </Text>
-            <Text style={styles.modalSubtitle}>
-              {state.named
-                ? 'Give your pixel pal a new name.'
-                : 'Pick a companion and give it a name to begin your journey together.'}
-            </Text>
-            {!state.named ? (
-              <View style={styles.speciesRow}>
-                {PET_SPECIES.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.speciesOption,
-                      speciesInput === s.id && styles.speciesOptionSelected,
-                    ]}
-                    onPress={() => {
-                      tapFeedback();
-                      setSpeciesInput(s.id);
-                    }}
-                  >
-                    <PetSprite mood="content" species={s.id} pixelSize={4} animate={false} />
-                    <Text style={styles.speciesOptionLabel}>{s.name.toUpperCase()}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : null}
-            <TextInput
-              style={styles.input}
-              value={nameInput}
-              onChangeText={setNameInput}
-              placeholder={PET.defaultName}
-              placeholderTextColor={COLORS.textMuted}
-              maxLength={PET.maxNameLength}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={saveName}
-            />
-            <View style={styles.modalButtons}>
-              {state.named ? (
-                <PixelButton
-                  label="Cancel"
-                  color={COLORS.textMuted}
-                  style={styles.modalButton}
-                  onPress={() => setRenaming(false)}
-                />
-              ) : null}
-              <PixelButton
-                label="Confirm"
-                icon="check"
-                color={COLORS.leaf}
-                style={styles.modalButton}
-                onPress={saveName}
-                disabled={!nameInput.trim()}
-              />
-            </View>
-          </PixelPanel>
-        </View>
-      </Modal>
+      <DailyGiftModal
+        visible={giftOpen}
+        amount={COINS.checkInBonus}
+        buddyName={state.name}
+        onCollect={collectGift}
+        onClose={closeGift}
+      />
     </View>
   );
 }
@@ -249,255 +128,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  scroll: {
-    padding: 18,
-    paddingTop: 60,
-    paddingBottom: 130,
+  header: {
+    paddingTop: 58,
+    backgroundColor: COLORS.background,
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.outline,
+    zIndex: 2,
   },
-  titleBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: COLORS.text,
-    letterSpacing: 2,
-  },
-  titleActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  coinChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    backgroundColor: COLORS.surface,
-  },
-  coinChipText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: COLORS.text,
-  },
-  renameChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    backgroundColor: COLORS.surface,
-  },
-  renameChipText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.textLight,
-    letterSpacing: 0.8,
-  },
-  stage: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    marginBottom: 14,
-    overflow: 'hidden',
-  },
-  skyStrip: {
+  sea: { flex: 1 },
+  bannerWrap: { position: 'absolute', top: 12, left: 0, right: 0 },
+  wardrobe: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    backgroundColor: COLORS.sky,
-    opacity: 0.4,
-  },
-  petName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: COLORS.text,
-    marginTop: 16,
-    letterSpacing: 1,
-  },
-  petMood: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  speech: {
-    marginTop: 14,
-    backgroundColor: COLORS.surface,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    maxWidth: '90%',
-  },
-  speechText: {
-    fontSize: 13,
-    color: COLORS.text,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  card: {
-    marginBottom: 14,
-  },
-  giftCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#FFF3C9',
-    borderWidth: 3,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 14,
-    ...SHADOW.soft,
-  },
-  giftTextWrap: { flex: 1 },
-  giftTitle: { fontSize: 12, fontWeight: '900', color: COLORS.text, letterSpacing: 1 },
-  giftHint: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-  giftAmount: { fontSize: 18, fontWeight: '900', color: '#B8860B' },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '900',
-    color: COLORS.textLight,
-    letterSpacing: 1,
-  },
-  cardCount: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: COLORS.primary,
-  },
-  cardHint: {
-    fontSize: 12,
-    color: COLORS.textLight,
-    marginTop: 10,
-    fontWeight: '600',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 14,
-    marginBottom: 18,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  statNumber: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: COLORS.text,
-    marginTop: 6,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.textLight,
-    letterSpacing: 0.8,
-    marginTop: 2,
-  },
-  cta: {
-    marginTop: 2,
-  },
-  wardrobeBtn: {
-    marginTop: 12,
-  },
-  speciesRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-    width: '100%',
-  },
-  speciesOption: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 12,
-    backgroundColor: COLORS.surfaceAlt,
-    borderWidth: 3,
-    borderColor: COLORS.outline,
-    borderRadius: RADIUS.md,
-  },
-  speciesOptionSelected: {
-    borderColor: COLORS.primaryDark,
-    backgroundColor: `${COLORS.sun}33`,
-  },
-  speciesOptionLabel: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: COLORS.text,
-    letterSpacing: 1,
-    marginTop: 6,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(58,42,26,0.55)',
+    right: 18,
+    bottom: 112,
+    width: 52,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 28,
-  },
-  modalCard: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: 22,
-  },
-  modalPet: {
-    marginBottom: 6,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: COLORS.text,
-    letterSpacing: 1,
-    marginTop: 8,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-    lineHeight: 19,
-    paddingHorizontal: 8,
-  },
-  input: {
-    width: '100%',
+    backgroundColor: COLORS.surface,
     borderWidth: 3,
     borderColor: COLORS.outline,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 16,
-    ...SHADOW.soft,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  modalButton: {
-    flex: 1,
+    borderRadius: RADIUS.xl,
+    ...SHADOW.card,
   },
 });
