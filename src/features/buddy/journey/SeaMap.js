@@ -10,26 +10,31 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
-import { PetSprite, PixelSprite, ProgressBar, petSpriteHeight } from '../../../components';
+import { PetSprite, PixelIcon, PixelSprite, ProgressBar, petSpriteHeight } from '../../../components';
+import { isMilestoneIsland } from '../../../services/progressService';
 import { successFeedback } from '../../../utils/haptics';
+import Halo from './Halo';
 import {
   DECOS,
   FLAG,
   ISLAND_GRID,
   ISLAND_PALETTES,
   ISLAND_STAND_ROW,
+  MILESTONE_FLAG,
   PROPS,
-  SEA_ZONES,
+  STAR,
   WAVE_GRID,
+  ZONES,
   zoneIndexOf,
   zoneOf,
 } from './seaArt';
 
 /**
- * The home screen's sea: one island per day the goal was met, laid out on a
+ * The home screen's map: one island per day the goal was met, laid out on a
  * winding path that climbs up the screen. The buddy stands on the latest
  * island it has landed on, and when a new one is earned it hops across like
- * Jump Jump. The water and scenery change as the journey reaches new zones.
+ * Jump Jump. The scenery changes as the journey reaches each new place (see
+ * DESTINATIONS), and milestone islands carry a star and a golden pennant.
  */
 
 const PX = 5; // world pixel
@@ -49,7 +54,7 @@ const ZIG = [0, 0.55, 0.85, 0.55, 0, -0.55, -0.85, -0.55];
 const JUMP_HEIGHT = 115;
 const JUMP_SAMPLES = Array.from({ length: 11 }, (_, k) => k / 10);
 
-const WAVE_PALETTES = Object.fromEntries(SEA_ZONES.map((z) => [z.key, { w: z.wave }]));
+const WAVE_PALETTES = Object.fromEntries(ZONES.map((z) => [z.key, { w: z.wave }]));
 
 // A cheap repeatable "random" so the scenery stays put between renders.
 const hash = (n) => {
@@ -57,8 +62,11 @@ const hash = (n) => {
   return x - Math.floor(x);
 };
 
+const STAR_H = STAR.grid.length * PROP_PX;
+
 const Island = memo(function Island({ index, x, y, state }) {
   const zone = zoneOf(index);
+  const milestone = isMilestoneIsland(index);
   const prop = PROPS[zone.prop];
   const side = index % 2 ? 1 : -1;
   const propW = prop.grid[0].length * PROP_PX;
@@ -85,9 +93,21 @@ const Island = memo(function Island({ index, x, y, state }) {
       {state === 'won' || index === 0 ? (
         <PixelSprite
           grid={FLAG.grid}
-          palette={FLAG.palette}
+          palette={milestone ? MILESTONE_FLAG.palette : FLAG.palette}
           pixelSize={PROP_PX}
           style={{ position: 'absolute', left: ISLAND_W / 2 - side * 34, top: -4 * PROP_PX + PX }}
+        />
+      ) : null}
+      {milestone ? (
+        <PixelSprite
+          grid={STAR.grid}
+          palette={STAR.palette}
+          pixelSize={PROP_PX}
+          style={{
+            position: 'absolute',
+            left: ISLAND_W / 2 - side * 34 - 6,
+            top: -4 * PROP_PX + PX - STAR_H - 4,
+          }}
         />
       ) : null}
     </View>
@@ -105,6 +125,7 @@ export default function SeaMap({
   pet,
   speech,
   onSnap,
+  halo = false,
   reduceMotion = false,
 }) {
   const { width } = useWindowDimensions();
@@ -160,17 +181,18 @@ export default function SeaMap({
     const from = petPoint(petIsland);
     const to = petPoint(jumpTo);
     const newZone = zoneIndexOf(jumpTo) !== zoneIndexOf(petIsland) ? zoneOf(jumpTo) : null;
+    const milestone = isMilestoneIsland(jumpTo);
     t.setValue(0);
     burst.setValue(0);
     toast.setValue(0);
-    setLeg({ from, to, index: jumpTo, newZone });
+    setLeg({ from, to, index: jumpTo, newZone, milestone });
     scrollToIsland(jumpTo, !reduceMotion);
 
     // Reduce Motion: no crouch, arc or splash - the buddy is simply on the
     // new island, and the toast fades in and out.
     const calm = Animated.sequence([
       Animated.timing(toast, { toValue: 1, duration: 200, useNativeDriver: true }),
-      Animated.delay(newZone ? 2200 : 1500),
+      Animated.delay(newZone || milestone ? 2200 : 1500),
       Animated.timing(toast, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]);
     if (reduceMotion) {
@@ -204,7 +226,7 @@ export default function SeaMap({
         Animated.timing(burst, { toValue: 1, duration: 700, easing: Easing.out(Easing.quad), useNativeDriver: true }),
         Animated.sequence([
           Animated.spring(toast, { toValue: 1, friction: 5, tension: 90, useNativeDriver: true }),
-          Animated.delay(newZone ? 1900 : 1100),
+          Animated.delay(newZone || milestone ? 1900 : 1100),
           Animated.timing(toast, { toValue: 0, duration: 260, useNativeDriver: true }),
         ]),
       ]),
@@ -325,7 +347,7 @@ export default function SeaMap({
         );
       })}
 
-      {/* Signposts where a new sea begins */}
+      {/* Signposts where a new place begins */}
       {rows
         .filter((i) => i > 0 && zoneIndexOf(i) !== zoneIndexOf(i - 1))
         .map((i) => {
@@ -357,6 +379,20 @@ export default function SeaMap({
         />
       ))}
 
+      {/* Milestones still ahead */}
+      {rows
+        .filter((i) => i > reached && isMilestoneIsland(i))
+        .map((i) => (
+          <View
+            key={`m${i}`}
+            pointerEvents="none"
+            style={[styles.milestoneTag, { left: islandX(i) - 50, top: islandY(i) + ISLAND_H + 2 }]}
+          >
+            <PixelIcon name="star" size={10} color={COLORS.sun} />
+            <Text style={styles.milestoneText}>HALO ISLAND</Text>
+          </View>
+        ))}
+
       {/* The next island to earn: the call to action */}
       <NextIslandBubble
         x={nextX}
@@ -371,6 +407,7 @@ export default function SeaMap({
 
       {/* The buddy */}
       <Animated.View pointerEvents="none" style={[styles.pet, { transform: petTransform }]}>
+        {halo ? <Halo width={PET_W} height={petH} pixelSize={PET_PX} still={reduceMotion} /> : null}
         <PetSprite
           mood={leg ? 'happy' : pet.mood}
           species={pet.species}
@@ -433,12 +470,33 @@ export default function SeaMap({
             ]}
           >
             <View
-              style={[styles.toast, { backgroundColor: leg.newZone ? leg.newZone.banner : COLORS.leaf }]}
+              style={[
+                styles.toast,
+                {
+                  backgroundColor: leg.milestone
+                    ? COLORS.warning
+                    : leg.newZone
+                      ? leg.newZone.banner
+                      : COLORS.leaf,
+                },
+              ]}
             >
               <Text style={styles.toastTitle}>
-                {leg.newZone ? `NEW SEA: ${leg.newZone.name.toUpperCase()}!` : 'GOAL MET! NEW ISLAND!'}
+                {leg.milestone
+                  ? `MILESTONE! ISLAND ${leg.index}!`
+                  : leg.newZone
+                    ? `WELCOME TO ${leg.newZone.name.toUpperCase()}!`
+                    : 'GOAL MET! NEW ISLAND!'}
               </Text>
-              <Text style={styles.toastSub}>Island {leg.index} reached</Text>
+              <Text style={styles.toastSub}>
+                {leg.milestone && leg.newZone
+                  ? `Halo earned - welcome to ${leg.newZone.name}`
+                  : leg.milestone
+                    ? 'Halo earned!'
+                    : leg.newZone
+                      ? leg.newZone.region
+                      : `Island ${leg.index} reached`}
+              </Text>
             </View>
           </Animated.View>
         </>
@@ -556,7 +614,20 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     zIndex: 6,
   },
+  milestoneTag: {
+    position: 'absolute',
+    width: 100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(58,42,26,0.55)',
+  },
+  milestoneText: { fontSize: 9, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
   toast: {
+    maxWidth: '86%',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -565,6 +636,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     ...SHADOW.card,
   },
-  toastTitle: { fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
+  toastTitle: { fontSize: 13, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1, textAlign: 'center' },
   toastSub: { fontSize: 10, fontWeight: '800', color: '#FFFFFFDD', marginTop: 2 },
 });

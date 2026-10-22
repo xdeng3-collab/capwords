@@ -2,11 +2,11 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
 import { PixelIcon } from '../../../components';
-import { SEA_ZONES, zoneIndexOf } from './seaArt';
+import { ZONES, zoneIndexOf } from './seaArt';
 
 /**
  * Duolingo-style status row (streak, coins, today's goal) and, under it, the
- * card that names the sea the buddy is sailing and what lies ahead.
+ * card that names the place the buddy has reached and what lies ahead.
  */
 export function StatsRow({ streak, streakLitToday, coins, wordsToday, dailyGoal }) {
   const goalMet = wordsToday >= dailyGoal;
@@ -42,22 +42,32 @@ function Stat({ icon, color, light, value, textColor, label }) {
   );
 }
 
-export function ZoneBanner({ reached }) {
+export function ZoneBanner({ reached, haloDays = 0 }) {
   const z = zoneIndexOf(reached);
-  const zone = SEA_ZONES[z];
-  const next = SEA_ZONES[z + 1];
+  const zone = ZONES[z];
+  const next = ZONES[z + 1];
   return (
     <View style={[styles.banner, { backgroundColor: zone.banner }]}>
-      <Text style={styles.bannerKicker}>
-        SEA {z + 1} · ISLAND {reached}
-      </Text>
+      <View style={styles.bannerTop}>
+        <Text style={styles.bannerKicker}>
+          STOP {z + 1} · ISLAND {reached}
+        </Text>
+        {haloDays > 0 ? (
+          <View style={styles.haloChip}>
+            <PixelIcon name="star" size={10} color={COLORS.sun} />
+            <Text style={styles.haloChipText}>
+              HALO · {haloDays} {haloDays === 1 ? 'DAY' : 'DAYS'}
+            </Text>
+          </View>
+        ) : null}
+      </View>
       <Text style={styles.bannerTitle}>{zone.name}</Text>
       {next ? (
         <Text style={styles.bannerHint}>
           {next.from - reached} more {next.from - reached === 1 ? 'island' : 'islands'} to {next.name}
         </Text>
       ) : (
-        <Text style={styles.bannerHint}>The furthest sea there is. Legend!</Text>
+        <Text style={styles.bannerHint}>You have seen every place so far. More are on the way!</Text>
       )}
     </View>
   );
@@ -82,7 +92,18 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     ...SHADOW.card,
   },
+  bannerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bannerKicker: { fontSize: 11, fontWeight: '900', color: '#FFFFFFBB', letterSpacing: 1.5 },
+  haloChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(58,42,26,0.35)',
+  },
+  haloChipText: { fontSize: 9, fontWeight: '900', color: COLORS.sun, letterSpacing: 1 },
   bannerTitle: { fontSize: 20, fontWeight: '900', color: '#FFFFFF', marginTop: 2 },
   bannerHint: { fontSize: 12, fontWeight: '700', color: '#FFFFFFDD', marginTop: 2 },
 });

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COINS } from '../../config';
+import { COINS, JOURNEY } from '../../config';
 import { getCoins } from '../walletService';
 import { updateUserProfile } from '../profileService';
 import {
@@ -7,7 +7,10 @@ import {
   getDailyWordCount,
   getJourneyState,
   getStreak,
+  haloDaysLeft,
+  isMilestoneIsland,
   landOnIsland,
+  milestonesBetween,
   recordWordLearned,
 } from '../progressService';
 
@@ -85,11 +88,11 @@ describe('sea journey', () => {
 
   it('earns an island on the goal day and owes one jump', async () => {
     await learn(2);
-    expect(await getJourneyState()).toEqual({ reached: 0, landed: 0 });
+    expect(await getJourneyState()).toMatchObject({ reached: 0, landed: 0 });
     await learn(1);
-    expect(await getJourneyState()).toEqual({ reached: 1, landed: 0 });
+    expect(await getJourneyState()).toMatchObject({ reached: 1, landed: 0 });
     await landOnIsland(1);
-    expect(await getJourneyState()).toEqual({ reached: 1, landed: 1 });
+    expect(await getJourneyState()).toMatchObject({ reached: 1, landed: 1 });
   });
 
   it('keeps islands when the goal is raised later', async () => {
@@ -99,10 +102,93 @@ describe('sea journey', () => {
     expect((await getJourneyState()).reached).toBe(1);
   });
 
-  it('leaves only today\'s island to jump to on a first look', async () => {
+  it('does not turn past short days into islands when the goal is lowered', async () => {
+    await learn(2);
+    await getJourneyState();
+    jest.setSystemTime(day(1));
+    await learn(2);
+    jest.setSystemTime(day(2));
+    await updateUserProfile({ dailyGoal: 2 });
+    expect((await getJourneyState()).reached).toBe(0);
+    await learn(2);
+    expect((await getJourneyState()).reached).toBe(1);
+  });
+
+  it("books today's island once if the goal is lowered below today's words", async () => {
+    await learn(2);
+    await getJourneyState();
+    await updateUserProfile({ dailyGoal: 2 });
+    expect((await getJourneyState()).reached).toBe(1);
+    await learn(3);
+    expect((await getJourneyState()).reached).toBe(1);
+  });
+
+  it('books goal days even when the map is not opened', async () => {
     await learn(3);
     jest.setSystemTime(day(1));
     await learn(3);
-    expect(await getJourneyState()).toEqual({ reached: 2, landed: 1 });
+    jest.setSystemTime(day(2));
+    expect((await getJourneyState()).reached).toBe(2);
+  });
+
+  it("leaves only today's island to jump to on a first look", async () => {
+    await learn(3);
+    jest.setSystemTime(day(1));
+    await learn(3);
+    expect(await getJourneyState()).toMatchObject({ reached: 2, landed: 1 });
+  });
+
+  it('migrates a journey saved before days were booked one by one', async () => {
+    await AsyncStorage.setItem(
+      'capwords_daily_words',
+      JSON.stringify({ '2026-09-01': 3, '2026-09-02': 3, '2026-09-03': 1 })
+    );
+    await AsyncStorage.setItem('capwords_journey', JSON.stringify({ reached: 1, landed: 1 }));
+    expect(await getJourneyState()).toMatchObject({ reached: 2, landed: 1, lastGoalDay: null });
+    await updateUserProfile({ dailyGoal: 1 });
+    expect((await getJourneyState()).reached).toBe(2);
+  });
+});
+
+describe('milestones', () => {
+  const every = JOURNEY.milestoneEvery;
+
+  it('marks every milestone island but not the dock', () => {
+    expect(isMilestoneIsland(0)).toBe(false);
+    expect(isMilestoneIsland(every)).toBe(true);
+    expect(isMilestoneIsland(every + 1)).toBe(false);
+    expect(milestonesBetween(every - 1, every)).toEqual([every]);
+    expect(milestonesBetween(every, every + 1)).toEqual([]);
+    expect(milestonesBetween(0, 2 * every)).toEqual([every, 2 * every]);
+  });
+
+  it('pays the bonus and puts on the halo once, on landing', async () => {
+    await AsyncStorage.setItem(
+      'capwords_journey',
+      JSON.stringify({ reached: every, landed: every - 1, lastGoalDay: null })
+    );
+    const before = (await getCoins()).balance;
+
+    const landed = await landOnIsland(every);
+    expect(landed).toMatchObject({ milestone: every, coinsEarned: COINS.milestoneBonus });
+    expect((await getCoins()).balance).toBe(before + COINS.milestoneBonus);
+    expect(haloDaysLeft(landed)).toBe(JOURNEY.haloDays);
+
+    // Landing there again pays nothing more.
+    expect(await landOnIsland(every)).toMatchObject({ milestone: null, coinsEarned: 0 });
+    expect((await getCoins()).balance).toBe(before + COINS.milestoneBonus);
+  });
+
+  it('lasts haloDays days, counting the landing day', async () => {
+    await AsyncStorage.setItem(
+      'capwords_journey',
+      JSON.stringify({ reached: every, landed: every - 1, lastGoalDay: null })
+    );
+    const landed = await landOnIsland(every);
+    jest.setSystemTime(day(JOURNEY.haloDays - 1));
+    expect(haloDaysLeft(landed)).toBe(1);
+    jest.setSystemTime(day(JOURNEY.haloDays));
+    expect(haloDaysLeft(landed)).toBe(0);
+    expect(haloDaysLeft({})).toBe(0);
   });
 });

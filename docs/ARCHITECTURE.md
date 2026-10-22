@@ -55,6 +55,7 @@ The two rules that matter most:
 | A colour, spacing, shadow                          | `theme/`                                   |
 | A price, limit, product id, catalog entry, route name | `config/`                               |
 | A pure function with no app knowledge              | `utils/`                                   |
+| A new place on the home journey                    | The END of `DESTINATIONS` in `config/journey.js` (facts, greeting) + its look in `ZONE_ART` in `features/buddy/journey/seaArt.js`; never re-space shipped places |
 
 ## Services
 
@@ -62,7 +63,7 @@ The two rules that matter most:
 | ------------------------ | -------------------------------------------------------------------- |
 | `learningService`        | "A word was learned" end to end: save, charge, widget, pals mirror    |
 | `collectionService`      | Stickers: save (which counts the word), list, group by day, delete   |
-| `progressService`        | Words per day, the streak, and what happens when a word is learned   |
+| `progressService`        | Words per day, the streak, what happens when a word is learned, and the journey (islands, milestones, halo) |
 | `petService`             | Name, species, outfits, and the mood ladder (`derivePetMood` is pure) |
 | `walletService`          | Coins, daily gift, practice bonus                                    |
 | `profileService`         | Local profile, onboarding state, goal-change cooldown                |
@@ -113,7 +114,8 @@ only on programmer error.
 
 Service rules are unit tested with Jest (`jest-expo` preset) in
 `src/services/__tests__/`; the globe's geometry is pure and tested next to
-its code (`features/collection/globe/__tests__/`). AsyncStorage is an in-memory mock, the app's own
+its code (`features/collection/globe/__tests__/`), as are the journey's places and
+sprites (`features/buddy/journey/__tests__/`). AsyncStorage is an in-memory mock, the app's own
 native modules resolve to null (as they do in Expo Go), and the suite runs in
 Asia/Shanghai so UTC and local days differ - see `jest.config.js` and
 `test/`. When you change a rule - the streak, the free limit, a price, the mood

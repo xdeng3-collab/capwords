@@ -7,7 +7,7 @@ A visual language learning app where users photograph objects to learn vocabular
 ### Your Pixel Pet
 - **Buddy companion**: An original, hand-drawn pixel pet (rendered purely from Views, no image assets) that lives on the home screen
 - **Name your pet**: During onboarding you choose your buddy's species and name
-- **Sail the sea**: Home is a sea map with one island for every day you meet your goal. Your buddy hops to the new island Jump Jump style, and the scenery changes as you go: Coconut Cove, Coral Reef, Sunset Isles, Glacier Bay, Volcano Ridge, then the Aurora Sea
+- **Travel the world**: Home is a map with one island for every day you meet your goal. Your buddy hops to the new island Jump Jump style, and the scenery changes about once a week as the trip passes real places - the Great Barrier Reef, the Sahara, the Pyramids, the Great Wall, the Forbidden City, Machu Picchu, the White House, Antarctica and more. The pin next to the wardrobe opens a travel guide (facts, how to say hello there, and a passport of every place reached). Every 50th island is a milestone: a golden halo for 7 days and bonus coins
 - **Daily gift**: The first visit each day opens a treasure chest worth a few coins
 - **Mood reacts to learning**: Like Duolingo, the pet is happy when you hit your daily goal, content while you make progress, and sad if you have been away and your streak is at risk
 

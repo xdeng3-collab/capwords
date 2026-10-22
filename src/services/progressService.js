@@ -1,4 +1,4 @@
-import { COINS } from '../config';
+import { COINS, JOURNEY } from '../config';
 import { getUserProfile } from '../data/profileStore';
 import {
   getAllWordCounts,
@@ -10,7 +10,7 @@ import {
   saveStreak,
 } from '../data/progressStore';
 import { addCoins } from '../data/walletStore';
-import { todayKey, yesterdayKey } from '../utils/date';
+import { daysBetween, shiftDayKey, todayKey, yesterdayKey } from '../utils/date';
 
 /**
  * Daily word counts and the streak.
@@ -59,42 +59,111 @@ export async function recordWordLearned() {
   await addCoins(earned);
 
   await updateStreak();
+  // Book today's island now: the home screen may not be opened again today.
+  if (wordsToday >= profile.dailyGoal) await saveJourney((await bookToday()).journey);
   return earned;
 }
 
 // ==================== Sea journey ====================
 // Every day the goal is met earns one island on the home screen's sea map.
 // Unlike the streak it never goes back: a missed day just means no new island.
+//
+// A day is booked on the day itself (`lastGoalDay`), never worked out again
+// from the word counts afterwards - otherwise lowering the goal would turn
+// every old short day into an island at once.
 
 /** How many days in `counts` (day key -> words) met `dailyGoal`. Pure. */
 export function countGoalDays(counts, dailyGoal) {
   return Object.values(counts || {}).filter((n) => n >= dailyGoal).length;
 }
 
-/**
- * The buddy's place on the sea map: { reached, landed }. `landed < reached`
- * means a jump is owed - call landOnIsland(reached) once it has played.
- */
-export async function getJourneyState() {
+/** Milestone islands carry the halo and the bonus. Island 0 is the dock. */
+export function isMilestoneIsland(index) {
+  return index > 0 && index % JOURNEY.milestoneEvery === 0;
+}
+
+/** The milestone islands after `from`, up to and including `to`. Pure. */
+export function milestonesBetween(from, to) {
+  const out = [];
+  const every = JOURNEY.milestoneEvery;
+  for (let i = (Math.floor(from / every) + 1) * every; i <= to; i += every) out.push(i);
+  return out;
+}
+
+/** Days of halo left, counting today; 0 when there is none. Pure. */
+export function haloDaysLeft(journey, today = todayKey()) {
+  const until = journey?.haloUntil;
+  if (!until || until < today) return 0;
+  return Math.round(daysBetween(`${today}T00:00:00Z`, `${until}T00:00:00Z`)) + 1;
+}
+
+/** Where the buddy stands: the island before the one a pending jump goes to. */
+export function currentIsland(journey) {
+  return journey.reached > journey.landed ? journey.reached - 1 : journey.reached;
+}
+
+/** The saved journey, with today booked if today's goal is met. */
+async function bookToday() {
   const [counts, profile, saved] = await Promise.all([
     getAllWordCounts(),
     getUserProfile(),
     getJourney(),
   ]);
-  // Raising the goal must not sink islands already earned.
-  const reached = Math.max(countGoalDays(counts, profile.dailyGoal), saved.reached || 0);
-  let landed = saved.landed;
-  if (landed == null) {
-    // First look at the map: put the buddy where it already is, leaving
-    // today's island (if earned) for the welcome jump.
-    const metToday = (counts[todayKey()] || 0) >= profile.dailyGoal;
-    landed = Math.max(reached - (metToday ? 1 : 0), 0);
+  const today = todayKey();
+  const metToday = (counts[today] || 0) >= profile.dailyGoal;
+  const journey = { ...saved };
+
+  if (!('lastGoalDay' in saved)) {
+    // Saved before days were booked one by one (or never saved): count the
+    // past once, with today's goal, and book day by day from here on.
+    journey.reached = Math.max(countGoalDays(counts, profile.dailyGoal), saved.reached || 0);
+    journey.lastGoalDay = metToday ? today : null;
+  } else if (metToday && saved.lastGoalDay !== today) {
+    journey.reached = (saved.reached || 0) + 1;
+    journey.lastGoalDay = today;
   }
-  landed = Math.min(landed, reached);
-  return saveJourney({ reached, landed });
+  return { journey, metToday };
 }
 
+/**
+ * The buddy's place on the sea map: { reached, landed, haloUntil, ... }.
+ * `landed < reached` means a jump is owed - call landOnIsland(reached) once
+ * it has played.
+ */
+export async function getJourneyState() {
+  const { journey, metToday } = await bookToday();
+  if (journey.landed == null) {
+    // First look at the map: put the buddy where it already is, leaving
+    // today's island (if earned) for the welcome jump.
+    journey.landed = Math.max(journey.reached - (metToday ? 1 : 0), 0);
+  }
+  journey.landed = Math.min(journey.landed, journey.reached);
+  return saveJourney(journey);
+}
+
+/**
+ * The jump to `index` has played. Landing on (or past) a milestone island
+ * pays COINS.milestoneBonus for each and puts on the halo for
+ * JOURNEY.haloDays days. Returns the journey plus `milestone` (the island, or
+ * null) and `coinsEarned`.
+ */
 export async function landOnIsland(index) {
   const saved = await getJourney();
-  return saveJourney({ ...saved, landed: index });
+  const crossed = milestonesBetween(saved.landed ?? index, index);
+  const journey = { ...saved, landed: index };
+  let coinsEarned = 0;
+  if (crossed.length) {
+    journey.haloUntil = shiftDayKey(todayKey(), JOURNEY.haloDays - 1);
+    coinsEarned = crossed.length * COINS.milestoneBonus;
+    await addCoins(coinsEarned);
+  }
+  await saveJourney(journey);
+  return { ...journey, milestone: crossed.length ? crossed[crossed.length - 1] : null, coinsEarned };
+}
+
+/** Remember the place whose travel guide has been opened. */
+export async function markPlaceSeen(key) {
+  const saved = await getJourney();
+  if (saved.seenPlace === key) return saved;
+  return saveJourney({ ...saved, seenPlace: key });
 }
