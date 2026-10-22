@@ -27,7 +27,7 @@ simply hides the account and Pals screens.
 - **Add friends**: Search people by handle, send and accept requests
 - **Streak system**: Meet your daily word target to extend your streak
 - **See how pals are doing**: Their streak, words today, total words, and pet
-- **Cheer a pal**: Send a daily cheer, worth a few coins to you both
+- **Cheer a pal**: Send a daily cheer, from the Pals list or their profile; it earns you a coin (the pal is not told yet)
 
 Not yet implemented:
 - **View collections** — a friend's stickers, photos, and words never leave

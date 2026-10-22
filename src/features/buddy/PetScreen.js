@@ -4,10 +4,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COINS, PET_MOODS, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PixelIcon } from '../../components';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { useSession } from '../../hooks/useSession';
+import { describeCheers, getNewCheers, markCheersSeen } from '../../services/friendService';
 import { getPetState } from '../../services/petService';
 import { getJourneyState, landOnIsland } from '../../services/progressService';
+import { fitGoalToPlan } from '../../services/subscriptionService';
 import { claimDailyGift, isDailyGiftAvailable } from '../../services/walletService';
 import { successFeedback } from '../../utils/haptics';
+import CheerToast from './journey/CheerToast';
 import DailyGiftModal from './journey/DailyGiftModal';
 import { StatsRow, ZoneBanner } from './journey/HomeHeader';
 import SeaMap from './journey/SeaMap';
@@ -24,12 +29,17 @@ export default function PetScreen({ navigation }) {
   const [journey, setJourney] = useState(null);
   const [giftOpen, setGiftOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState(null);
+  const [cheerMessage, setCheerMessage] = useState(null);
+  const { user } = useSession();
+  const reduceMotion = useReduceMotion();
 
   const startJumpIfOwed = useCallback((j) => {
     if (j && j.reached > j.landed) setJumpTo(j.reached);
   }, []);
 
   const load = useCallback(async () => {
+    // A goal the plan cannot reach would leave the island out of reach forever.
+    await fitGoalToPlan();
     const [petState, j, gift] = await Promise.all([
       getPetState(),
       getJourneyState(),
@@ -39,7 +49,19 @@ export default function PetScreen({ navigation }) {
     setJourney(j);
     if (gift) setGiftOpen(true);
     else startJumpIfOwed(j);
-  }, [startJumpIfOwed]);
+
+    // Cheers from pals since this phone last showed one. Marked seen as soon
+    // as they are queued, so a quick tab switch does not repeat them.
+    if (user) {
+      const cheers = await getNewCheers();
+      if (cheers.length) {
+        setCheerMessage(describeCheers(cheers));
+        markCheersSeen(cheers);
+      }
+    }
+  }, [startJumpIfOwed, user]);
+
+  const hideCheer = useCallback(() => setCheerMessage(null), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -98,6 +120,7 @@ export default function PetScreen({ navigation }) {
           pet={{ species: state.species, mood: state.mood, outfit: state.equippedOutfit }}
           speech={mood.line}
           onSnap={() => navigation.navigate(TABS.CAMERA)}
+          reduceMotion={reduceMotion}
         />
         <View style={styles.bannerWrap} pointerEvents="none">
           <ZoneBanner reached={journey.reached} />
@@ -112,12 +135,25 @@ export default function PetScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* Wait for the gift and the jump, so it is not lost behind them */}
+      {cheerMessage && !giftOpen && jumpTo == null ? (
+        <CheerToast
+          message={cheerMessage}
+          onHidden={hideCheer}
+          onPress={() => {
+            hideCheer();
+            navigation.navigate(TABS.FRIENDS);
+          }}
+        />
+      ) : null}
+
       <DailyGiftModal
         visible={giftOpen}
         amount={COINS.checkInBonus}
         buddyName={state.name}
         onCollect={collectGift}
         onClose={closeGift}
+        reduceMotion={reduceMotion}
       />
     </View>
   );

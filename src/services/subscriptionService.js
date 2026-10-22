@@ -1,4 +1,5 @@
 import { PRICING, PROMO_CODES } from '../config';
+import { getUserProfile, updateUserProfile } from '../data/profileStore';
 import { getWordCountOn } from '../data/progressStore';
 import { getSubscription, updateSubscription } from '../data/subscriptionStore';
 import { todayKey } from '../utils/date';
@@ -76,4 +77,32 @@ export async function redeemPromoCode(rawCode) {
   });
 
   return { ok: true, message: promo.message, subscription };
+}
+
+/**
+ * The highest daily goal this plan can actually reach, or null for no cap.
+ * A free learner stops at the free words, so a goal above that could never
+ * be met: no streak, no islands. Anyone who can keep learning past it - a
+ * subscription, a promo, or words left in a pack - has no cap.
+ */
+export async function getGoalCap() {
+  const sub = await getSubscription();
+  if (sub.type === 'unlimited') return null;
+  if ((sub.type === 'monthly' || sub.type === 'yearly') && new Date(sub.expiresAt) > new Date()) {
+    return null;
+  }
+  if (sub.type === 'per_word' && sub.wordBalance > 0) return null;
+  return PRICING.freeWordsPerDay;
+}
+
+/**
+ * Bring the daily goal within reach of the plan: lowers it to the cap when a
+ * free learner's goal is above it (an old default of 5, or a lapsed plan).
+ * Never raises it, and does not count against the weekly change limit.
+ * Returns the profile.
+ */
+export async function fitGoalToPlan() {
+  const [profile, cap] = await Promise.all([getUserProfile(), getGoalCap()]);
+  if (cap == null || profile.dailyGoal <= cap) return profile;
+  return updateUserProfile({ dailyGoal: cap });
 }

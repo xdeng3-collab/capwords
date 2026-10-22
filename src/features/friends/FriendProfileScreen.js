@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { COINS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { BackButton, PetSprite, PixelButton, useAlert } from '../../components';
-import { unfriend } from '../../services/friendService';
+import { cheer, unfriend } from '../../services/friendService';
+import { addCoins } from '../../services/walletService';
 import { successFeedback } from '../../utils/haptics';
 
 // Stand-in buddy for the rare pal whose profile has not synced a pet yet.
@@ -17,18 +19,28 @@ const FALLBACK_PET = { name: 'Buddy', species: 'cat', outfit: 'none' };
 export default function FriendProfileScreen({ route, navigation }) {
   const { friend } = route.params;
   const showAlert = useAlert();
-  const [fed, setFed] = useState(false);
+  // The same daily cheer as the Pals list: it reaches them, and the database
+  // decides whether it counted (once a day), which is when the coin is paid.
+  const [cheered, setCheered] = useState(Boolean(friend.cheeredToday));
 
   const pet = friend.pet?.species ? friend.pet : FALLBACK_PET;
+  const firstName = friend.name.split(' ')[0];
 
-  const handleFeed = () => {
-    if (fed) return;
+  const handleCheer = async () => {
+    if (cheered) return;
     successFeedback();
-    setFed(true);
+    setCheered(true);
+    const result = await cheer(friend.id);
+    if (result.awarded) {
+      await addCoins(COINS.cheerBonus);
+    } else if (!result.ok) {
+      setCheered(false);
+      showAlert('Could not cheer', result.error || 'Check your connection and try again.');
+    }
   };
 
   const handleRemove = () => {
-    showAlert('Remove friend', `Are you sure you want to remove ${friend.name}?`, [
+    showAlert('Remove pal', `Remove ${friend.name} from your pals?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -66,25 +78,28 @@ export default function FriendProfileScreen({ route, navigation }) {
         <View style={styles.petStage}>
           <View style={styles.skyStrip} />
           <PetSprite
-            mood={fed ? 'happy' : 'content'}
+            mood={cheered ? 'happy' : 'content'}
             species={pet.species}
             outfit={pet.outfit}
             pixelSize={9}
           />
           <Text style={styles.petName}>{pet.name}</Text>
           <Text style={styles.petCaption}>
-            {fed
-              ? `${pet.name} loved the snack you shared!`
-              : `${friend.name.split(' ')[0]}'s buddy`}
+            {cheered
+              ? `You cheered ${firstName} on today!`
+              : `${firstName}'s buddy`}
           </Text>
           <PixelButton
-            label={fed ? 'Fed today' : `Help feed ${pet.name}`}
-            icon={fed ? 'check' : 'apple'}
-            color={fed ? COLORS.textMuted : COLORS.leaf}
+            label={cheered ? 'Cheered today' : `Cheer ${firstName} on`}
+            icon={cheered ? 'check' : 'heart'}
+            color={cheered ? COLORS.textMuted : COLORS.secondary}
             style={styles.feedButton}
-            onPress={handleFeed}
-            disabled={fed}
+            onPress={handleCheer}
+            disabled={cheered}
           />
+          {!cheered ? (
+            <Text style={styles.cheerHint}>Once a day. You get +{COINS.cheerBonus} coin for cheering.</Text>
+          ) : null}
         </View>
 
         <View style={styles.statsRow}>
@@ -103,7 +118,7 @@ export default function FriendProfileScreen({ route, navigation }) {
       <View style={styles.collectionSection}>
         <Text style={styles.sectionTitle}>THEIR COLLECTION</Text>
         <Text style={styles.sectionSubtitle}>
-          {friend.name.split(' ')[0]} has learned {friend.totalWords || 0}{' '}
+          {firstName} has learned {friend.totalWords || 0}{' '}
           {friend.totalWords === 1 ? 'word' : 'words'}, with a best streak of{' '}
           {friend.longestStreak || 0}. The words themselves stay private on their phone.
         </Text>
@@ -111,13 +126,14 @@ export default function FriendProfileScreen({ route, navigation }) {
 
       {/* Quiet footer action, out of the way of everyday browsing */}
       <TouchableOpacity style={styles.removeLink} onPress={handleRemove} hitSlop={8}>
-        <Text style={styles.removeLinkText}>Remove {friend.name.split(' ')[0]} from friends</Text>
+        <Text style={styles.removeLinkText}>Remove {firstName} from pals</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  cheerHint: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginTop: 8 },
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollContent: { paddingBottom: 120 },
   header: {

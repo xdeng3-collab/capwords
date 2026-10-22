@@ -21,9 +21,12 @@ import * as Speech from 'expo-speech';
 import { CELEBRATIONS } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
 import { PetSprite, PixelButton, PixelIcon, StreakCelebration, useAlert } from '../../components';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { getPet } from '../../services/petService';
 import { awardPracticeBonus } from '../../services/walletService';
 import { pressFeedback, selectFeedback, successFeedback } from '../../utils/haptics';
+import { formatPronunciation } from '../../utils/text';
+import { playbackMode, speakWord } from '../../utils/audio';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STICKER_SIZE = SCREEN_WIDTH * 0.52;
@@ -37,6 +40,8 @@ export default function StickerResultScreen({ route, navigation }) {
   const [recordedUri, setRecordedUri] = useState(null);
   const [pet, setPet] = useState(null);
   const [practiceCoins, setPracticeCoins] = useState(0);
+  const [playingMine, setPlayingMine] = useState(false);
+  const reduceMotion = useReduceMotion();
 
   useEffect(() => {
     getPet().then(setPet).catch(() => {});
@@ -100,15 +105,10 @@ export default function StickerResultScreen({ route, navigation }) {
     []
   );
 
-  const speakWord = async () => {
+  const sayWord = () => {
     selectFeedback();
     setIsPlaying(true);
-    // Make sure the audio session is in playback mode (recording practice or
-    // the silent switch can otherwise mute text-to-speech).
-    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
-    Speech.speak(sticker.word || recognition.word, {
-      language: sticker.language,
-      rate: 0.8,
+    speakWord(sticker.word || recognition.word, sticker.language, {
       onDone: () => setIsPlaying(false),
       onStopped: () => setIsPlaying(false),
       onError: () => setIsPlaying(false),
@@ -121,7 +121,7 @@ export default function StickerResultScreen({ route, navigation }) {
       if (!granted) {
         showAlert(
           'Microphone needed',
-          'Enable microphone access in Settings to practice your pronunciation.'
+          'Turn on microphone access in Settings to record yourself.'
         );
         return;
       }
@@ -150,7 +150,9 @@ export default function StickerResultScreen({ route, navigation }) {
     } catch (error) {
       console.error('Failed to stop recording', error);
     } finally {
-      await setAudioModeAsync({ allowsRecording: false }).catch(() => {});
+      // Back to the loudspeaker. Leaving the session in record mode (or
+      // dropping playsInSilentMode) is what made the take play back silent.
+      await playbackMode();
     }
   };
 
@@ -165,15 +167,21 @@ export default function StickerResultScreen({ route, navigation }) {
     }
   };
 
-  const playRecording = () => {
-    if (!recordedUri) return;
+  const playRecording = async () => {
+    if (!recordedUri || playingMine) return;
     try {
+      await playbackMode();
       playerRef.current?.remove();
       const player = createAudioPlayer({ uri: recordedUri });
       playerRef.current = player;
+      setPlayingMine(true);
+      player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish) setPlayingMine(false);
+      });
       player.play();
     } catch (error) {
       console.error('Failed to play recording', error);
+      setPlayingMine(false);
     }
   };
 
@@ -217,7 +225,7 @@ export default function StickerResultScreen({ route, navigation }) {
         <Animated.View style={[styles.wordContainer, { opacity: fadeAnim }]}>
           <Text style={styles.wordText}>{recognition.word}</Text>
           {recognition.pronunciation ? (
-            <Text style={styles.pronunciationText}>/{recognition.pronunciation}/</Text>
+            <Text style={styles.pronunciationText}>{formatPronunciation(recognition.pronunciation)}</Text>
           ) : null}
           {recognition.english ? <Text style={styles.englishText}>{recognition.english}</Text> : null}
         </Animated.View>
@@ -245,7 +253,7 @@ export default function StickerResultScreen({ route, navigation }) {
             label={isPlaying ? 'Playing...' : 'Listen'}
             icon="sound"
             color={COLORS.primary}
-            onPress={speakWord}
+            onPress={sayWord}
             disabled={isPlaying}
             size="lg"
           />
@@ -259,20 +267,25 @@ export default function StickerResultScreen({ route, navigation }) {
               ]}
             >
               <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
-                <PixelIcon name={isRecording ? 'check' : 'mic'} size={20} color="#FBF3E0" />
+                <PixelIcon name={isRecording ? 'stop' : 'mic'} size={20} color="#FBF3E0" />
               </Animated.View>
               <Text style={styles.recordText}>
                 {isRecording
                   ? 'RECORDING... TAP TO STOP'
                   : practiceCoins > 0
                     ? 'PRACTICED! +1 COIN'
-                    : 'TAP TO PRACTICE (+1 COIN)'}
+                    : 'TAP TO RECORD YOURSELF (+1 COIN)'}
               </Text>
             </View>
           </TouchableOpacity>
 
           {recordedUri ? (
-            <PixelButton label="Play my voice" icon="play" color={COLORS.accent} onPress={playRecording} />
+            <PixelButton
+              label={playingMine ? 'Playing...' : 'Play my voice'}
+              icon="play"
+              color={COLORS.accent}
+              onPress={playRecording}
+            />
           ) : null}
         </Animated.View>
 
@@ -282,7 +295,11 @@ export default function StickerResultScreen({ route, navigation }) {
       </ScrollView>
 
       {celebrating ? (
-        <StreakCelebration streak={streak} onDone={() => setCelebrating(false)} />
+        <StreakCelebration
+          streak={streak}
+          onDone={() => setCelebrating(false)}
+          reduceMotion={reduceMotion}
+        />
       ) : null}
     </View>
   );

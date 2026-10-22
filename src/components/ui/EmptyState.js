@@ -6,10 +6,10 @@ import PetSprite from '../pixel/PetSprite';
 /**
  * EmptyState: uses the pet sprite as a friendly, on-brand illustration.
  */
-export function EmptyState({ mood = 'neutral', title, subtitle, action }) {
+export function EmptyState({ mood = 'neutral', species, outfit, title, subtitle, action }) {
   return (
     <View style={styles.emptyWrap}>
-      <PetSprite mood={mood} pixelSize={7} />
+      <PetSprite mood={mood} species={species} outfit={outfit} pixelSize={7} />
       <Text style={styles.emptyTitle}>{title}</Text>
       {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
       {action}

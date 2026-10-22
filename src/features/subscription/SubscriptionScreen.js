@@ -8,12 +8,14 @@ import {
   TextInput,
   Keyboard,
   Dimensions,
+  Linking,
 } from 'react-native';
-import { PRICING, PRODUCT_TO_PLAN } from '../../config';
+import { PRICING, PRODUCT_TO_PLAN, ROUTES, TERMS_OF_USE_URL } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PixelIcon, useAlert } from '../../components';
+import { BackButton, PixelIcon, useAlert } from '../../components';
 import { getSubscription, redeemPromoCode } from '../../services/subscriptionService';
 import {
+  arePacksForSale,
   buyWordPack,
   getStoreProducts,
   isBillingAvailable,
@@ -32,11 +34,12 @@ const PLANS = [
     price: `$${PRICING.perWord}`,
     period: 'per word',
     description: 'Pay only for what you learn',
+    // Only what the app actually does today - nothing on these lists may be
+    // a promise of a feature that does not exist.
     features: [
-      'No commitment',
-      'Buy word packs (10, 50, 100 words)',
-      'Never expires',
-      'Full features included',
+      'No subscription',
+      'Packs of 10, 50 or 100 words',
+      'Words never expire',
     ],
     packs: [
       { words: 10, price: 0.20 },
@@ -52,11 +55,10 @@ const PLANS = [
     period: 'per month',
     description: 'Best for consistent learners',
     features: [
-      'Unlimited words',
-      'All languages',
-      'Pronunciation feedback',
-      'Friend collections access',
-      'Priority support',
+      'Unlimited words every day',
+      'Set any daily goal, up to 50',
+      'Keep your streak and islands growing',
+      'Cancel any time',
     ],
     popular: true,
   },
@@ -69,9 +71,6 @@ const PLANS = [
     features: [
       'Everything in Monthly',
       'Save 37% vs monthly',
-      'Exclusive sticker frames',
-      'Early access to features',
-      'Offline mode',
     ],
     popular: false,
     savings: `Save $${((PRICING.monthly * 12) - PRICING.yearly).toFixed(2)}/year`,
@@ -205,7 +204,7 @@ export default function SubscriptionScreen({ navigation }) {
     if (!isBillingAvailable()) {
       showAlert(
         'Purchases unavailable',
-        'In-app purchases are not available in this build. Once CapWords is on a paid Apple Developer account you will be able to subscribe here.'
+        "Subscriptions aren't available right now. Please try again later."
       );
       return;
     }
@@ -261,12 +260,12 @@ export default function SubscriptionScreen({ navigation }) {
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
-          <PixelIcon name="close" size={18} color={COLORS.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <BackButton onPress={() => navigation.goBack()} />
+        </View>
         <Text style={styles.title}>UPGRADE TO PRO</Text>
         <Text style={styles.subtitle}>
-          Unlock unlimited learning and premium features
+          Learn as many words a day as you like
         </Text>
       </View>
 
@@ -274,7 +273,9 @@ export default function SubscriptionScreen({ navigation }) {
       <PromoCard subscription={subscription} onRedeemed={setSubscription} />
 
       {/* Plans */}
-      {PLANS.map((plan) => (
+      {/* Word packs have no App Store product yet: in a release build they
+          cannot be bought, so the per-word plan is not offered at all. */}
+      {PLANS.filter((plan) => plan.id !== 'per_word' || arePacksForSale()).map((plan) => (
         <TouchableOpacity
           key={plan.id}
           style={[
@@ -286,7 +287,7 @@ export default function SubscriptionScreen({ navigation }) {
         >
           {plan.popular && (
             <View style={styles.popularBadge}>
-              <Text style={styles.popularText}>MOST POPULAR</Text>
+              <Text style={styles.popularText}>RECOMMENDED</Text>
             </View>
           )}
           {plan.savings && (
@@ -378,28 +379,51 @@ export default function SubscriptionScreen({ navigation }) {
         </Text>
       </View>
 
+      {/* Required next to auto-renewing subscriptions (App Review 3.1.2). */}
+      <Text style={styles.legalText}>
+        Payment is charged to your Apple ID when you confirm. Monthly and yearly plans renew
+        automatically at the same price unless cancelled at least 24 hours before the end of the
+        current period. Manage or cancel any time in iPhone Settings → your name → Subscriptions.
+      </Text>
+      <View style={styles.legalLinks}>
+        <Text style={styles.legalLink} onPress={() => Linking.openURL(TERMS_OF_USE_URL).catch(() => {})}>
+          Terms of Use
+        </Text>
+        <Text style={styles.legalDot}>·</Text>
+        <Text style={styles.legalLink} onPress={() => navigation.navigate(ROUTES.PRIVACY_POLICY)}>
+          Privacy Policy
+        </Text>
+      </View>
+
       <View style={styles.bottomPadding} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  legalText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    lineHeight: 16,
+    marginHorizontal: 24,
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 },
+  legalLink: { fontSize: 12, fontWeight: '800', color: COLORS.water, textDecorationLine: 'underline' },
+  legalDot: { fontSize: 12, color: COLORS.textMuted },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 20,
     alignItems: 'center',
   },
-  closeBtn: {
-    position: 'absolute',
-    top: 55,
-    left: 20,
-    padding: 8,
-  },
+  headerRow: { alignSelf: 'stretch', flexDirection: 'row', marginBottom: 10 },
   title: {
     fontSize: 24,
     fontWeight: '900',

@@ -10,6 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LANGUAGES, ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PetSprite, PixelIcon, PixelSprite, useAlert } from '../../components';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { useSession } from '../../hooks/useSession';
 import { refreshWidget } from '../../services/widgetService';
 import {
@@ -22,7 +23,7 @@ import { getStickers } from '../../services/collectionService';
 import { eraseDeviceData } from '../../services/deviceDataService';
 import { getPetState } from '../../services/petService';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
-import { getSubscription } from '../../services/subscriptionService';
+import { fitGoalToPlan, getSubscription } from '../../services/subscriptionService';
 
 const PLAN_LABELS = {
   free: { title: 'Free Plan', detail: '3 free words each day', pro: false },
@@ -46,12 +47,14 @@ const CLOUD = {
 export default function ProfileScreen({ navigation }) {
   const showAlert = useAlert();
   const { signedOut, user, account } = useSession();
+  const reduceMotion = useReduceMotion();
   const [profile, setProfile] = useState(null);
   const [pet, setPet] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [totalWords, setTotalWords] = useState(0);
 
   const loadData = useCallback(async () => {
+    await fitGoalToPlan();
     const [p, petState, sub, stickers] = await Promise.all([
       getUserProfile(),
       getPetState(),
@@ -156,8 +159,6 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  const showComingSoon = (feature) =>
-    showAlert(feature, 'This is coming in a future update. Thanks for your patience!');
 
   if (!profile || !pet) {
     return <View style={styles.container} />;
@@ -199,7 +200,13 @@ export default function ProfileScreen({ navigation }) {
         <PixelSprite grid={CLOUD.grid} palette={CLOUD.palette} pixelSize={5} style={styles.cloudA} />
         <PixelSprite grid={CLOUD.grid} palette={CLOUD.palette} pixelSize={3} style={styles.cloudB} />
         <View style={styles.petStage}>
-          <PetSprite mood={pet.mood} species={pet.species} outfit={pet.equippedOutfit} pixelSize={6} />
+          <PetSprite
+            mood={pet.mood}
+            species={pet.species}
+            outfit={pet.equippedOutfit}
+            pixelSize={6}
+            animate={!reduceMotion}
+          />
         </View>
         <View style={styles.grass} />
       </View>
@@ -317,9 +324,26 @@ export default function ProfileScreen({ navigation }) {
 
       {/* More */}
       <Group title="MORE">
-        <Row icon="gear" color={COLORS.primary} label="App settings" onPress={() => showComingSoon('App settings')} />
-        <Row icon="chat" color={COLORS.accent} label="Help & support" onPress={() => showComingSoon('Help & support')} />
-        <Row icon="lock" color={COLORS.outlineSoft} label="Privacy policy" onPress={() => showComingSoon('Privacy policy')} last />
+        <Row
+          icon="gear"
+          color={COLORS.primary}
+          label="App settings"
+          value="Motion, haptics"
+          onPress={() => navigation.navigate(ROUTES.APP_SETTINGS)}
+        />
+        <Row
+          icon="chat"
+          color={COLORS.accent}
+          label="Help & support"
+          onPress={() => navigation.navigate(ROUTES.HELP)}
+        />
+        <Row
+          icon="lock"
+          color={COLORS.outlineSoft}
+          label="Privacy policy"
+          onPress={() => navigation.navigate(ROUTES.PRIVACY_POLICY)}
+          last
+        />
       </Group>
 
       {/* The irreversible ones live apart from everything else */}

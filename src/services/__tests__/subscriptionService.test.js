@@ -1,9 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PRICING, PROMO_CODES } from '../../config';
+import { getUserProfile, updateUserProfile } from '../profileService';
 import { recordWordLearned } from '../progressService';
 import {
   canLearnWord,
   consumeWord,
+  fitGoalToPlan,
+  getGoalCap,
   getSubscription,
   redeemPromoCode,
   updateSubscription,
@@ -93,5 +96,46 @@ describe('word packs', () => {
     await updateSubscription({ type: 'per_word', wordBalance: 12 });
     await buyWordPack(50);
     expect(await getSubscription()).toMatchObject({ type: 'per_word', wordBalance: 62 });
+  });
+});
+
+describe('daily goal vs plan', () => {
+  it('caps a free learner at the free words', async () => {
+    expect(await getGoalCap()).toBe(PRICING.freeWordsPerDay);
+  });
+
+  it('lifts the cap for a subscription, a promo, or a word balance', async () => {
+    await updateSubscription({ type: 'monthly', expiresAt: '2999-01-01T00:00:00.000Z' });
+    expect(await getGoalCap()).toBeNull();
+    await updateSubscription({ type: 'per_word', wordBalance: 4 });
+    expect(await getGoalCap()).toBeNull();
+    await updateSubscription({ type: 'unlimited' });
+    expect(await getGoalCap()).toBeNull();
+  });
+
+  it('caps again once a plan has lapsed or a pack is spent', async () => {
+    await updateSubscription({ type: 'monthly', expiresAt: '2000-01-01T00:00:00.000Z' });
+    expect(await getGoalCap()).toBe(PRICING.freeWordsPerDay);
+    await updateSubscription({ type: 'per_word', wordBalance: 0 });
+    expect(await getGoalCap()).toBe(PRICING.freeWordsPerDay);
+  });
+
+  it('lowers an unreachable goal without using up the weekly change', async () => {
+    await updateUserProfile({ dailyGoal: 5, lastGoalChange: null });
+    await fitGoalToPlan();
+    expect(await getUserProfile()).toMatchObject({
+      dailyGoal: PRICING.freeWordsPerDay,
+      lastGoalChange: null,
+    });
+  });
+
+  it('leaves reachable goals and paid goals alone', async () => {
+    await updateUserProfile({ dailyGoal: 2 });
+    await fitGoalToPlan();
+    expect((await getUserProfile()).dailyGoal).toBe(2);
+    await updateSubscription({ type: 'unlimited' });
+    await updateUserProfile({ dailyGoal: 20 });
+    await fitGoalToPlan();
+    expect((await getUserProfile()).dailyGoal).toBe(20);
   });
 });

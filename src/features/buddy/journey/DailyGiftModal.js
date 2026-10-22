@@ -43,7 +43,7 @@ const CHEST_OPEN = [
 
 const COIN_FLIGHTS = [-70, -42, -14, 14, 42, 70];
 
-export default function DailyGiftModal({ visible, amount, buddyName, onCollect, onClose }) {
+export default function DailyGiftModal({ visible, amount, buddyName, onCollect, onClose, reduceMotion }) {
   const [opened, setOpened] = useState(false);
   const pop = useRef(new Animated.Value(0)).current;
   const wiggle = useRef(new Animated.Value(0)).current;
@@ -54,6 +54,11 @@ export default function DailyGiftModal({ visible, amount, buddyName, onCollect, 
     setOpened(false);
     fly.setValue(0);
     pop.setValue(0);
+    // Reduce Motion: no bounce in and no wiggling chest.
+    if (reduceMotion) {
+      pop.setValue(1);
+      return undefined;
+    }
     Animated.spring(pop, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }).start();
     const loop = Animated.loop(
       Animated.sequence([
@@ -65,7 +70,7 @@ export default function DailyGiftModal({ visible, amount, buddyName, onCollect, 
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, pop, wiggle, fly]);
+  }, [visible, pop, wiggle, fly, reduceMotion]);
 
   const collect = async () => {
     if (opened) return;
@@ -75,7 +80,7 @@ export default function DailyGiftModal({ visible, amount, buddyName, onCollect, 
     await onCollect?.();
     Animated.timing(fly, {
       toValue: 1,
-      duration: 900,
+      duration: reduceMotion ? 1 : 900,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start(() => setTimeout(onClose, 250));
@@ -94,7 +99,7 @@ export default function DailyGiftModal({ visible, amount, buddyName, onCollect, 
           <PixelPanel style={styles.card}>
             <Text style={styles.kicker}>DAILY GIFT</Text>
             <View style={styles.chestStage}>
-              {COIN_FLIGHTS.map((dx, k) => (
+              {(reduceMotion ? [] : COIN_FLIGHTS).map((dx, k) => (
                 <Animated.View
                   key={k}
                   style={[

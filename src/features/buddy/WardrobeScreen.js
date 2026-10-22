@@ -215,10 +215,15 @@ export default function WardrobeScreen({ navigation }) {
                 ) : owned ? (
                   <Text style={styles.outfitStatus}>OWNED</Text>
                 ) : (
-                  <View style={styles.priceTag}>
-                    <PixelIcon name="coin" size={12} color={COLORS.sun} light={COLORS.surface} />
-                    <Text style={styles.priceText}>{outfit.price}</Text>
-                  </View>
+                  <>
+                    <View style={[styles.priceTag, state.coins < outfit.price && styles.priceTagShort]}>
+                      <PixelIcon name="coin" size={12} color={COLORS.sun} light={COLORS.surface} />
+                      <Text style={styles.priceText}>{outfit.price}</Text>
+                    </View>
+                    {state.coins < outfit.price ? (
+                      <Text style={styles.needText}>Need {outfit.price - state.coins} more</Text>
+                    ) : null}
+                  </>
                 )}
               </TouchableOpacity>
             );
@@ -226,13 +231,16 @@ export default function WardrobeScreen({ navigation }) {
         </View>
 
         {/* Coin packs */}
-        <Text style={styles.sectionTitle}>NEED MORE COINS?</Text>
+        <Text style={styles.sectionTitle}>{arePacksForSale() ? 'NEED MORE COINS?' : 'EARN MORE COINS'}</Text>
         <PixelPanel style={styles.earnCard}>
           <Text style={styles.earnText}>
             Earn {COINS.perWord} coins per word learned, plus a {COINS.goalBonus} coin bonus for
             hitting your daily goal.
           </Text>
         </PixelPanel>
+        {/* No App Store products for packs yet; release builds cannot sell
+            them, so they are not shown with prices that cannot be paid. */}
+        {arePacksForSale() ? (
         <View style={styles.packsRow}>
           {COINS.packs.map((pack) => (
             <TouchableOpacity
@@ -246,6 +254,7 @@ export default function WardrobeScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+        ) : null}
 
         <PixelButton
           label="Back to my buddy"
@@ -422,6 +431,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.primaryDark,
   },
+  priceTagShort: { opacity: 0.5 },
+  needText: { fontSize: 10, fontWeight: '800', color: COLORS.textMuted, marginTop: 2 },
   earnCard: {
     marginBottom: 12,
   },

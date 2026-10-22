@@ -1,4 +1,5 @@
 import { supabase, friendlyError } from '../api/supabaseClient';
+import { getCheersSeenAt, setCheersSeenAt } from '../data/socialStore';
 import { getCurrentUser } from './accountService';
 
 /**
@@ -120,4 +121,64 @@ export async function unfriend(userId) {
   const { error } = await supabase.rpc('unfriend', { other: userId });
   if (error) return { ok: false, error: friendlyError(error) };
   return { ok: true };
+}
+
+// ==================== Cheers received ====================
+// The one exception to "RPCs only": row level security already lets you read
+// cheers sent to you (cheers_select_involved) and your pals' profile rows, so
+// this is a plain query - no new database function needed.
+
+const CHEER_LOOKBACK_DAYS = 7;
+
+/**
+ * Cheers pals sent you in the last week, newest first:
+ * { ok, cheers: [{ id, fromId, name, username, at }] }. A cheer from someone
+ * who has since unfriended you comes back without a name.
+ */
+export async function listCheersForMe() {
+  if (!supabase) return { ok: false, cheers: [] };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, cheers: [] };
+
+  const since = new Date(Date.now() - CHEER_LOOKBACK_DAYS * 86400000).toISOString();
+  const { data, error } = await supabase
+    .from('cheers')
+    .select('id, from_user, created_at, sender:profiles!cheers_from_user_fkey(display_name, username)')
+    .eq('to_user', user.id)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false });
+
+  if (error) return { ok: false, error: friendlyError(error), cheers: [] };
+  return {
+    ok: true,
+    cheers: (data || []).map((row) => ({
+      id: row.id,
+      fromId: row.from_user,
+      name: row.sender?.display_name || 'A pal',
+      username: row.sender?.username || null,
+      at: row.created_at,
+    })),
+  };
+}
+
+/** Cheers that have not been shown on this phone yet. */
+export async function getNewCheers() {
+  const [result, seenAt] = await Promise.all([listCheersForMe(), getCheersSeenAt()]);
+  if (!result.ok) return [];
+  return seenAt ? result.cheers.filter((c) => c.at > seenAt) : result.cheers;
+}
+
+/** Remember that everything up to `cheers[0]` has been shown. */
+export function markCheersSeen(cheers) {
+  const newest = cheers?.[0]?.at;
+  return newest ? setCheersSeenAt(newest) : Promise.resolve();
+}
+
+/** "Mia cheered you on!" / "Mia and Leo..." / "Mia and 3 others...". */
+export function describeCheers(cheers) {
+  const names = [...new Set((cheers || []).map((c) => c.name.split(' ')[0]))];
+  if (!names.length) return '';
+  if (names.length === 1) return `${names[0]} cheered you on!`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} cheered you on!`;
+  return `${names[0]} and ${names.length - 1} others cheered you on!`;
 }
