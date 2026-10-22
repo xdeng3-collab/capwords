@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /**
- * CapWords API proxy.
+ * CapWords API proxy - the laptop version, for local development.
+ *
+ * Production uses the ai-proxy Supabase Edge Function
+ * (supabase/functions/ai-proxy), which does the same job with per-user and
+ * per-install rate limits that survive restarts. Keep the two in step.
  *
  * Keeps the DeepSeek API key on the server so it never ships inside the app
  * bundle (EXPO_PUBLIC_* variables are extractable from the app binary).
@@ -28,7 +32,10 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const API_KEY = process.env.DEEPSEEK_API_KEY || process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY;
+// Deliberately not EXPO_PUBLIC_DEEPSEEK_API_KEY: that name is inlined into the
+// app bundle, so it must never hold the key (app.config.js fails release builds
+// that set it).
+const API_KEY = process.env.DEEPSEEK_API_KEY;
 const PORT = process.env.PORT || 3210;
 const DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions';
 // Only these models may be requested through the proxy. These are the two ids

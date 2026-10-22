@@ -30,6 +30,13 @@ Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server
   re-runs it harmlessly). Verified: no UPDATE policy on `friendships`, and
   `authenticated` has no UPDATE privilege on it.
 
+- **AI proxy deployed (2026-10-22)** — migration `ai_usage` applied (checked:
+  a full bucket refuses without charging the global count; only `service_role`
+  can execute `ai_usage_take`), and `ai-proxy` deployed, version 1,
+  `verify_jwt` off. It answers 503 until the `DEEPSEEK_API_KEY` secret is set
+  (see section 2b). The advisor's "RLS enabled, no policy" note on
+  `private.ai_usage` is intended: no API role should read it.
+
 Security advisors are clean apart from:
 - the expected `SECURITY DEFINER`-callable notes on the friend-graph RPCs, which
   are the app's API by design;
@@ -140,6 +147,33 @@ npx supabase functions deploy delete-account
 
 Until it is deployed, the "Delete my account" row in Profile shows an error
 rather than doing anything. Everything else works without it.
+
+## 2b. Deploy the AI proxy
+
+Photo recognition calls DeepSeek, and DeepSeek's key must not ship in the app
+(EXPO_PUBLIC_* values can be read out of the binary). `functions/ai-proxy`
+holds the key as a function secret and passes requests through without
+storing them. It accepts a signed-in user's JWT, or just the publishable key
+for people without an account, and rate-limits per user, per install and per
+IP, under a project-wide daily cap. The counters are in `private.ai_usage`
+(`migrations/20261022000000_ai_usage.sql`), hashed, and kept two days.
+
+```
+npx supabase db push                                   # the ai_usage migration
+npx supabase secrets set DEEPSEEK_API_KEY=<new key>    # type it in the terminal
+npx supabase functions deploy ai-proxy --no-verify-jwt
+```
+
+`verify_jwt` is off on purpose (also set in `config.toml`): the platform's
+check only understands JWTs, and the publishable key is not one. The function
+checks the caller itself. Limits can be tuned without a redeploy with the
+`AI_LIMIT_USER_PER_HOUR`, `AI_LIMIT_DEVICE_PER_HOUR`, `AI_LIMIT_IP_PER_HOUR`
+and `AI_LIMIT_GLOBAL_PER_DAY` secrets.
+
+The app reaches it through `EXPO_PUBLIC_API_URL=https://bxwifjkinhtxxcelasqe.supabase.co/functions/v1/ai-proxy`.
+A production build refuses to start while `EXPO_PUBLIC_DEEPSEEK_API_KEY` is set
+(`app.config.js`); a key for calling DeepSeek directly from a dev build goes
+in `.env.development.local` only.
 
 ## 3. Email confirmation (decide, once)
 
