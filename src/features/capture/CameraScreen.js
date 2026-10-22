@@ -35,6 +35,7 @@ import { recordLearnedWord } from '../../services/learningService';
 import { getPet } from '../../services/petService';
 import { getUserProfile, updateUserProfile } from '../../services/profileService';
 import { getDailyWordCount } from '../../services/progressService';
+import { loadAppSettings, peekAppSettings, setAppSetting } from '../../services/settingsService';
 import { canLearnWord } from '../../services/subscriptionService';
 import { pressFeedback, selectFeedback } from '../../utils/haptics';
 import { CARET_DOWN, FLIP_ICON, PHOTOS_ICON } from './cameraArt';
@@ -188,10 +189,10 @@ export default function CameraScreen({ navigation }) {
         console.error('Recognition failed', error);
         const couldNotSee = error instanceof RecognitionFailedError;
         showAlert(
-          couldNotSee ? "Couldn't read that one" : 'Something went wrong',
+          couldNotSee ? "Couldn't spot a word" : 'Something went wrong',
           couldNotSee
-            ? "We couldn't work out what's in the photo. Try getting closer, or finding better light.\n\nThis one is free — no word was used."
-            : "We couldn't reach the word service. Check your connection and try again.\n\nThis one is free — no word was used."
+            ? "Try getting closer, or find better light. This one didn't use a word."
+            : "Check your connection and try again. This one didn't use a word."
         );
         return;
       }
@@ -217,7 +218,7 @@ export default function CameraScreen({ navigation }) {
         console.error('Saving the word failed', error);
         showAlert(
           'Something went wrong',
-          `We recognised "${recognition.word}" but hit a problem saving it. Check your Book before trying again.`
+          `"${recognition.word}" couldn't be saved. Check My Words before trying again.`
         );
       }
     } finally {
@@ -251,8 +252,8 @@ export default function CameraScreen({ navigation }) {
   const enableCamera = async () => {
     if (permission?.canAskAgain === false) {
       showAlert(
-        'Camera is switched off',
-        'CapWords needs the camera to snap a word. You can turn it on in Settings, or pick a photo from your library instead.',
+        'Camera access is off',
+        'Turn it on in Settings, or choose a photo instead.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Open settings', onPress: () => Linking.openSettings().catch(() => {}) },
@@ -270,6 +271,34 @@ export default function CameraScreen({ navigation }) {
     return true;
   };
 
+  /**
+   * Photos are recognised by a third-party AI, so the first one waits for a
+   * clear yes (App Review 5.1.2(i)). Resolves true once allowed; remembered,
+   * and revocable in Me -> App settings.
+   */
+  const ensureAiConsent = async () => {
+    const settings = peekAppSettings() || (await loadAppSettings());
+    if (settings.aiPhotoConsent) return true;
+    return new Promise((resolve) => {
+      showAlert(
+        'Allow photo recognition?',
+        // One sentence on purpose. Apple requires saying a third-party AI sees
+        // the photo; the details live in the privacy policy, not in this ask.
+        'Your photo is sent to a third-party AI to recognise the object.',
+        [
+          { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: 'Allow',
+            onPress: async () => {
+              await setAppSetting('aiPhotoConsent', true);
+              resolve(true);
+            },
+          },
+        ]
+      );
+    });
+  };
+
   const takePicture = async () => {
     if (isProcessing) return;
 
@@ -278,6 +307,8 @@ export default function CameraScreen({ navigation }) {
       promptUpgrade();
       return;
     }
+
+    if (permission?.granted && !(await ensureAiConsent())) return;
 
     // No camera yet: this tap buys the permission prompt, and the viewfinder
     // takes over from here. The next tap is the one that takes the photo.
@@ -312,6 +343,8 @@ export default function CameraScreen({ navigation }) {
       promptUpgrade();
       return;
     }
+
+    if (!(await ensureAiConsent())) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],

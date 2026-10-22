@@ -35,6 +35,9 @@ export const ROUTES = {
   SUBSCRIPTION: 'Subscription',
   GOAL_SETTING: 'GoalSetting',
   EDIT_PROFILE: 'EditProfile',
+  APP_SETTINGS: 'AppSettings',
+  HELP: 'Help',
+  PRIVACY_POLICY: 'PrivacyPolicy',
   // Shared by more than one stack
   LANGUAGE_SELECT: 'LanguageSelect',
   AUTH: 'Auth',

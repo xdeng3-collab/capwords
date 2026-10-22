@@ -14,21 +14,26 @@ import { COINS, ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { EmptyState, PetSprite, PixelButton, PixelIcon, useAlert } from '../../components';
 import { useSession } from '../../hooks/useSession';
+import { getPet } from '../../services/petService';
 import { addCoins } from '../../services/walletService';
 import { isSupabaseConfigured } from '../../services/accountService';
 import {
   cheer,
+  listCheersForMe,
   listFriends,
+  markCheersSeen,
   respondToRequest,
   searchUsers,
   sendFriendRequest,
 } from '../../services/friendService';
+import { todayKey } from '../../utils/date';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
 import { getInitials } from '../../utils/text';
 
 // Long enough that typing "sarah" is one query rather than four, short enough
 // that the results still feel like they are keeping up.
 const SEARCH_DEBOUNCE_MS = 300;
+const AUTO_REFRESH_MS = 20000;
 
 export default function FriendsScreen({ navigation }) {
   const showAlert = useAlert();
@@ -36,6 +41,7 @@ export default function FriendsScreen({ navigation }) {
 
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
+  const [outgoing, setOutgoing] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -44,24 +50,46 @@ export default function FriendsScreen({ navigation }) {
   // Cheers are recorded server-side; this only holds the optimistic tick so
   // the button responds under the finger instead of after a round trip.
   const [cheered, setCheered] = useState({});
+  // Pals who cheered you today, by their id.
+  const [cheeredMe, setCheeredMe] = useState({});
+  // Your own buddy for the empty states, not a stranger's cat.
+  const [myPet, setMyPet] = useState(null);
+
+  useEffect(() => {
+    getPet().then(setMyPet);
+  }, []);
 
   const loadFriends = useCallback(async () => {
     if (!user) {
       setFriends([]);
       setIncoming([]);
+      setOutgoing([]);
       return;
     }
-    const result = await listFriends();
+    const [result, received] = await Promise.all([listFriends(), listCheersForMe()]);
+    const today = todayKey();
+    setCheeredMe(
+      Object.fromEntries(
+        received.cheers.filter((c) => c.at.slice(0, 10) === today).map((c) => [c.fromId, true])
+      )
+    );
+    // Seeing the list counts as seeing them; Home will not pop them up again.
+    markCheersSeen(received.cheers);
     setFriends(result.friends);
     setIncoming(result.incoming);
+    setOutgoing(result.outgoing || []);
     setCheered(
       Object.fromEntries(result.friends.filter((f) => f.cheeredToday).map((f) => [f.id, true]))
     );
   }, [user]);
 
+  // Accepting happens on the other person's phone, so nothing tells this one.
+  // While Pals is on screen, check back now and then; pull to refresh for now.
   useFocusEffect(
     useCallback(() => {
       loadFriends();
+      const timer = setInterval(loadFriends, AUTO_REFRESH_MS);
+      return () => clearInterval(timer);
     }, [loadFriends])
   );
 
@@ -141,7 +169,12 @@ export default function FriendsScreen({ navigation }) {
   const renderFriend = ({ item }) => (
     <TouchableOpacity
       style={styles.friendCard}
-      onPress={() => navigation.navigate(ROUTES.FRIEND_PROFILE, { friend: item })}
+      onPress={() =>
+        navigation.navigate(ROUTES.FRIEND_PROFILE, {
+          // The tick on this list is newer than what was loaded from the server.
+          friend: { ...item, cheeredToday: Boolean(cheered[item.id] || item.cheeredToday) },
+        })
+      }
     >
       {item.pet ? (
         <View style={styles.petAvatar}>
@@ -161,6 +194,7 @@ export default function FriendsScreen({ navigation }) {
 
       <View style={styles.friendInfo}>
         <Text style={styles.friendName}>{item.name}</Text>
+        {cheeredMe[item.id] ? <Text style={styles.cheeredMeTag}>♥ cheered you today</Text> : null}
         <View style={styles.friendStats}>
           <PixelIcon name="flame" size={12} color={COLORS.streak} light={COLORS.sun} />
           <Text style={styles.statText}>{item.streak || 0} day streak</Text>
@@ -200,16 +234,16 @@ export default function FriendsScreen({ navigation }) {
       </View>
 
       {item.status === 'friends' ? (
-        <Text style={styles.resultTag}>PAL</Text>
+        <Text style={styles.resultTag}>✓ PALS</Text>
       ) : item.status === 'pending_out' ? (
-        <Text style={styles.resultTag}>ASKED</Text>
+        <Text style={styles.resultTag}>REQUESTED</Text>
       ) : item.status === 'pending_in' ? (
         <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
-          <PixelIcon name="check" size={16} color={COLORS.primaryDark} />
+          <Text style={styles.addButtonText}>ACCEPT</Text>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity style={styles.addButton} onPress={() => handleAddFriend(item)}>
-          <PixelIcon name="add" size={16} color={COLORS.primaryDark} />
+          <Text style={styles.addButtonText}>+ ADD</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -225,10 +259,10 @@ export default function FriendsScreen({ navigation }) {
         <Text style={styles.searchSubtext}>@{item.username} wants to be pals</Text>
       </View>
       <TouchableOpacity style={styles.addButton} onPress={() => handleRespond(item, true)}>
-        <PixelIcon name="check" size={16} color={COLORS.primaryDark} />
+        <Text style={styles.addButtonText}>ACCEPT</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.declineButton} onPress={() => handleRespond(item, false)}>
-        <PixelIcon name="close" size={14} color={COLORS.textLight} />
+        <Text style={styles.declineButtonText}>NOT NOW</Text>
       </TouchableOpacity>
     </View>
   );
@@ -239,16 +273,18 @@ export default function FriendsScreen({ navigation }) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>FRIENDS</Text>
+          <Text style={styles.title}>PALS</Text>
           <Text style={styles.subtitle}>LEARN ALONGSIDE YOUR PALS</Text>
         </View>
         <EmptyState
           mood="neutral"
+          species={myPet?.species}
+          outfit={myPet?.equippedOutfit}
           title="SIGN IN TO FIND PALS"
-          subtitle="An account lets you add friends, cheer their streaks, and keep them if you change phones. Your words and photos stay on this phone either way."
+          subtitle="An account lets you add pals, cheer their streaks, and keep them if you change phones. Your words and photos stay on this phone either way."
           action={
             <PixelButton
-              label="SIGN IN"
+              label="Sign in or sign up"
               size="lg"
               style={styles.signInButton}
               onPress={() => navigation.navigate(ROUTES.AUTH)}
@@ -262,18 +298,18 @@ export default function FriendsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>FRIENDS</Text>
+        <Text style={styles.title}>PALS</Text>
         <Text style={styles.subtitle}>
           {friends.length > 0
-            ? `${friends.length} LEARNING BUDDIES`
-            : 'FIND BUDDIES TO LEARN WITH'}
+            ? `${friends.length} ${friends.length === 1 ? 'PAL' : 'PALS'} LEARNING WITH YOU`
+            : 'FIND PALS TO LEARN WITH'}
         </Text>
 
         <View style={styles.searchBar}>
           <PixelIcon name="search" size={16} color={COLORS.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Find pals by username"
+            placeholder="Search by name or @username"
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor={COLORS.textMuted}
@@ -294,7 +330,7 @@ export default function FriendsScreen({ navigation }) {
         <View style={styles.searchResults}>
           <Text style={styles.sectionTitle}>SEARCH RESULTS</Text>
           {searchResults.length === 0 && !searchBusy ? (
-            <Text style={styles.noResultsText}>No one is using that username yet</Text>
+            <Text style={styles.noResultsText}>No one found for “{searchQuery.trim()}”. Check the spelling, or ask your pal for their @username.</Text>
           ) : (
             <FlatList
               data={searchResults}
@@ -305,29 +341,59 @@ export default function FriendsScreen({ navigation }) {
             />
           )}
         </View>
-      ) : friends.length === 0 && incoming.length === 0 ? (
-        <EmptyState
-          mood="neutral"
-          title="NO PALS YET"
-          subtitle="Search for a username above to send your first request, and cheer each other's streaks."
-        />
       ) : (
         <FlatList
           data={friends}
           renderItem={renderFriend}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, !friends.length && styles.listContentEmpty]}
           showsVerticalScrollIndicator={false}
+          // Pull to refresh works empty too - that is exactly when you are
+          // waiting for someone to accept.
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} />
           }
           ListHeaderComponent={
-            incoming.length ? (
-              <View style={styles.requestsBlock}>
-                <Text style={styles.requestsTitle}>WAITING FOR YOU</Text>
-                {incoming.map(renderRequest)}
-              </View>
+            incoming.length || outgoing.length ? (
+              <>
+                {incoming.length ? (
+                  <View style={styles.requestsBlock}>
+                    <Text style={styles.requestsTitle}>WAITING FOR YOU</Text>
+                    {incoming.map(renderRequest)}
+                  </View>
+                ) : null}
+                {outgoing.length ? (
+                  <View style={styles.requestsBlock}>
+                    <Text style={styles.requestsTitle}>SENT, WAITING FOR THEM</Text>
+                    {outgoing.map((person) => (
+                      <View key={person.id} style={styles.searchResultCard}>
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarText}>{getInitials(person.name)}</Text>
+                        </View>
+                        <View style={styles.friendInfo}>
+                          <Text style={styles.friendName}>{person.name}</Text>
+                          <Text style={styles.searchSubtext}>@{person.username}</Text>
+                        </View>
+                        <Text style={styles.resultTag}>REQUESTED</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </>
             ) : null
+          }
+          ListEmptyComponent={
+            incoming.length || outgoing.length ? (
+              <Text style={styles.pullHint}>Pull down to check for new pals.</Text>
+            ) : (
+              <EmptyState
+                mood="neutral"
+                species={myPet?.species}
+                outfit={myPet?.equippedOutfit}
+                title="NO PALS YET"
+                subtitle="Search for a pal by name or @username above, then cheer each other's streaks. Pull down to refresh."
+              />
+            )
           }
         />
       )}
@@ -336,6 +402,9 @@ export default function FriendsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  listContentEmpty: { flexGrow: 1 },
+  pullHint: { textAlign: 'center', fontSize: 13, fontWeight: '700', color: COLORS.textMuted, marginTop: 12 },
+  cheeredMeTag: { fontSize: 11, fontWeight: '900', color: COLORS.secondary, marginTop: 1 },
   container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     paddingTop: 60,
@@ -403,9 +472,12 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     paddingHorizontal: 8,
   },
+  declineButtonText: { fontSize: 11, fontWeight: '900', color: COLORS.textLight, letterSpacing: 0.5 },
   declineButton: {
     backgroundColor: COLORS.surfaceAlt,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginLeft: 6,
     borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: COLORS.outline,
@@ -419,9 +491,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   signInButton: { marginTop: 18, alignSelf: 'stretch' },
+  addButtonText: { fontSize: 11, fontWeight: '900', color: COLORS.text, letterSpacing: 0.5 },
   addButton: {
     backgroundColor: COLORS.sun,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: RADIUS.sm,
     borderWidth: 2,
     borderColor: COLORS.outline,

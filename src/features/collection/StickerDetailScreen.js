@@ -5,15 +5,17 @@ import {
   StyleSheet,
   Image,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
-import * as Speech from 'expo-speech';
-import { setAudioModeAsync } from 'expo-audio';
 import { format } from 'date-fns';
+import { LANGUAGES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
 import { BackButton, PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
 import { deleteSticker } from '../../services/collectionService';
 import { refreshWidget } from '../../services/widgetService';
+import { speakWord } from '../../utils/audio';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
+import { formatPronunciation } from '../../utils/text';
 
 export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
@@ -44,15 +46,16 @@ export default function StickerDetailScreen({ route, navigation }) {
     );
   };
 
-  const speakWord = async () => {
+  const sayWord = () => {
     selectFeedback();
-    // Playback mode so TTS is audible even after recording / on silent mode.
-    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
-    Speech.speak(sticker.word, { language: sticker.language, rate: 0.8 });
+    speakWord(sticker.word, sticker.language);
   };
 
   const details = [
-    sticker.language && { label: 'Language', value: sticker.language.toUpperCase() },
+    sticker.language && {
+      label: 'Language',
+      value: LANGUAGES.find((l) => l.code === sticker.language)?.name || sticker.language.toUpperCase(),
+    },
     sticker.createdAt && {
       label: 'Learned on',
       value: format(new Date(sticker.createdAt), 'MMM d, yyyy'),
@@ -84,7 +87,7 @@ export default function StickerDetailScreen({ route, navigation }) {
         <View style={styles.wordSection}>
           <Text style={styles.word}>{sticker.word}</Text>
           {sticker.pronunciation ? (
-            <Text style={styles.pronunciation}>/{sticker.pronunciation}/</Text>
+            <Text style={styles.pronunciation}>{formatPronunciation(sticker.pronunciation)}</Text>
           ) : null}
           {sticker.english ? <Text style={styles.english}>{sticker.english}</Text> : null}
         </View>
@@ -92,7 +95,7 @@ export default function StickerDetailScreen({ route, navigation }) {
         <PixelButton
           label="Listen to pronunciation"
           icon="sound"
-          onPress={speakWord}
+          onPress={sayWord}
           size="lg"
           style={styles.listenButton}
         />
@@ -125,13 +128,10 @@ export default function StickerDetailScreen({ route, navigation }) {
           </PixelPanel>
         ) : null}
 
-        <PixelButton
-          label="Delete sticker"
-          icon="close"
-          color={COLORS.danger}
-          onPress={confirmDelete}
-          style={styles.deleteButton}
-        />
+        {/* Quiet and out of the way, like the other irreversible actions */}
+        <TouchableOpacity onPress={confirmDelete} hitSlop={10} style={styles.deleteLink}>
+          <Text style={styles.deleteLinkText}>Delete this sticker</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -139,7 +139,8 @@ export default function StickerDetailScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  deleteButton: { alignSelf: 'stretch', marginTop: 4 },
+  deleteLink: { alignSelf: 'center', marginTop: 22, padding: 6 },
+  deleteLinkText: { fontSize: 13, fontWeight: '800', color: COLORS.danger },
   scrollContent: { paddingBottom: 120 },
   header: {
     flexDirection: 'row',

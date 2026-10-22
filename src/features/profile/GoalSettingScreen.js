@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { MIN_DAILY_GOAL, MAX_DAILY_GOAL } from '../../config';
+import { MIN_DAILY_GOAL, MAX_DAILY_GOAL, ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import {
   BackButton,
@@ -17,32 +17,55 @@ import {
   useAlert,
 } from '../../components';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
+import { getGoalCap } from '../../services/subscriptionService';
 import { refreshWidget } from '../../services/widgetService';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
 
 const PRESETS = [3, 5, 10, 15, 20];
 
+// Tapping one sets the goal to its value.
 const TIPS = [
-  { icon: 'seed', label: 'Casual', range: '3-5 words/day' },
-  { icon: 'book', label: 'Regular', range: '5-10 words/day' },
-  { icon: 'flame', label: 'Intensive', range: '10-20 words/day' },
-  { icon: 'trophy', label: 'Hardcore', range: '20+ words/day' },
+  { icon: 'seed', label: 'Casual', value: 3 },
+  { icon: 'star', label: 'Regular', value: 5 },
+  { icon: 'flame', label: 'Intensive', value: 10 },
+  { icon: 'trophy', label: 'Hardcore', value: 20 },
 ];
 
 export default function GoalSettingScreen({ navigation }) {
   const showAlert = useAlert();
-  const [goal, setGoal] = useState(5);
+  const [goal, setGoal] = useState(3);
+  // null = no cap. A free plan cannot learn past its daily words, so goals
+  // above that are shown locked rather than set and never reached.
+  const [cap, setCap] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const profile = await getUserProfile();
+      const [profile, goalCap] = await Promise.all([getUserProfile(), getGoalCap()]);
       setGoal(profile.dailyGoal);
+      setCap(goalCap);
     })();
   }, []);
 
+  const maxGoal = cap ?? MAX_DAILY_GOAL;
+  const isLocked = (value) => cap != null && value > cap;
+
+  const showProHint = () =>
+    showAlert(
+      'Goals above ' + cap + ' need Pro',
+      `The free plan learns ${cap} words a day, so a bigger goal could never be met. Go Pro for unlimited words and any goal you like.`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'See plans', onPress: () => navigation.navigate(ROUTES.SUBSCRIPTION) },
+      ]
+    );
+
   const changeGoal = (value) => {
-    const next = Math.min(Math.max(value, MIN_DAILY_GOAL), MAX_DAILY_GOAL);
+    if (isLocked(value)) {
+      showProHint();
+      return;
+    }
+    const next = Math.min(Math.max(value, MIN_DAILY_GOAL), maxGoal);
     if (next !== goal) {
       selectFeedback();
       setGoal(next);
@@ -103,7 +126,11 @@ export default function GoalSettingScreen({ navigation }) {
             onPress={() => changeGoal(goal + 1)}
             disabled={goal >= MAX_DAILY_GOAL}
           >
-            <PixelIcon name="plus" size={22} color={goal >= MAX_DAILY_GOAL ? COLORS.textMuted : COLORS.primaryDark} />
+            <PixelIcon
+              name={isLocked(goal + 1) ? 'lock' : 'plus'}
+              size={22}
+              color={goal >= maxGoal ? COLORS.textMuted : COLORS.primaryDark}
+            />
           </TouchableOpacity>
         </View>
 
@@ -118,14 +145,23 @@ export default function GoalSettingScreen({ navigation }) {
         <View style={styles.presets}>
           {PRESETS.map((value) => {
             const active = goal === value;
+            const locked = isLocked(value);
             return (
               <TouchableOpacity
                 key={value}
-                style={[styles.presetButton, active && styles.presetButtonActive]}
+                style={[
+                  styles.presetButton,
+                  active && styles.presetButtonActive,
+                  locked && styles.presetButtonLocked,
+                ]}
                 onPress={() => changeGoal(value)}
                 activeOpacity={0.85}
+                accessibilityLabel={locked ? `${value} words, needs Pro` : `${value} words`}
               >
-                <Text style={[styles.presetText, active && styles.presetTextActive]}>{value}</Text>
+                <Text style={[styles.presetText, active && styles.presetTextActive, locked && styles.lockedText]}>
+                  {value}
+                </Text>
+                {locked ? <Text style={styles.proTag}>PRO</Text> : null}
               </TouchableOpacity>
             );
           })}
@@ -133,22 +169,35 @@ export default function GoalSettingScreen({ navigation }) {
 
         <PixelPanel style={styles.infoCard}>
           <Text style={styles.infoText}>
-            You can change your goal once a week. Pick something challenging but doable so your
-            streak keeps growing.
+            {cap != null
+              ? `Free plan: up to ${cap} words a day, so goals go up to ${cap}. You can change your goal once a week.`
+              : 'You can change your goal once a week. Pick something challenging but doable so your streak keeps growing.'}
           </Text>
         </PixelPanel>
 
         <PixelPanel style={styles.tipCard}>
           <Text style={styles.tipTitle}>RECOMMENDED GOALS</Text>
-          {TIPS.map((tip) => (
-            <View key={tip.label} style={styles.tipRow}>
-              <View style={styles.tipIcon}>
-                <PixelIcon name={tip.icon} size={16} color={COLORS.primary} light={COLORS.sun} />
-              </View>
-              <Text style={styles.tipLabel}>{tip.label}</Text>
-              <Text style={styles.tipRange}>{tip.range}</Text>
-            </View>
-          ))}
+          {TIPS.map((tip) => {
+            const locked = isLocked(tip.value);
+            const active = goal === tip.value;
+            return (
+              <TouchableOpacity
+                key={tip.label}
+                style={[styles.tipRow, active && styles.tipRowActive]}
+                onPress={() => changeGoal(tip.value)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.tipIcon}>
+                  <PixelIcon name={tip.icon} size={16} color={COLORS.primary} light={COLORS.sun} />
+                </View>
+                <Text style={[styles.tipLabel, locked && styles.lockedText]}>{tip.label}</Text>
+                {locked ? <Text style={styles.proTagInline}>PRO</Text> : null}
+                <Text style={[styles.tipRange, locked && styles.lockedText]}>
+                  {tip.value} words/day
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </PixelPanel>
 
         <PixelButton
@@ -218,11 +267,47 @@ const styles = StyleSheet.create({
   presetButtonActive: { backgroundColor: COLORS.sun },
   presetText: { fontSize: 16, fontWeight: '900', color: COLORS.textLight },
   presetTextActive: { color: COLORS.primaryDark },
+  presetButtonLocked: { backgroundColor: COLORS.surfaceAlt, borderColor: COLORS.outlineSoft },
+  lockedText: { color: COLORS.textMuted },
+  proTag: {
+    position: 'absolute',
+    top: -9,
+    right: -6,
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    backgroundColor: COLORS.berry,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+    letterSpacing: 0.5,
+  },
+  proTagInline: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    backgroundColor: COLORS.berry,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+    letterSpacing: 0.5,
+  },
   infoCard: { width: '100%', marginBottom: 14, backgroundColor: COLORS.surfaceAlt },
   infoText: { fontSize: 13, color: COLORS.textLight, lineHeight: 20, fontWeight: '600' },
   tipCard: { width: '100%', marginBottom: 24 },
   tipTitle: { fontSize: 13, fontWeight: '900', color: COLORS.text, marginBottom: 12, letterSpacing: 0.8 },
-  tipRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 10 },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    marginHorizontal: -6,
+    gap: 10,
+    borderRadius: RADIUS.md,
+  },
+  tipRowActive: { backgroundColor: `${COLORS.sun}55` },
   tipIcon: {
     width: 30,
     height: 30,

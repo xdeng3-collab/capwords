@@ -11,7 +11,6 @@ import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, RADIUS, SHADOW } from '../../../theme';
-import { PixelIcon } from '../../../components';
 import { selectFeedback, tapFeedback } from '../../../utils/haptics';
 import {
   MAX_ZOOM,
@@ -204,6 +203,7 @@ export default function GlobeView({
   active,
   onOpenChange,
   onOpenSticker,
+  reduceMotion = false,
 }) {
   const innerWidth = width - BORDER * 2;
   const mapHeight = openHeight - BORDER * 2;
@@ -275,7 +275,19 @@ export default function GlobeView({
   useEffect(() => () => clearTimeout(settle.current.timer), []);
 
   const scene = sceneFor(view, innerWidth, openHeight);
-  live.current = { points, innerWidth, openHeight, mapHeight, active, isOpen, onMap, mapRegion };
+  live.current = {
+    points,
+    innerWidth,
+    openHeight,
+    mapHeight,
+    active,
+    isOpen,
+    onMap,
+    mapRegion,
+    reduceMotion,
+  };
+  // Reduce Motion: no idle spin, no fly-through - every move lands at once.
+  const moveMs = (ms) => (live.current.reduceMotion ? 0 : ms);
 
   useEffect(() => onOpenChange?.(isOpen), [isOpen, onOpenChange]);
 
@@ -332,7 +344,8 @@ export default function GlobeView({
       }
 
       const idle = !tweens.current.length && !drag.current;
-      const drift = idle && (view.open === 0 || drifting.current);
+      const drift =
+        idle && !live.current.reduceMotion && (view.open === 0 || drifting.current);
       if (drift) {
         view.lon = wrapLongitude(view.lon + DRIFT_DEG_PER_SEC * dt);
         changed = true;
@@ -381,7 +394,9 @@ export default function GlobeView({
           if (clash) other.resolve(false);
           return !clash;
         });
-        tweens.current.push({ from, to, duration, ease, locked, resolve, start: null });
+        // 1ms rather than 0 so the frame maths never divides by zero.
+        const ms = live.current.reduceMotion ? 1 : duration;
+        tweens.current.push({ from, to, duration: ms, ease, locked, resolve, start: null });
         kick();
       }),
     [view, kick]
@@ -401,14 +416,14 @@ export default function GlobeView({
     setMapRegion(region);
     setOnMap(true);
     live.current.onMap = true;
-    Animated.timing(mapFade, { toValue: 1, duration: MAP_FADE_MS, useNativeDriver: true }).start(
+    Animated.timing(mapFade, { toValue: 1, duration: moveMs(MAP_FADE_MS), useNativeDriver: true }).start(
       ({ finished }) => {
         if (!finished || !live.current.onMap) return;
         setGlobeHidden(true);
         // Taking over from the opening fly-in: carry on the rest of the way.
         const landing = mapLanding.current;
         mapLanding.current = null;
-        if (landing) mapRef.current?.animateToRegion(landing, 1200);
+        if (landing) mapRef.current?.animateToRegion(landing, moveMs(1200));
       }
     );
   }, [view, mapFade, regionAt]);
@@ -429,7 +444,7 @@ export default function GlobeView({
       setGlobeHidden(false);
       setSelected(null);
       repaint();
-      Animated.timing(mapFade, { toValue: 0, duration: MAP_FADE_MS, useNativeDriver: true }).start(
+      Animated.timing(mapFade, { toValue: 0, duration: moveMs(MAP_FADE_MS), useNativeDriver: true }).start(
         ({ finished }) => {
           if (finished && !live.current.isOpen) setMapMounted(false);
         }
@@ -469,7 +484,7 @@ export default function GlobeView({
       const landing = regionAt(focus.latitude, focus.longitude, Math.max(focus.zoom, GLOBE_ZOOM));
       // Already on the system map: it makes the whole trip.
       if (live.current.onMap) {
-        mapRef.current?.animateToRegion(landing, 1000);
+        mapRef.current?.animateToRegion(landing, moveMs(1000));
         return;
       }
       mapLanding.current = landing;
@@ -537,13 +552,21 @@ export default function GlobeView({
             latitudeDelta: region.latitudeDelta / factor,
             longitudeDelta: region.longitudeDelta / factor,
           },
-          280
+          moveMs(280)
         );
         return;
       }
-      tween({ zoom: clamp(view.zoom * factor, MIN_ZOOM, GLOBE_ZOOM) }, 280, easeOut);
+      // Zooming is touching the globe: stop the idle drift, which otherwise
+      // keeps the animation loop running so the settle check never fires and
+      // the globe sat at full zoom as pixels, never handing over to the map.
+      drifting.current = false;
+      tween({ zoom: clamp(view.zoom * factor, MIN_ZOOM, GLOBE_ZOOM) }, 280, easeOut).then(
+        (finished) => {
+          if (finished && view.zoom >= GLOBE_ZOOM * 0.95) handOver();
+        }
+      );
     },
-    [view, tween]
+    [view, tween, handOver]
   );
 
   const pick = useCallback((x, y) => {
@@ -622,7 +645,10 @@ export default function GlobeView({
       })
       .onFinalize(() => {
         pinching.current = false;
-        kick();
+        // Pinched all the way in: go straight to the map rather than waiting
+        // for the view to come to rest.
+        if (view.zoom >= GLOBE_ZOOM * 0.95) handOver();
+        else kick();
       });
 
     const tap = Gesture.Tap()
@@ -633,7 +659,7 @@ export default function GlobeView({
       });
 
     return Gesture.Race(Gesture.Simultaneous(pan, pinch), tap);
-  }, [isOpen, open, pick, cancelTweens, kick, paint, view]);
+  }, [isOpen, open, pick, cancelTweens, kick, paint, view, handOver]);
 
   // Under the system map, once it has fully faded in, the globe is not drawn.
   const lines = globeHidden ? [] : paintGlobe(scene, scene.cols, scene.rows, extraLand);
@@ -682,8 +708,9 @@ export default function GlobeView({
         </Animated.View>
       ) : null}
 
-      <View style={styles.label} pointerEvents="none">
-        <Text style={styles.labelText}>{isOpen ? pinnedLabel : 'WORD MAP'}</Text>
+      {/* A caption, not a control: no border, so it does not read as a button */}
+      <View style={[styles.label, styles.captionLabel]} pointerEvents="none">
+        <Text style={[styles.labelText, styles.captionText]}>{isOpen ? pinnedLabel : 'WORD MAP'}</Text>
       </View>
 
       {isOpen ? (
@@ -747,8 +774,7 @@ export default function GlobeView({
         </>
       ) : (
         <View style={[styles.label, styles.exploreLabel]} pointerEvents="none">
-          <PixelIcon name="chevron" size={10} color={COLORS.text} style={styles.chevronDown} />
-          <Text style={styles.labelText}>EXPLORE</Text>
+          <Text style={styles.labelText}>TAP TO EXPLORE</Text>
         </View>
       )}
     </View>
@@ -802,9 +828,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 0.8,
   },
-  chevronDown: {
-    transform: [{ rotate: '90deg' }],
+  captionLabel: {
+    backgroundColor: 'rgba(20,16,13,0.55)',
+    borderWidth: 0,
   },
+  captionText: { color: '#FBF3E0' },
   button: {
     width: 38,
     height: 38,

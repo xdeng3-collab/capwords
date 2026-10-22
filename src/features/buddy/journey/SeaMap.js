@@ -105,6 +105,7 @@ export default function SeaMap({
   pet,
   speech,
   onSnap,
+  reduceMotion = false,
 }) {
   const { width } = useWindowDimensions();
   const scrollRef = useRef(null);
@@ -130,6 +131,11 @@ export default function SeaMap({
   // ---------- Ambient bobbing for things afloat ----------
   const bob = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // Reduce Motion: the sea holds still.
+    if (reduceMotion) {
+      bob.setValue(0);
+      return undefined;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(bob, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -138,7 +144,7 @@ export default function SeaMap({
     );
     loop.start();
     return () => loop.stop();
-  }, [bob]);
+  }, [bob, reduceMotion]);
   const bobA = bob.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
   const bobB = bob.interpolate({ inputRange: [0, 1], outputRange: [3, -1] });
 
@@ -158,7 +164,24 @@ export default function SeaMap({
     burst.setValue(0);
     toast.setValue(0);
     setLeg({ from, to, index: jumpTo, newZone });
-    scrollToIsland(jumpTo, true);
+    scrollToIsland(jumpTo, !reduceMotion);
+
+    // Reduce Motion: no crouch, arc or splash - the buddy is simply on the
+    // new island, and the toast fades in and out.
+    const calm = Animated.sequence([
+      Animated.timing(toast, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(newZone ? 2200 : 1500),
+      Animated.timing(toast, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]);
+    if (reduceMotion) {
+      t.setValue(1);
+      squash.setValue(1);
+      calm.start(({ finished }) => {
+        if (finished) onJumpDone?.();
+      });
+      successFeedback();
+      return () => calm.stop();
+    }
 
     const anim = Animated.sequence([
       Animated.delay(450),
@@ -343,6 +366,7 @@ export default function SeaMap({
         dailyGoal={dailyGoal}
         onPress={onSnap}
         bob={bobA}
+        still={reduceMotion}
       />
 
       {/* The buddy */}
@@ -352,7 +376,7 @@ export default function SeaMap({
           species={pet.species}
           outfit={pet.outfit}
           pixelSize={PET_PX}
-          animate={!leg}
+          animate={!leg && !reduceMotion}
         />
       </Animated.View>
 
@@ -402,7 +426,9 @@ export default function SeaMap({
                 top: leg.to.y - 74,
                 zIndex: 7,
                 opacity: toast,
-                transform: [{ scale: toast.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }],
+                transform: reduceMotion
+                  ? []
+                  : [{ scale: toast.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }],
               },
             ]}
           >
@@ -421,13 +447,13 @@ export default function SeaMap({
   );
 }
 
-function NextIslandBubble({ x, y, goalMet, wordsToday, dailyGoal, onPress, bob }) {
+function NextIslandBubble({ x, y, goalMet, wordsToday, dailyGoal, onPress, bob, still }) {
   const W = 132;
   return (
     <Animated.View
       style={[
         styles.bubbleWrap,
-        { left: x - W / 2, width: W, top: y - 78, transform: goalMet ? [] : [{ translateY: bob }] },
+        { left: x - W / 2, width: W, top: y - 78, transform: goalMet || still ? [] : [{ translateY: bob }] },
       ]}
     >
       <TouchableOpacity

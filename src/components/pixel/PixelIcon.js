@@ -75,9 +75,10 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', '.c.c.', 'ccccc', 'ccccc', '.....'],
     map: { c: 'C' },
   },
+  // A speaker with sound waves; the old cone alone read as a plus sign.
   sound: {
-    grid: ['..cc.', '.ccc.', 'cccLc', 'cccLc', '.ccc.', '..cc.'],
-    map: { c: 'C', L: 'L' },
+    grid: ['...c....', '..cc..c.', 'cccc...c', 'cccc.c.c', 'cccc...c', '..cc..c.', '...c....'],
+    map: { c: 'C' },
   },
   mic: {
     grid: ['.ccc.', 'ccccc', 'ccccc', '.ccc.', '..c..', '.ccc.'],
@@ -109,7 +110,11 @@ const ICONS = {
     map: { c: 'C' },
   },
   close: {
-    grid: ['c...c', 'cc.cc', '.ccc.', 'cc.cc', 'c...c', '.....'],
+    grid: ['cc..cc', '.cccc.', '..cc..', '.cccc.', 'cc..cc'],
+    map: { c: 'C' },
+  },
+  stop: {
+    grid: ['ccccc', 'ccccc', 'ccccc', 'ccccc', 'ccccc'],
     map: { c: 'C' },
   },
   chevron: {

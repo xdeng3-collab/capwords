@@ -11,9 +11,12 @@ import { CameraScreen, StickerResultScreen } from '../../features/capture';
 import { CollectionScreen, StickerDetailScreen } from '../../features/collection';
 import { FriendsScreen, FriendProfileScreen } from '../../features/friends';
 import {
+  AppSettingsScreen,
   EditProfileScreen,
   GoalSettingScreen,
+  HelpScreen,
   LanguageSelectScreen,
+  PrivacyPolicyScreen,
   ProfileScreen,
 } from '../../features/profile';
 import { SubscriptionScreen } from '../../features/subscription';
@@ -71,6 +74,9 @@ function ProfileStack() {
       <Stack.Screen name={ROUTES.LANGUAGE_SELECT} component={LanguageSelectScreen} />
       <Stack.Screen name={ROUTES.GOAL_SETTING} component={GoalSettingScreen} />
       <Stack.Screen name={ROUTES.EDIT_PROFILE} component={EditProfileScreen} />
+      <Stack.Screen name={ROUTES.APP_SETTINGS} component={AppSettingsScreen} />
+      <Stack.Screen name={ROUTES.HELP} component={HelpScreen} />
+      <Stack.Screen name={ROUTES.PRIVACY_POLICY} component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

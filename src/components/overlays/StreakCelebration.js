@@ -26,14 +26,15 @@ const CONFETTI_COLORS = [
  * pixel confetti rains down while a panel pops in with the streak count.
  * Auto-dismisses after a few seconds, or on tap.
  */
-export default function StreakCelebration({ streak = 1, onDone }) {
+export default function StreakCelebration({ streak = 1, onDone, reduceMotion = false }) {
   const pop = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
   const dismissed = useRef(false);
 
   const pieces = useMemo(
     () =>
-      Array.from({ length: 18 }, (_, i) => ({
+      // Reduce Motion: the panel alone, no falling confetti.
+      Array.from({ length: reduceMotion ? 0 : 18 }, (_, i) => ({
         key: i,
         left: `${4 + Math.random() * 88}%`,
         delay: Math.random() * 600,

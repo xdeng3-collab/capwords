@@ -10,13 +10,15 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import * as Speech from 'expo-speech';
 import { ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
 import { EmptyState, PixelIcon } from '../../components';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { getStickersByDate } from '../../services/collectionService';
 import { getStreak } from '../../services/progressService';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
+import { speakWord } from '../../utils/audio';
+import { todayKey } from '../../utils/date';
 import { selectFeedback } from '../../utils/haptics';
 import GlobeView from './globe/GlobeView';
 
@@ -39,6 +41,7 @@ export default function CollectionScreen({ navigation }) {
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [refreshing, setRefreshing] = useState(false);
   const [globeOpen, setGlobeOpen] = useState(false);
+  const reduceMotion = useReduceMotion();
   const isFocused = useIsFocused();
 
   const loadData = useCallback(async () => {
@@ -63,9 +66,9 @@ export default function CollectionScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const speakWord = (word, language) => {
+  const sayWord = (word, language) => {
     selectFeedback();
-    Speech.speak(word, { language, rate: 0.8 });
+    speakWord(word, language);
   };
 
   const renderSticker = ({ item }) => {
@@ -87,7 +90,7 @@ export default function CollectionScreen({ navigation }) {
 
           <TouchableOpacity
             style={styles.miniSpeakButton}
-            onPress={() => speakWord(item.word, item.language)}
+            onPress={() => sayWord(item.word, item.language)}
             hitSlop={8}
           >
             <PixelIcon name="sound" size={12} color={COLORS.primaryDark} />
@@ -115,11 +118,9 @@ export default function CollectionScreen({ navigation }) {
     <View style={styles.dateGroup}>
       <View style={styles.dateHeader}>
         <Text style={styles.dateText}>{formatDateLabel(item.date)}</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>
-            {item.items.length} {item.items.length === 1 ? 'WORD' : 'WORDS'}
-          </Text>
-        </View>
+        <Text style={styles.countText}>
+          {item.items.length} {item.items.length === 1 ? 'word' : 'words'}
+        </Text>
       </View>
       <FlatList
         data={item.items}
@@ -132,12 +133,15 @@ export default function CollectionScreen({ navigation }) {
     </View>
   );
 
+  // The streak moves on the day the goal is met, stamping lastActiveDate.
+  const litToday = streak.lastActiveDate === todayKey();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.title}>STICKER BOOK</Text>
+            <Text style={styles.title}>MY WORDS</Text>
             <Text style={styles.subGreeting}>
               {totalWords > 0
                 ? `${totalWords} ${totalWords === 1 ? 'WORD' : 'WORDS'} COLLECTED`
@@ -145,9 +149,21 @@ export default function CollectionScreen({ navigation }) {
             </Text>
           </View>
 
-          <View style={styles.streakChip}>
-            <PixelIcon name="flame" size={16} color={COLORS.streak} light={COLORS.sun} />
-            <Text style={styles.streakNumber}>{streak.current}</Text>
+          {/* Lit only once today's goal is met, the same as on Home */}
+          <View
+            style={styles.streakChip}
+            accessible
+            accessibilityLabel={`${streak.current} day streak`}
+          >
+            <PixelIcon
+              name="flame"
+              size={16}
+              color={litToday ? COLORS.streak : COLORS.textMuted}
+              light={litToday ? COLORS.sun : COLORS.surfaceAlt}
+            />
+            <Text style={[styles.streakNumber, !litToday && styles.streakNumberUnlit]}>
+              {streak.current}
+            </Text>
           </View>
         </View>
 
@@ -158,6 +174,7 @@ export default function CollectionScreen({ navigation }) {
             openHeight={GLOBE_OPEN_HEIGHT}
             active={isFocused}
             onOpenChange={setGlobeOpen}
+            reduceMotion={reduceMotion}
             onOpenSticker={(sticker) => navigation.navigate(ROUTES.STICKER_DETAIL, { sticker })}
           />
         </View>
@@ -233,6 +250,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: COLORS.text,
   },
+  streakNumberUnlit: { color: COLORS.textMuted },
   globe: {
     marginTop: 16,
   },
@@ -255,19 +273,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     letterSpacing: 1,
   },
-  countBadge: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.outline,
-  },
+  // Plain text: a bordered chip here looked like a button.
   countText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.primaryDark,
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textMuted,
   },
   gridRow: {
     gap: GRID_GAP,

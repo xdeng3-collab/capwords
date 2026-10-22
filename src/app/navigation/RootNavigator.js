@@ -7,6 +7,7 @@ import { getMyProfile, onAuthChange, pushProgress } from '../../services/account
 import { removeDemoData } from '../../services/deviceDataService';
 import { getPet } from '../../services/petService';
 import { hasCompletedOnboarding } from '../../services/profileService';
+import { loadAppSettings } from '../../services/settingsService';
 import TabNavigator from './TabNavigator';
 import { linking } from './linking';
 
@@ -29,7 +30,12 @@ export default function RootNavigator() {
     (async () => {
       // One-time sweep of the sample data an older build could seed.
       await removeDemoData().catch(() => {});
-      const [done, pet] = await Promise.all([hasCompletedOnboarding(), getPet()]);
+      const [done, pet] = await Promise.all([
+        hasCompletedOnboarding(),
+        getPet(),
+        // Before any screen draws: reduce motion and haptics read it.
+        loadAppSettings().catch(() => {}),
+      ]);
       setPetName(pet.name);
       setOnboarded(done);
     })();

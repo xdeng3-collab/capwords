@@ -10,7 +10,15 @@ import {
   Platform,
 } from 'react-native';
 import { useCameraPermissions } from 'expo-camera';
-import { LANGUAGES, PET, PET_SPECIES, MIN_DAILY_GOAL, MAX_DAILY_GOAL } from '../../config';
+import {
+  DEFAULT_DAILY_GOAL,
+  LANGUAGES,
+  MAX_DAILY_GOAL,
+  MIN_DAILY_GOAL,
+  PET,
+  PET_SPECIES,
+  PRICING,
+} from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import {
   PetSprite,
@@ -62,10 +70,12 @@ const SURPRISE_NAMES = [
   'Tofu',
 ];
 
+const FREE_GOAL_CAP = Math.min(PRICING.freeWordsPerDay, MAX_DAILY_GOAL);
+
 const GOAL_PRESETS = [
-  { value: 3, label: 'Casual', note: 'A minute a day. The free tier limit.' },
-  { value: 5, label: 'Steady', note: 'Recommended. About five minutes.' },
-  { value: 10, label: 'Serious', note: 'For a real vocabulary push.' },
+  { value: 3, label: 'Casual', note: 'Recommended. A minute or two a day.' },
+  { value: 5, label: 'Steady', note: 'About five minutes. Needs Pro.' },
+  { value: 10, label: 'Serious', note: 'A real vocabulary push. Needs Pro.' },
 ];
 
 /** Segmented step meter, in the same style as the daily-goal bar. */
@@ -179,7 +189,7 @@ export default function OnboardingScreen({ onDone }) {
   const [language, setLanguage] = useState('es');
   const [species, setSpecies] = useState(PET.defaultSpecies);
   const [petName, setPetName] = useState('');
-  const [dailyGoal, setDailyGoal] = useState(5);
+  const [dailyGoal, setDailyGoal] = useState(DEFAULT_DAILY_GOAL);
   const [customGoal, setCustomGoal] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -202,8 +212,10 @@ export default function OnboardingScreen({ onDone }) {
     setter(value);
   };
 
+  // Everyone starts on the free plan, which cannot learn past its daily
+  // words - so the goal cannot go past them either until they go Pro.
   const changeGoal = (value) => {
-    const clamped = Math.min(Math.max(value, MIN_DAILY_GOAL), MAX_DAILY_GOAL);
+    const clamped = Math.min(Math.max(value, MIN_DAILY_GOAL), FREE_GOAL_CAP);
     if (clamped !== dailyGoal) {
       selectFeedback();
       setDailyGoal(clamped);
@@ -557,16 +569,19 @@ export default function OnboardingScreen({ onDone }) {
         >
           {GOAL_PRESETS.map((preset) => {
             const active = !customGoal && dailyGoal === preset.value;
+            const locked = preset.value > FREE_GOAL_CAP;
             return (
               <TouchableOpacity
                 key={preset.value}
-                style={[styles.goalCard, active && styles.cardActive]}
+                style={[styles.goalCard, active && styles.cardActive, locked && styles.goalCardLocked]}
                 onPress={() => {
                   setCustomGoal(false);
                   changeGoal(preset.value);
                 }}
+                disabled={locked}
                 activeOpacity={0.85}
               >
+                {locked ? <Text style={styles.proTag}>PRO</Text> : null}
                 <Text style={[styles.goalNumber, active && styles.textActive]}>
                   {preset.value}
                 </Text>
@@ -594,7 +609,7 @@ export default function OnboardingScreen({ onDone }) {
               {customGoal ? dailyGoal : '?'}
             </Text>
             <Text style={[styles.goalLabel, customGoal && styles.textActive]}>
-              Set my own ({MIN_DAILY_GOAL}–{MAX_DAILY_GOAL})
+              Set my own ({MIN_DAILY_GOAL}–{FREE_GOAL_CAP})
             </Text>
           </TouchableOpacity>
 
@@ -615,12 +630,12 @@ export default function OnboardingScreen({ onDone }) {
               <TouchableOpacity
                 style={styles.stepperButton}
                 onPress={() => changeGoal(dailyGoal + 1)}
-                disabled={dailyGoal >= MAX_DAILY_GOAL}
+                disabled={dailyGoal >= FREE_GOAL_CAP}
               >
                 <PixelIcon
                   name="plus"
                   size={20}
-                  color={dailyGoal >= MAX_DAILY_GOAL ? COLORS.textMuted : COLORS.primaryDark}
+                  color={dailyGoal >= FREE_GOAL_CAP ? COLORS.textMuted : COLORS.primaryDark}
                 />
               </TouchableOpacity>
             </View>
@@ -629,8 +644,8 @@ export default function OnboardingScreen({ onDone }) {
           <View style={styles.noteBox}>
             <View style={styles.noteDot} />
             <Text style={styles.noteText}>
-              Your goal can only change once a week, so pick something you will still want on a
-              bad day.
+              The free plan learns {FREE_GOAL_CAP} words a day; Pro lifts the limit and unlocks bigger
+              goals. Your goal can change once a week.
             </Text>
           </View>
         </ScrollView>
@@ -651,8 +666,7 @@ export default function OnboardingScreen({ onDone }) {
         <StickerPreview />
         <Text style={styles.primerTitle}>CapWords needs your camera</Text>
         <Text style={styles.primerBody}>
-          Photos are used once to identify the object. Only friends you add can see your
-          collection.
+          Snap things around you to learn their names.
         </Text>
       </View>
       <View style={styles.footer}>
@@ -945,6 +959,21 @@ const styles = StyleSheet.create({
   goalCopy: { flex: 1, gap: 2 },
   goalLabel: { fontSize: 15, fontWeight: '900', color: COLORS.text },
   goalNote: { fontSize: 13, fontWeight: '600', color: COLORS.textLight },
+  goalCardLocked: { opacity: 0.55 },
+  proTag: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    backgroundColor: COLORS.berry,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+    letterSpacing: 0.5,
+  },
 
   stepperRow: {
     flexDirection: 'row',
