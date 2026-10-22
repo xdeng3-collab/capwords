@@ -35,6 +35,9 @@ export function getAllWordCounts() {
 // `reached` is the furthest island earned, `landed` the one the buddy has
 // been shown hopping onto. They differ for the moment between meeting the
 // goal and opening the home screen, which is when the jump plays.
+// `lastGoalDay` is the last day booked as an island; it is missing on journeys
+// saved by older builds, which progressService migrates. `haloUntil` is the
+// last day of a milestone halo, `seenPlace` the place whose guide was opened.
 
 export function getJourney() {
   return readJSON(STORAGE_KEYS.JOURNEY, { reached: 0, landed: null });

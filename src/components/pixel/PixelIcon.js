@@ -149,6 +149,11 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', '.c.c.', 'ccccc', '..c..', 'c.c.c'],
     map: { c: 'C' },
   },
+  // A map pin: "where am I".
+  pin: {
+    grid: ['.ccc.', 'ccLcc', 'cLLLc', 'ccLcc', '.ccc.', '..c..'],
+    map: { c: 'C', L: 'L' },
+  },
   coin: {
     grid: ['.ccc.', 'ccccc', 'ccLcc', 'ccLcc', 'ccccc', '.ccc.'],
     map: { c: 'C', L: 'L' },

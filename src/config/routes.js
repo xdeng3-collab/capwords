@@ -21,6 +21,7 @@ export const ROUTES = {
   // Buddy tab
   PET_MAIN: 'PetMain',
   WARDROBE: 'Wardrobe',
+  TRAVEL_GUIDE: 'TravelGuide',
   // Snap tab
   CAMERA_MAIN: 'CameraMain',
   STICKER_RESULT: 'StickerResult',

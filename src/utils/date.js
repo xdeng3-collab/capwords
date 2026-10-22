@@ -36,3 +36,10 @@ export function localDayKey(date = new Date()) {
 export function daysBetween(a, b) {
   return (new Date(b) - new Date(a)) / (1000 * 60 * 60 * 24);
 }
+
+/** The day key `days` days after `key` (before it, if negative). */
+export function shiftDayKey(key, days) {
+  const date = new Date(`${key}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return dayKey(date);
+}

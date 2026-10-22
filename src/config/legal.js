@@ -4,6 +4,8 @@
 // services/accountService.js (the progress mirror), api/deepseekClient.js
 // (photo recognition) and features/capture/CameraScreen.js (location).
 
+import { JOURNEY } from './journey';
+
 // Where "Contact us" goes. Empty hides the row until there is an address.
 export const SUPPORT_EMAIL = '';
 
@@ -129,7 +131,7 @@ export const HELP_FAQ = [
   },
   {
     q: 'How do streaks and islands work?',
-    a: 'Meet your daily goal to grow your streak; miss a day and it starts again. Every day you meet your goal also earns an island on Home, and those you keep for good.',
+    a: `Meet your daily goal to grow your streak; miss a day and it starts again. Every day you meet your goal also earns an island on Home, and those you keep for good. A day counts on the day itself, so changing your goal later does not add or remove islands. Every ${JOURNEY.milestoneEvery}th island is a milestone: your buddy wears a golden halo for ${JOURNEY.haloDays} days.`,
   },
   {
     q: 'Where are my photos and words?',

@@ -6,7 +6,7 @@ import { ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { TabIcon } from '../../components';
 import { AuthScreen } from '../../features/auth';
-import { PetScreen, WardrobeScreen } from '../../features/buddy';
+import { PetScreen, TravelGuideScreen, WardrobeScreen } from '../../features/buddy';
 import { CameraScreen, StickerResultScreen } from '../../features/capture';
 import { CollectionScreen, StickerDetailScreen } from '../../features/collection';
 import { FriendsScreen, FriendProfileScreen } from '../../features/friends';
@@ -32,6 +32,7 @@ function PetStack() {
     <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name={ROUTES.PET_MAIN} component={PetScreen} />
       <Stack.Screen name={ROUTES.WARDROBE} component={WardrobeScreen} />
+      <Stack.Screen name={ROUTES.TRAVEL_GUIDE} component={TravelGuideScreen} />
     </Stack.Navigator>
   );
 }

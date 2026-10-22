@@ -1,28 +1,35 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COINS, PET_MOODS, ROUTES, TABS } from '../../config';
+import { COINS, JOURNEY, PET_MOODS, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PixelIcon } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { useSession } from '../../hooks/useSession';
 import { describeCheers, getNewCheers, markCheersSeen } from '../../services/friendService';
 import { getPetState } from '../../services/petService';
-import { getJourneyState, landOnIsland } from '../../services/progressService';
+import {
+  currentIsland,
+  getJourneyState,
+  haloDaysLeft,
+  landOnIsland,
+} from '../../services/progressService';
 import { fitGoalToPlan } from '../../services/subscriptionService';
 import { claimDailyGift, isDailyGiftAvailable } from '../../services/walletService';
 import { successFeedback } from '../../utils/haptics';
 import CheerToast from './journey/CheerToast';
 import DailyGiftModal from './journey/DailyGiftModal';
+import MilestoneModal from './journey/MilestoneModal';
 import { StatsRow, ZoneBanner } from './journey/HomeHeader';
 import SeaMap from './journey/SeaMap';
 import { zoneOf } from './journey/seaArt';
 
 /**
- * Home: the stats row up top, and the sea the buddy hops across - one island
- * for every day the goal was met. The daily gift pops up on the first visit of
- * the day; a freshly earned island plays its jump once the gift is out of the
- * way.
+ * Home: the stats row up top, and the map the buddy hops across - one island
+ * for every day the goal was met, through places around the world. The daily
+ * gift pops up on the first visit of the day; a freshly earned island plays
+ * its jump once the gift is out of the way, and a milestone island ends with
+ * its halo celebration.
  */
 export default function PetScreen({ navigation }) {
   const [state, setState] = useState(null);
@@ -30,6 +37,7 @@ export default function PetScreen({ navigation }) {
   const [giftOpen, setGiftOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState(null);
   const [cheerMessage, setCheerMessage] = useState(null);
+  const [milestone, setMilestone] = useState(null); // { island, coins }
   const { user } = useSession();
   const reduceMotion = useReduceMotion();
 
@@ -86,6 +94,10 @@ export default function PetScreen({ navigation }) {
     const landed = await landOnIsland(jumpTo);
     setJourney(landed);
     setJumpTo(null);
+    if (landed.milestone) {
+      setMilestone({ island: landed.milestone, coins: landed.coinsEarned });
+      setState((s) => (s ? { ...s, coins: s.coins + landed.coinsEarned } : s));
+    }
   };
 
   if (!state || !journey) {
@@ -94,7 +106,11 @@ export default function PetScreen({ navigation }) {
 
   const mood = PET_MOODS[state.mood] || PET_MOODS.neutral;
   // While a jump is owed the buddy waits on the island before the new one.
-  const petIsland = journey.reached > journey.landed ? journey.reached - 1 : journey.reached;
+  const petIsland = currentIsland(journey);
+  const haloDays = haloDaysLeft(journey);
+  const place = zoneOf(petIsland);
+  const guideIsNew = journey.seenPlace !== place.key;
+  const pet = { species: state.species, mood: state.mood, outfit: state.equippedOutfit };
 
   return (
     <View style={[styles.container, { backgroundColor: zoneOf(journey.reached).water }]}>
@@ -117,16 +133,26 @@ export default function PetScreen({ navigation }) {
           goalMet={state.goalReached}
           wordsToday={state.wordsToday}
           dailyGoal={state.dailyGoal}
-          pet={{ species: state.species, mood: state.mood, outfit: state.equippedOutfit }}
+          pet={pet}
           speech={mood.line}
           onSnap={() => navigation.navigate(TABS.CAMERA)}
+          halo={haloDays > 0}
           reduceMotion={reduceMotion}
         />
         <View style={styles.bannerWrap} pointerEvents="none">
-          <ZoneBanner reached={journey.reached} />
+          <ZoneBanner reached={journey.reached} haloDays={haloDays} />
         </View>
         <TouchableOpacity
-          style={styles.wardrobe}
+          style={[styles.sideButton, styles.guide]}
+          activeOpacity={0.85}
+          accessibilityLabel={`Travel guide: ${place.name}`}
+          onPress={() => navigation.navigate(ROUTES.TRAVEL_GUIDE)}
+        >
+          <PixelIcon name="pin" size={22} color={COLORS.water} light={COLORS.surface} />
+          {guideIsNew ? <View style={styles.newDot} /> : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.sideButton}
           activeOpacity={0.85}
           accessibilityLabel="Wardrobe"
           onPress={() => navigation.navigate(ROUTES.WARDROBE)}
@@ -136,7 +162,7 @@ export default function PetScreen({ navigation }) {
       </View>
 
       {/* Wait for the gift and the jump, so it is not lost behind them */}
-      {cheerMessage && !giftOpen && jumpTo == null ? (
+      {cheerMessage && !giftOpen && jumpTo == null && !milestone ? (
         <CheerToast
           message={cheerMessage}
           onHidden={hideCheer}
@@ -153,6 +179,17 @@ export default function PetScreen({ navigation }) {
         buddyName={state.name}
         onCollect={collectGift}
         onClose={closeGift}
+        reduceMotion={reduceMotion}
+      />
+
+      <MilestoneModal
+        visible={milestone != null}
+        island={milestone?.island}
+        coins={milestone?.coins}
+        haloDays={JOURNEY.haloDays}
+        pet={pet}
+        buddyName={state.name}
+        onClose={() => setMilestone(null)}
         reduceMotion={reduceMotion}
       />
     </View>
@@ -173,7 +210,7 @@ const styles = StyleSheet.create({
   },
   sea: { flex: 1 },
   bannerWrap: { position: 'absolute', top: 12, left: 0, right: 0 },
-  wardrobe: {
+  sideButton: {
     position: 'absolute',
     right: 18,
     bottom: 112,
@@ -186,5 +223,18 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     borderRadius: RADIUS.xl,
     ...SHADOW.card,
+  },
+  // Stacked above the wardrobe.
+  guide: { bottom: 112 + 52 + 12 },
+  newDot: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    backgroundColor: COLORS.secondary,
   },
 });
