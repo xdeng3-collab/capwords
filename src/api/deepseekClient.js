@@ -3,7 +3,10 @@ import {
   API_PROXY_URL,
   DEEPSEEK_API_KEY,
   DEEPSEEK_BASE_URL,
+  SUPABASE_ANON_KEY,
+  SUPABASE_URL,
 } from '../config';
+import { supabase } from './supabaseClient';
 
 /**
  * The HTTP side of talking to DeepSeek: where to send it, which credential to
@@ -24,28 +27,50 @@ import {
 export const MIN_ANSWER_TOKENS = 1500;
 
 /**
- * Without a proxy URL the app would call DeepSeek directly, and without a key
- * that call goes out with an empty Authorization header and comes back 401.
- * Say so plainly rather than letting it look like a recognition failure.
+ * Release builds go through the proxy, full stop. A key in the bundle is a key
+ * anyone can lift out of the app, so outside __DEV__ there is no direct path
+ * to DeepSeek at all - not even if a key somehow made it into the build.
+ * In development, calling DeepSeek directly needs a key; without one the call
+ * would come back 401 and look like a recognition failure, so say so plainly.
  */
 function assertConfigured() {
-  if (!API_PROXY_URL && !DEEPSEEK_API_KEY) {
+  if (API_PROXY_URL) return;
+  if (!__DEV__) {
+    throw new Error('AI is not configured: release builds must set EXPO_PUBLIC_API_URL to the proxy.');
+  }
+  if (!DEEPSEEK_API_KEY) {
     throw new Error(
       'AI is not configured: set EXPO_PUBLIC_API_URL to the proxy (see server/index.js).'
     );
   }
 }
 
+/** True when the proxy is this project's ai-proxy Edge Function. */
+function proxyIsSupabase() {
+  return Boolean(SUPABASE_URL && API_PROXY_URL.startsWith(`${SUPABASE_URL.replace(/\/+$/, '')}/functions/`));
+}
+
 /**
- * Headers for an AI call. Against the proxy the app carries no DeepSeek key at
- * all - the proxy holds it - and presents the shared token instead. Talking to
- * DeepSeek directly is the local-development path and needs the key.
+ * Headers for an AI call. Against a proxy the app carries no DeepSeek key at
+ * all - the proxy holds it:
+ *  - the ai-proxy Edge Function wants the publishable key on `apikey`, plus
+ *    the signed-in person's session token when there is one (it limits per
+ *    user then, and per install otherwise);
+ *  - the laptop proxy (server/index.js) wants its shared token.
+ * Talking to DeepSeek directly is the development-only path and needs the key.
  */
-function authHeaders() {
+async function authHeaders({ installId } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (API_PROXY_URL) {
-    if (API_PROXY_TOKEN) headers['X-Capwords-Token'] = API_PROXY_TOKEN;
-  } else if (DEEPSEEK_API_KEY) {
+    if (proxyIsSupabase()) {
+      headers.apikey = SUPABASE_ANON_KEY;
+      const session = supabase ? (await supabase.auth.getSession().catch(() => null))?.data?.session : null;
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+    } else if (API_PROXY_TOKEN) {
+      headers['X-Capwords-Token'] = API_PROXY_TOKEN;
+    }
+    if (installId) headers['X-Capwords-Install'] = installId;
+  } else if (__DEV__ && DEEPSEEK_API_KEY) {
     headers.Authorization = `Bearer ${DEEPSEEK_API_KEY}`;
   }
   return headers;
@@ -67,18 +92,22 @@ async function describeError(response) {
     detail = detail || 'The API key was rejected.';
     return `API Error 401: ${detail} Check DEEPSEEK_API_KEY on the proxy.`;
   }
+  if (response.status === 429) {
+    return detail || 'Too many requests - please try again in a little while.';
+  }
   return detail ? `API Error ${response.status}: ${detail}` : `API Error: ${response.status}`;
 }
 
 /**
  * POST a chat completion and return the first choice as
  * { content, finishReason }. Throws with a readable message on HTTP errors.
+ * `installId` lets the proxy rate-limit this phone on its own when signed out.
  */
-export async function chatCompletion(body) {
+export async function chatCompletion(body, { installId } = {}) {
   assertConfigured();
   const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: await authHeaders({ installId }),
     body: JSON.stringify(body),
   });
 

@@ -9,21 +9,24 @@
 //
 // EXPO_PUBLIC_* variables are inlined into the JavaScript bundle at build time,
 // so anything set here is readable by anyone who unpacks the installed app. A
-// real key therefore belongs ONLY in the proxy's environment (server/index.js,
-// which reads the un-prefixed DEEPSEEK_API_KEY) - never here.
+// real key therefore belongs ONLY on the proxy - the ai-proxy Edge Function's
+// DEEPSEEK_API_KEY secret in production, or DEEPSEEK_API_KEY (no prefix) for
+// server/index.js on a laptop - never here.
 //
-// This value stays supported purely as a local development shortcut for running
-// against DeepSeek directly without the proxy. Leave it unset for any build you
-// hand to another person.
-export const DEEPSEEK_API_KEY = process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '';
-// When EXPO_PUBLIC_API_URL is set, all AI calls go through our backend proxy
-// (server/index.js) which holds the API key server-side. Direct DeepSeek
-// access (key in the app bundle) is a dev-only convenience.
-export const API_PROXY_URL = process.env.EXPO_PUBLIC_API_URL || '';
-// Shared secret for the proxy, matching CAPWORDS_PROXY_TOKEN on the server.
-// This one IS meant to ship in the bundle, and it is not a real access control
-// for exactly that reason - it turns the proxy away from anonymous crawlers,
-// nothing more. Per-user auth is what actually protects it; see server/index.js.
+// EXPO_PUBLIC_DEEPSEEK_API_KEY survives purely as a local shortcut for talking
+// to DeepSeek directly from a dev build, and only from .env.development.local,
+// which release builds do not read. Two guards keep it out of releases:
+// app.config.js fails a production build that has it set, and the __DEV__
+// check below compiles the value out of a release bundle regardless.
+export const DEEPSEEK_API_KEY = __DEV__ ? process.env.EXPO_PUBLIC_DEEPSEEK_API_KEY || '' : '';
+// Where AI calls go. In release builds this must be set - to the ai-proxy
+// Edge Function (https://<project>.supabase.co/functions/v1/ai-proxy) - and
+// api/deepseekClient.js refuses to call DeepSeek directly without it.
+export const API_PROXY_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/+$/, '');
+// Shared secret for the laptop proxy (server/index.js), matching
+// CAPWORDS_PROXY_TOKEN there. It ships in the bundle and is not real access
+// control - it turns anonymous crawlers away, nothing more. The Edge Function
+// does not use it: it checks the Supabase session or publishable key instead.
 export const API_PROXY_TOKEN = process.env.EXPO_PUBLIC_API_TOKEN || '';
 export const DEEPSEEK_BASE_URL = API_PROXY_URL ? `${API_PROXY_URL}/v1` : 'https://api.deepseek.com/v1';
 // DeepSeek publishes exactly two model ids: 'deepseek-flash' and

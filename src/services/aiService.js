@@ -1,10 +1,19 @@
 import { DEEPSEEK_MODEL, DEEPSEEK_VISION_MODEL } from '../config';
-import { MIN_ANSWER_TOKENS, chatCompletion, extractJSON } from '../api/deepseekClient';
+import { MIN_ANSWER_TOKENS, chatCompletion as postChatCompletion, extractJSON } from '../api/deepseekClient';
+import { getInstallId } from '../data/installStore';
 
 /**
  * What the app asks the model, and what it does with the answers. The HTTP
  * plumbing (proxy vs. direct, credentials, error text) is api/deepseekClient.js.
  */
+
+/**
+ * Every call carries this install's random id, which the proxy uses to give
+ * each phone its own share of the signed-out rate limit.
+ */
+async function chatCompletion(body) {
+  return postChatCompletion(body, { installId: await getInstallId() });
+}
 
 /** Thrown when the model answered but we could not get a word out of it. */
 export class RecognitionFailedError extends Error {

@@ -415,3 +415,9 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# The AI proxy accepts the publishable key (not a JWT) as well as user JWTs,
+# so the platform's JWT check has to be off; withSupabase in the function does
+# the checking. See supabase/functions/ai-proxy/index.ts.
+[functions.ai-proxy]
+verify_jwt = false
