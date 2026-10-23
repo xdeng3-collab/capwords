@@ -1,6 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 import { captureRef } from 'react-native-view-shot';
+import { APP_LINKS } from '../../config';
 import { COLORS, RADIUS } from '../../theme';
 import ShareCard from '../ui/ShareCard';
 import { PixelButton } from '../ui/PixelButton';
@@ -8,10 +17,16 @@ import { PixelButton } from '../ui/PixelButton';
 /**
  * Previews a ShareCard and hands a picture of it to the iOS share sheet.
  * `card` is ShareCard's props; `message` goes along as the post's text where
- * the target app takes one.
+ * the target app takes one, with the download link once there is one.
+ *
+ * The card is drawn nearly as wide as the screen and captured at the
+ * screen's own pixel density, never resized: about 1080x1440 on a phone,
+ * sharp, and always 3:4.
  */
 export default function ShareSheet({ visible, card, message, onClose, onShared }) {
   const cardRef = useRef(null);
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.min(screenWidth - 32, 380);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -20,8 +35,10 @@ export default function ShareSheet({ visible, card, message, onClose, onShared }
     setBusy(true);
     setFailed(false);
     try {
-      const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile', width: 1200 });
-      const result = await Share.share({ url: uri, message });
+      const uri = await captureRef(cardRef, { format: 'png', quality: 1, result: 'tmpfile' });
+      const link = APP_LINKS.download;
+      const text = link && message ? `${message} ${link}` : message;
+      const result = await Share.share({ url: uri, message: text });
       if (result.action === Share.sharedAction) onShared?.(result.activityType);
     } catch (error) {
       console.error('Sharing the card failed', error);
@@ -35,7 +52,7 @@ export default function ShareSheet({ visible, card, message, onClose, onShared }
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable onPress={() => {}} style={styles.sheet}>
-          {card ? <ShareCard ref={cardRef} {...card} /> : null}
+          {card ? <ShareCard ref={cardRef} {...card} width={cardWidth} /> : null}
           {failed ? (
             <Text style={styles.error}>Couldn't make the picture. Try again.</Text>
           ) : null}
@@ -63,7 +80,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(30,22,14,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
   },
   sheet: { alignItems: 'center', gap: 14 },
   button: { alignSelf: 'stretch', borderRadius: RADIUS.sm },

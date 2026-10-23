@@ -27,6 +27,7 @@ export function wordShareCard({ sticker, pet, place }) {
       subtitle: sticker.pronunciation ? formatPronunciation(sticker.pronunciation) : null,
       caption: sticker.english,
       hero,
+      heroFill: !!sticker.imageUri,
       pet,
       footer: place ? `${buddy} is at ${place.name}` : `Learned with ${buddy}`,
     },

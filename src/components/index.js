@@ -17,7 +17,8 @@ export { PixelButton } from './ui/PixelButton';
 export { Pill } from './ui/Pill';
 export { EmptyState } from './ui/EmptyState';
 export { ProgressBar } from './ui/ProgressBar';
-export { default as ShareCard, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT } from './ui/ShareCard';
+export { default as ShareCard, SHARE_CARD_RATIO } from './ui/ShareCard';
+export { QrCode } from './ui/QrCode';
 
 // Things that float above a screen.
 export { AlertProvider, useAlert } from './overlays/PixelAlert';

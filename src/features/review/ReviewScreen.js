@@ -99,12 +99,16 @@ export default function ReviewScreen({ navigation }) {
     );
   }
 
+  // Words finished so far: a choice counts once it is picked, a flip card
+  // once "I knew it" or "Not yet" moves on.
+  const done = index + (question && question.kind !== 'flip' && picked !== null ? 1 : 0);
+
   const header = (
     <View style={styles.header}>
       <BackButton onPress={() => navigation.goBack()} />
       <Text style={styles.title}>REVIEW</Text>
       <Text style={styles.count}>
-        {question && !result ? `${index + 1}/${session.questions.length}` : ''}
+        {question && !result ? `${done}/${session.questions.length}` : ''}
       </Text>
     </View>
   );
@@ -180,7 +184,7 @@ export default function ReviewScreen({ navigation }) {
     <View style={styles.container}>
       {header}
       <View style={styles.progress}>
-        <ProgressBar progress={index / session.questions.length} segments={session.questions.length} />
+        <ProgressBar progress={done / session.questions.length} segments={session.questions.length} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {question.kind === 'listen' ? (
