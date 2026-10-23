@@ -19,7 +19,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
-import { LANGUAGES, ROUTES, TABS } from '../../config';
+import { LANGUAGES, REFERRAL, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS } from '../../theme';
 import {
   PaywallModal,
@@ -30,6 +30,7 @@ import {
   useAlert,
 } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
+import { isSupabaseConfigured } from '../../services/accountService';
 import { recognizeAndTranslate, RecognitionFailedError } from '../../services/aiService';
 import { recordLearnedWord } from '../../services/learningService';
 import { getPet } from '../../services/petService';
@@ -144,6 +145,11 @@ export default function CameraScreen({ navigation }) {
     setPaywallVisible(false);
     // Subscription lives in the Profile tab's stack, so navigate through it.
     navigation.navigate(TABS.PROFILE, { screen: ROUTES.SUBSCRIPTION });
+  };
+
+  const goToInvite = () => {
+    setPaywallVisible(false);
+    navigation.navigate(TABS.PROFILE, { screen: ROUTES.INVITE });
   };
 
   const processImage = async ({ uri, base64 }) => {
@@ -535,6 +541,8 @@ export default function CameraScreen({ navigation }) {
         pet={pet}
         onClose={() => setPaywallVisible(false)}
         onSeePlans={goToPlans}
+        onInvite={isSupabaseConfigured ? goToInvite : undefined}
+        inviteDays={REFERRAL.rewardDays}
       />
     </GestureHandlerRootView>
   );

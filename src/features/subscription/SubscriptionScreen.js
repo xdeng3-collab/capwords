@@ -10,10 +10,16 @@ import {
   Dimensions,
   Linking,
 } from 'react-native';
-import { PRICING, PRODUCT_TO_PLAN, ROUTES, TERMS_OF_USE_URL } from '../../config';
+import { PRICING, PRODUCT_TO_PLAN, REFERRAL, ROUTES, TERMS_OF_USE_URL } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { BackButton, PixelIcon, useAlert } from '../../components';
-import { getSubscription, redeemPromoCode } from '../../services/subscriptionService';
+import { isSupabaseConfigured } from '../../services/accountService';
+import {
+  getSubscription,
+  hasPaidPlan,
+  redeemPromoCode,
+  referralDaysLeft,
+} from '../../services/subscriptionService';
 import {
   arePacksForSale,
   buyWordPack,
@@ -157,6 +163,40 @@ const PromoCard = React.memo(function PromoCard({ subscription, onRedeemed }) {
   );
 });
 
+// The free way to Pro, offered above the paid ones. Shows the invite days to
+// come - for a paying member, the ones waiting for the plan to end.
+function InviteCard({ subscription, onPress }) {
+  const left = referralDaysLeft(subscription);
+  const paying = hasPaidPlan(subscription);
+  const dayWord = left === 1 ? 'DAY' : 'DAYS';
+  return (
+    <TouchableOpacity style={styles.inviteCard} activeOpacity={0.85} onPress={onPress}>
+      <View style={styles.inviteIcon}>
+        <PixelIcon name="people" size={20} color="#FFFFFF" light={COLORS.berry} />
+      </View>
+      <View style={styles.inviteTextWrap}>
+        <Text style={styles.inviteTitle}>
+          {paying
+            ? left
+              ? `+${left} INVITE ${dayWord} AFTER YOUR PLAN`
+              : 'MAKE YOUR PLAN LAST LONGER'
+            : left
+              ? `PRO FROM INVITES: ${left} ${dayWord} LEFT`
+              : 'GET PRO FREE'}
+        </Text>
+        <Text style={styles.inviteDetail}>
+          {paying
+            ? `Each pal who joins with your code adds ${REFERRAL.rewardDays} free days after your paid period.`
+            : left
+              ? `Each pal who joins with your code adds ${REFERRAL.rewardDays} more days.`
+              : `Invite a pal and you both get ${REFERRAL.rewardDays} days of Pro.`}
+        </Text>
+      </View>
+      <PixelIcon name="chevron" size={14} color={COLORS.text} />
+    </TouchableOpacity>
+  );
+}
+
 export default function SubscriptionScreen({ navigation }) {
   const showAlert = useAlert();
   const [selectedPlan, setSelectedPlan] = useState('monthly');
@@ -268,6 +308,13 @@ export default function SubscriptionScreen({ navigation }) {
           Learn as many words a day as you like
         </Text>
       </View>
+
+      {isSupabaseConfigured ? (
+        <InviteCard
+          subscription={subscription}
+          onPress={() => navigation.navigate(ROUTES.INVITE)}
+        />
+      ) : null}
 
       {/* Promo code */}
       <PromoCard subscription={subscription} onRedeemed={setSubscription} />
@@ -437,6 +484,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
+  inviteCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: RADIUS.lg,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    ...SHADOW.soft,
+  },
+  inviteIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    backgroundColor: COLORS.berry,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteTextWrap: { flex: 1 },
+  inviteTitle: { fontSize: 13, fontWeight: '900', color: COLORS.text, letterSpacing: 0.8 },
+  inviteDetail: { fontSize: 13, fontWeight: '600', color: COLORS.textLight, marginTop: 2 },
   promoCard: {
     marginHorizontal: 20,
     marginBottom: 20,

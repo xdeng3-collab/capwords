@@ -5,6 +5,7 @@
 // (photo recognition) and features/capture/CameraScreen.js (location).
 
 import { JOURNEY } from './journey';
+import { REFERRAL } from './referral';
 
 // Where "Contact us" goes. Empty hides the row until there is an address.
 export const SUPPORT_EMAIL = '';
@@ -17,7 +18,7 @@ export const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/i
 export const MANAGE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions';
 export const REFUND_URL = 'https://reportaproblem.apple.com';
 
-export const PRIVACY_UPDATED = 'October 22, 2026';
+export const PRIVACY_UPDATED = 'October 24, 2026';
 
 export const PRIVACY_SUMMARY = [
   'Your words, photos and voice recordings stay on your phone.',
@@ -59,8 +60,18 @@ export const PRIVACY_SECTIONS = [
         'your username and display name',
         'the numbers pals can see: current and best streak, words today and in total, coins, learning language, daily goal, and your buddy’s name, species and outfit',
         'your pals, pal requests and cheers',
+        'your invite code, who invited you, and who joined with your code',
       ],
       'Your words and photos are never part of your account.',
+    ],
+  },
+  {
+    title: 'Invites',
+    body: [
+      `Invite rewards are for new pals. To tell a new phone from one that already has a Voyaword account, the app keeps a random marker in this phone’s keychain and sends it when you are signed in. It is not your phone’s serial number or advertising ID, and our server stores only a scrambled form of it, next to the accounts it was signed in to.`,
+      'The marker stays in the keychain if you delete the app, and the scrambled form stays on our server if you delete your account, so that the same phone cannot claim a new-pal reward twice. It is used for nothing else.',
+      `When someone joins with your code, the two of you become pals and each get ${REFERRAL.rewardDays} days of Pro.`,
+      'If you pay for Pro, the app also sends the start and end dates of your current App Store period (never your payment details), so your invite days can wait until it ends.',
     ],
   },
   {
@@ -128,6 +139,10 @@ export const HELP_FAQ = [
   {
     q: 'Why can I only learn 3 words a day?',
     a: 'That is the free plan. Pro lifts the limit, so you can learn as many words a day as you like and set a bigger daily goal.',
+  },
+  {
+    q: 'How do invites work?',
+    a: `Open Me → Invite pals and share your code. When a friend makes a new Voyaword account with it, within ${REFERRAL.redeemWindowDays} days of signing up, you both get ${REFERRAL.rewardDays} days of Pro and become pals. It has to be a phone that has not been signed in to another Voyaword account. Invite days add up, up to ${REFERRAL.maxBankedDays} days ahead. If you already pay for Pro, they start when your paid period ends, so your membership lasts longer.`,
   },
   {
     q: 'How do streaks and islands work?',

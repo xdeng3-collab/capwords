@@ -16,9 +16,18 @@ import { PixelButton } from '../ui/PixelButton';
 
 /**
  * Shown when the free daily words are used up. Offers a jump to the plans
- * screen; dismissible via the X, "Maybe later", the backdrop, or hardware back.
+ * screen and, when `onInvite` is given, the free way round: inviting a pal.
+ * Dismissible via the X, "Maybe later", the backdrop, or hardware back.
  */
-export default function PaywallModal({ visible, petName = 'Your buddy', pet, onClose, onSeePlans }) {
+export default function PaywallModal({
+  visible,
+  petName = 'Your buddy',
+  pet,
+  onClose,
+  onSeePlans,
+  onInvite,
+  inviteDays,
+}) {
   const pop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -74,6 +83,16 @@ export default function PaywallModal({ visible, petName = 'Your buddy', pet, onC
               size="lg"
               style={styles.primaryButton}
             />
+
+            {onInvite ? (
+              <PixelButton
+                label={inviteDays ? `Invite a pal: ${inviteDays} days free` : 'Invite a pal'}
+                icon="people"
+                color={COLORS.berry}
+                onPress={onInvite}
+                style={styles.secondaryButton}
+              />
+            ) : null}
 
             <TouchableOpacity style={styles.laterButton} onPress={onClose}>
               <Text style={styles.laterText}>MAYBE LATER</Text>
@@ -135,6 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   primaryButton: { alignSelf: 'stretch' },
+  secondaryButton: { alignSelf: 'stretch', marginTop: 10 },
   laterButton: { marginTop: 12, paddingVertical: 8, paddingHorizontal: 16 },
   laterText: {
     color: COLORS.textLight,

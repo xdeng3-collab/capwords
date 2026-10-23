@@ -37,9 +37,30 @@ Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server
   (see section 2b). The advisor's "RLS enabled, no policy" note on
   `private.ai_usage` is intended: no API role should read it.
 
+- **Invites applied (2026-10-24)** — migration `referrals`
+  (`migrations/20261024000000_referrals.sql`): invite codes, who invited whom,
+  and a hashed per-phone marker, all in `private`. The app calls only
+  `referral_status()` and `redeem_invite()` (signed-in users). Rules: the
+  invitee's account is under 7 days old and its phone has never been signed in
+  to another account; each side gets 7 days of Pro, stacking to at most 90
+  days ahead. Checked on a scratch Postgres before applying (redeem, repeat,
+  same phone, old account, own code, bad code, stacking, the 90-day cap,
+  deleting and remaking an account on the same phone, anon refused).
+- **Paid time pauses invite days — NOT YET APPLIED** —
+  `migrations/20261024010000_referral_paid_time.sql`. The app reports the
+  current App Store period, and invite days are laid out after it, so a paying
+  member's reward lengthens their membership instead of running out under it.
+  Tested on a scratch Postgres (renewals, overlapping periods, part-used
+  rewards, nonsense dates ignored). Until it is applied the app falls back to
+  the one-argument `referral_status()` and invite days simply run from when
+  they are earned. Apply with `npx supabase db push`, or paste the file into
+  the SQL editor.
+
 Security advisors are clean apart from:
-- the expected `SECURITY DEFINER`-callable notes on the friend-graph RPCs, which
-  are the app's API by design;
+- the expected `SECURITY DEFINER`-callable notes on the friend-graph and
+  invite RPCs, which are the app's API by design;
+- "RLS enabled, no policy" on the `private` tables (`ai_usage`, `invite_codes`,
+  `referrals`, `account_devices`), which is intended: no API role reads them;
 - `rls_auto_enable()`, Supabase's own event-trigger function for auto-enabling
   RLS. Postgres refuses to call an event-trigger function directly, so the RPC
   endpoint it flags cannot run it;
@@ -239,6 +260,8 @@ The Apple button then appears on the auth screen on its own.
 | `src/services/accountService.js` | Sign up / in / out, profile, progress push |
 | `src/services/friendService.js` | Search, requests, cheers |
 | `src/features/auth/AuthScreen.js` | The sign-in UI, used by onboarding and Profile |
+| `migrations/20261024000000_referrals.sql` | Invite codes and the 7-day Pro reward |
+| `src/services/referralService.js` | Redeeming codes, syncing invite Pro, reminders |
 | `functions/delete-account/` | Account deletion, which needs the service role |
 
 ### Two rules the code keeps

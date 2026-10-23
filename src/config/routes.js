@@ -39,6 +39,7 @@ export const ROUTES = {
   APP_SETTINGS: 'AppSettings',
   HELP: 'Help',
   PRIVACY_POLICY: 'PrivacyPolicy',
+  INVITE: 'Invite',
   // Shared by more than one stack
   LANGUAGE_SELECT: 'LanguageSelect',
   REVIEW: 'Review',

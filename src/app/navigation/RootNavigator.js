@@ -1,12 +1,15 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { PET } from '../../config';
+import { useAlert } from '../../components';
 import { LoadingScreen, OnboardingScreen } from '../../features/onboarding';
 import { SessionContext } from '../../hooks/useSession';
 import { getMyProfile, onAuthChange, pushProgress } from '../../services/accountService';
 import { removeDemoData } from '../../services/deviceDataService';
 import { getPet } from '../../services/petService';
 import { hasCompletedOnboarding } from '../../services/profileService';
+import { describeNewJoins, syncReferrals } from '../../services/referralService';
 import { loadAppSettings } from '../../services/settingsService';
 import TabNavigator from './TabNavigator';
 import { linking } from './linking';
@@ -25,6 +28,21 @@ export default function RootNavigator() {
   // when signed out, which is a perfectly normal way to use the app.
   const [user, setUser] = useState(null);
   const [account, setAccount] = useState(null);
+  const showAlert = useAlert();
+  const signedInRef = useRef(false);
+
+  // Invites: redeem a code waiting for a new account, pick up Pro days earned
+  // from pals who joined, and say so. Mounted above onboarding on purpose, so
+  // an account made during setup gets its welcome gift straight away.
+  const checkInvites = useCallback(async () => {
+    const result = await syncReferrals().catch(() => null);
+    if (!result?.ok) return;
+    if (result.redeemed) {
+      showAlert(result.redeemed.ok ? 'Welcome gift!' : 'Invite code', result.redeemed.message);
+    } else if (result.newJoins > 0) {
+      showAlert('Your invite worked!', describeNewJoins(result.newJoins));
+    }
+  }, [showAlert]);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +66,7 @@ export default function RootNavigator() {
       onAuthChange((s) => {
         const nextUser = s?.user || null;
         setUser(nextUser);
+        signedInRef.current = Boolean(nextUser);
         if (!nextUser) {
           setAccount(null);
           return;
@@ -56,9 +75,18 @@ export default function RootNavigator() {
         // A returning session may have been away for days; make sure the
         // numbers pals can see are the ones on this phone.
         pushProgress();
+        checkInvites();
       }),
-    []
+    [checkInvites]
   );
+
+  // A pal may have joined with my code while the app was closed.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && signedInRef.current) checkInvites();
+    });
+    return () => sub.remove();
+  }, [checkInvites]);
 
   const refreshAccount = useCallback(async () => {
     const profile = await getMyProfile();

@@ -6,15 +6,46 @@ import { todayKey } from '../utils/date';
 
 /**
  * What this person may learn today: the free allowance, a per-word balance,
- * a store subscription (kept in sync by purchaseService), or a promo grant.
+ * a store subscription (kept in sync by purchaseService), a promo grant, or
+ * Pro earned by inviting pals (kept in sync by referralService).
  */
 
 export { getSubscription, updateSubscription };
 
+/** Whether invite Pro is running at `now`. */
+export function hasReferralPro(sub, now = new Date()) {
+  return Boolean(sub?.referralProUntil) && new Date(sub.referralProUntil) > now;
+}
+
+/** Whether an App Store subscription is paid up at `now`. */
+export function hasPaidPlan(sub, now = new Date()) {
+  return (
+    (sub?.type === 'monthly' || sub?.type === 'yearly') &&
+    Boolean(sub.expiresAt) &&
+    new Date(sub.expiresAt) > now
+  );
+}
+
+/**
+ * Invite days still to come, rounded up. For a paying member they start when
+ * the paid period ends (the server lays them out after it), so the paid days
+ * in between are not counted as invite days.
+ */
+export function referralDaysLeft(sub, now = new Date()) {
+  if (!sub?.referralProUntil) return 0;
+  const start = hasPaidPlan(sub, now) ? new Date(sub.expiresAt) : now;
+  return Math.max(0, Math.ceil((new Date(sub.referralProUntil) - start) / 86400000));
+}
+
+/** Store when invite Pro ends, as the server reported it (null for never had any). */
+export function setReferralProUntil(until) {
+  return updateSubscription({ referralProUntil: until ? new Date(until).toISOString() : null });
+}
+
 /**
  * Whether another word may be learned right now.
  * Returns { allowed, reason } with reason one of
- * 'promo' | 'subscription' | 'balance' | 'free' | 'limit_reached'.
+ * 'promo' | 'subscription' | 'referral' | 'balance' | 'free' | 'limit_reached'.
  */
 export async function canLearnWord() {
   const sub = await getSubscription();
@@ -23,10 +54,13 @@ export async function canLearnWord() {
     return { allowed: true, reason: 'promo' };
   }
 
-  if (sub.type === 'monthly' || sub.type === 'yearly') {
-    if (new Date(sub.expiresAt) > new Date()) {
-      return { allowed: true, reason: 'subscription' };
-    }
+  if (hasPaidPlan(sub)) {
+    return { allowed: true, reason: 'subscription' };
+  }
+
+  // Ahead of the balance, so invite days do not spend words someone paid for.
+  if (hasReferralPro(sub)) {
+    return { allowed: true, reason: 'referral' };
   }
 
   if (sub.type === 'per_word' && sub.wordBalance > 0) {
@@ -83,14 +117,13 @@ export async function redeemPromoCode(rawCode) {
  * The highest daily goal this plan can actually reach, or null for no cap.
  * A free learner stops at the free words, so a goal above that could never
  * be met: no streak, no islands. Anyone who can keep learning past it - a
- * subscription, a promo, or words left in a pack - has no cap.
+ * subscription, a promo, invite Pro, or words left in a pack - has no cap.
  */
 export async function getGoalCap() {
   const sub = await getSubscription();
   if (sub.type === 'unlimited') return null;
-  if ((sub.type === 'monthly' || sub.type === 'yearly') && new Date(sub.expiresAt) > new Date()) {
-    return null;
-  }
+  if (hasPaidPlan(sub)) return null;
+  if (hasReferralPro(sub)) return null;
   if (sub.type === 'per_word' && sub.wordBalance > 0) return null;
   return PRICING.freeWordsPerDay;
 }

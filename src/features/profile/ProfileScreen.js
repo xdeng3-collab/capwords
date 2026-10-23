@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LANGUAGES, ROUTES } from '../../config';
+import { LANGUAGES, REFERRAL, ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PetSprite, PixelIcon, PixelSprite, useAlert } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
@@ -23,7 +23,11 @@ import { getStickers } from '../../services/collectionService';
 import { eraseDeviceData } from '../../services/deviceDataService';
 import { getPetState } from '../../services/petService';
 import { canChangeGoal, getUserProfile, updateUserProfile } from '../../services/profileService';
-import { fitGoalToPlan, getSubscription } from '../../services/subscriptionService';
+import {
+  fitGoalToPlan,
+  getSubscription,
+  referralDaysLeft,
+} from '../../services/subscriptionService';
 
 const PLAN_LABELS = {
   free: { title: 'Free Plan', detail: '3 free words each day', pro: false },
@@ -166,9 +170,20 @@ export default function ProfileScreen({ navigation }) {
 
   const targetLang = LANGUAGES.find((l) => l.code === profile.targetLanguage);
   const planKey = subscription?.type || 'free';
-  const plan = PLAN_LABELS[planKey] || PLAN_LABELS.free;
+  const storePlan = PLAN_LABELS[planKey] || PLAN_LABELS.free;
+  // Invite Pro shows over a plan that is not Pro already. A paid plan keeps
+  // its own card, since that is what they manage from here, and mentions the
+  // invite days waiting for when it ends.
+  const inviteDays = referralDaysLeft(subscription);
+  const dayWord = inviteDays === 1 ? 'day' : 'days';
+  const plan =
+    inviteDays && !storePlan.pro
+      ? { title: 'Pro from invites', detail: `Unlimited words, ${inviteDays} ${dayWord} left`, pro: true }
+      : inviteDays && (planKey === 'monthly' || planKey === 'yearly')
+        ? { ...storePlan, detail: `Unlimited words, +${inviteDays} invite ${dayWord} after` }
+        : storePlan;
   const planDetail =
-    planKey === 'per_word'
+    planKey === 'per_word' && plan === storePlan
       ? `${subscription?.wordBalance ?? 0} words remaining`
       : plan.detail;
 
@@ -319,6 +334,21 @@ export default function ProfileScreen({ navigation }) {
               last
             />
           )}
+        </Group>
+      ) : null}
+
+      {/* Invite: the friend graph is the reason to have an account, so it
+          sits right under it. Shown signed out too - the screen explains. */}
+      {isSupabaseConfigured ? (
+        <Group title="INVITE">
+          <Row
+            icon="people"
+            color={COLORS.sun}
+            label="Invite pals"
+            value={`+${REFERRAL.rewardDays} days Pro`}
+            onPress={() => navigation.navigate(ROUTES.INVITE)}
+            last
+          />
         </Group>
       ) : null}
 
