@@ -7,7 +7,6 @@ import {
   Image,
   Animated,
   Dimensions,
-  Easing,
   ScrollView,
 } from 'react-native';
 import {
@@ -53,7 +52,6 @@ export default function StickerResultScreen({ route, navigation }) {
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const recordPulse = useRef(new Animated.Value(1)).current;
 
   const celebration = useMemo(
     () => CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)],
@@ -68,30 +66,6 @@ export default function StickerResultScreen({ route, navigation }) {
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, [fadeAnim, scaleAnim]);
-
-  useEffect(() => {
-    if (isRecording) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(recordPulse, {
-            toValue: 1.25,
-            duration: 600,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(recordPulse, {
-            toValue: 1,
-            duration: 600,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      recordPulse.stopAnimation();
-      recordPulse.setValue(1);
-    }
-  }, [isRecording, recordPulse]);
 
   useEffect(
     () => () => {
@@ -258,31 +232,15 @@ export default function StickerResultScreen({ route, navigation }) {
             size="lg"
           />
 
-          <TouchableOpacity onPress={toggleRecording} activeOpacity={0.9}>
-            <View
-              style={[
-                styles.recordButton,
-                { backgroundColor: isRecording ? COLORS.danger : COLORS.secondary },
-                SHADOW.glow,
-              ]}
-            >
-              <Animated.View style={[styles.recordIcon, { transform: [{ scale: recordPulse }] }]}>
-                <PixelIcon name={isRecording ? 'stop' : 'mic'} size={22} color="#FBF3E0" />
-              </Animated.View>
-              <View style={styles.recordLabels}>
-                <Text style={styles.recordText}>
-                  {isRecording ? 'RECORDING...' : practiceCoins > 0 ? 'PRACTICED!' : 'RECORD YOURSELF'}
-                </Text>
-                <Text style={styles.recordSub}>
-                  {isRecording
-                    ? 'Tap to stop'
-                    : practiceCoins > 0
-                      ? '+1 coin earned · tap to try again'
-                      : 'Say it out loud · +1 coin'}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
+          <PixelButton
+            label={
+              isRecording ? 'Recording... tap to stop' : practiceCoins > 0 ? 'Practiced! +1 coin' : 'Record · +1 coin'
+            }
+            icon={isRecording ? 'stop' : 'mic'}
+            color={isRecording ? COLORS.danger : COLORS.secondary}
+            onPress={toggleRecording}
+            size="lg"
+          />
 
           {recordedUri ? (
             <PixelButton
@@ -290,6 +248,7 @@ export default function StickerResultScreen({ route, navigation }) {
               icon="play"
               color={COLORS.accent}
               onPress={playRecording}
+              size="lg"
             />
           ) : null}
         </Animated.View>
@@ -396,28 +355,7 @@ const styles = StyleSheet.create({
   learnTranslation: { fontSize: 13, color: COLORS.textLight, fontWeight: '600', lineHeight: 18 },
   learnFact: { fontSize: 13, color: COLORS.primaryDark, fontWeight: '700', marginTop: 4, lineHeight: 18 },
 
-  actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 16 },
-  recordButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: RADIUS.md,
-    borderWidth: 3,
-    borderColor: COLORS.outline,
-    gap: 14,
-  },
-  recordIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.18)',
-  },
-  recordLabels: { flex: 1, gap: 3 },
-  recordText: { color: '#FBF3E0', fontSize: 15, fontWeight: '900', letterSpacing: 0.8 },
-  recordSub: { color: '#FBF3E0CC', fontSize: 12, fontWeight: '700' },
+  actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 14 },
   doneButton: { marginTop: 22, paddingHorizontal: 36, paddingVertical: 12 },
   doneButtonText: { color: COLORS.textLight, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
 });
