@@ -46,15 +46,14 @@ Against project `bxwifjkinhtxxcelasqe`, already done via the Supabase MCP server
   days ahead. Checked on a scratch Postgres before applying (redeem, repeat,
   same phone, old account, own code, bad code, stacking, the 90-day cap,
   deleting and remaking an account on the same phone, anon refused).
-- **Paid time pauses invite days — NOT YET APPLIED** —
+- **Paid time pauses invite days (2026-10-24)** — applied:
   `migrations/20261024010000_referral_paid_time.sql`. The app reports the
   current App Store period, and invite days are laid out after it, so a paying
   member's reward lengthens their membership instead of running out under it.
   Tested on a scratch Postgres (renewals, overlapping periods, part-used
-  rewards, nonsense dates ignored). Until it is applied the app falls back to
-  the one-argument `referral_status()` and invite days simply run from when
-  they are earned. Apply with `npx supabase db push`, or paste the file into
-  the SQL editor.
+  rewards, nonsense dates ignored). The old one-argument `referral_status()`
+  is gone; the app still falls back to calling it with one argument, which
+  the new defaults accept.
 
 Security advisors are clean apart from:
 - the expected `SECURITY DEFINER`-callable notes on the friend-graph and
