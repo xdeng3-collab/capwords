@@ -3,7 +3,15 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { useFocusEffect } from '@react-navigation/native';
 import { JOURNEY } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { BackButton, PixelIcon, PixelPanel, PixelSprite } from '../../components';
+import {
+  BackButton,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  PixelSprite,
+  ShareSheet,
+} from '../../components';
+import { getPet } from '../../services/petService';
 import {
   currentIsland,
   getJourneyState,
@@ -27,8 +35,11 @@ const STAMP_PX = 2;
 export default function TravelGuideScreen({ navigation }) {
   const [journey, setJourney] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [pet, setPet] = useState(null);
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
+    getPet().then(setPet).catch(() => {});
     const j = await getJourneyState();
     const here = ZONES[zoneIndexOf(currentIsland(j))];
     setJourney(j);
@@ -132,6 +143,17 @@ export default function TravelGuideScreen({ navigation }) {
 
         {isHere ? (
           <>
+            <PixelButton
+              label="Share where we are"
+              icon="heart"
+              color={COLORS.water}
+              onPress={() => {
+                selectFeedback();
+                setSharing(true);
+              }}
+              size="lg"
+              style={styles.shareButton}
+            />
             <Text style={styles.groupTitle}>NEXT STOP</Text>
             <PixelPanel style={[styles.panel, styles.row]}>
               <PixelIcon name={next ? 'lock' : 'star'} size={18} color={COLORS.textMuted} />
@@ -198,6 +220,23 @@ export default function TravelGuideScreen({ navigation }) {
           One island for every day you meet your goal. New places are added to the map over time.
         </Text>
       </ScrollView>
+
+      <ShareSheet
+        visible={sharing}
+        card={{
+          kicker: `NOW VISITING · ISLAND ${island}`,
+          title: place.name,
+          subtitle: place.region,
+          caption: place.hello ? `Hello here is "${place.hello.word}"` : null,
+          hero: <PlaceDiorama place={place} />,
+          heroColor: place.water,
+          pet,
+          footer: `${pet?.name || 'My buddy'} sailed ${island} ${island === 1 ? 'island' : 'islands'} to get here`,
+        }}
+        message={`${pet?.name || 'My buddy'} just reached ${place.name} on Voyaword!`}
+        onClose={() => setSharing(false)}
+        onShared={() => setSharing(false)}
+      />
     </View>
   );
 }
@@ -262,6 +301,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 24, fontWeight: '900', color: COLORS.text, marginTop: 14 },
   region: { fontSize: 13, fontWeight: '800', color: COLORS.textLight, marginTop: 2, letterSpacing: 0.5 },
   panel: { marginTop: 10 },
+  shareButton: { marginTop: 18 },
   about: { fontSize: 15, fontWeight: '600', color: COLORS.text, lineHeight: 21 },
   groupTitle: {
     fontSize: 12,
