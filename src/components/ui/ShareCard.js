@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     borderBottomColor: COLORS.outline,
   },
-  body: { flex: 1, paddingHorizontal: 18, paddingTop: 12, alignItems: 'center' },
+  body: { flex: 1, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center' },
   kicker: {
     fontSize: 10,
     fontWeight: '900',

@@ -232,7 +232,7 @@ export default function ReviewScreen({ navigation }) {
             {question.kind === 'flip' && !answered ? (
               <PixelButton
                 label="Show the word"
-                icon="search"
+                icon="sound"
                 color={COLORS.water}
                 onPress={reveal}
                 size="lg"

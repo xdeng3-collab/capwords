@@ -3,7 +3,7 @@ import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { COINS, JOURNEY, PET_MOODS, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PixelIcon } from '../../components';
+import { PixelIcon, TabIcon } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { useSession } from '../../hooks/useSession';
 import { describeCheers, getNewCheers, markCheersSeen } from '../../services/friendService';
@@ -162,7 +162,7 @@ export default function PetScreen({ navigation }) {
           accessibilityLabel={dueCount ? `Review ${dueCount} words` : 'Review'}
           onPress={() => navigation.navigate(ROUTES.REVIEW)}
         >
-          <PixelIcon name="book" size={22} color={COLORS.primary} />
+          <TabIcon name="book" size={26} />
           {dueCount > 0 ? (
             <View style={styles.countBadge}>
               <Text style={styles.countText}>{dueCount > 9 ? '9+' : dueCount}</Text>

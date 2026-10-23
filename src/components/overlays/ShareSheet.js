@@ -60,7 +60,7 @@ export default function ShareSheet({ visible, card, message, onClose, onShared }
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(30,22,14,0.7)',
+    backgroundColor: 'rgba(30,22,14,0.88)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

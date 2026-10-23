@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { PetSprite, PixelIcon } from '../../components';
+import { PetSprite, PixelSprite } from '../../components';
 import { COLORS, RADIUS } from '../../theme';
 
 // What the buddy is "doing" while the photo is recognised. Recognition takes a
@@ -16,6 +16,23 @@ export function recognizingSteps(languageName) {
 }
 
 const STEP_MS = 1600;
+
+// A magnifying glass: wooden handle, glass with a glint.
+const GLASS = {
+  grid: [
+    '..OOOO....',
+    '.OSSSSO...',
+    'OSWSSSSO..',
+    'OWSSSSSO..',
+    'OSSSSSSO..',
+    'OSSSSSSO..',
+    '.OSSSSOO..',
+    '..OOOOOHH.',
+    '.......HHH',
+    '........HH',
+  ],
+  palette: { O: COLORS.outline, S: '#BFE3F5', W: '#FFFFFF', H: COLORS.primary },
+};
 
 /**
  * The buddy with a magnifying glass over the frozen photo while a word is
@@ -74,7 +91,7 @@ export default function RecognizingBuddy({ pet, languageName, reduceMotion = fal
           animate={!reduceMotion}
         />
         <Animated.View style={[styles.glass, glassMotion]}>
-          <PixelIcon name="search" size={28} color={COLORS.sun} light="#FBF3E0" />
+          <PixelSprite grid={GLASS.grid} palette={GLASS.palette} pixelSize={3} />
         </Animated.View>
       </View>
       <Text style={styles.text}>{steps[step].toUpperCase()}</Text>

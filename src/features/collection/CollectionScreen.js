@@ -12,7 +12,7 @@ import {
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { ROUTES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
-import { EmptyState, PixelIcon } from '../../components';
+import { EmptyState, PixelIcon, TabIcon } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { getStickersByDate } from '../../services/collectionService';
 import { getStreak } from '../../services/progressService';
@@ -209,7 +209,7 @@ export default function CollectionScreen({ navigation }) {
                   navigation.navigate(ROUTES.REVIEW);
                 }}
               >
-                <PixelIcon name="book" size={22} color={COLORS.water} />
+                <TabIcon name="book" size={26} />
                 <Text style={styles.reviewText}>
                   {dueCount} {dueCount === 1 ? 'word' : 'words'} to review today
                 </Text>
