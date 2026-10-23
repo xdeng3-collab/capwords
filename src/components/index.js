@@ -8,7 +8,12 @@
 export { default as PixelSprite } from './pixel/PixelSprite';
 export { default as PixelIcon } from './pixel/PixelIcon';
 export { default as TabIcon } from './pixel/TabIcon';
-export { default as PetSprite, petSpriteHeight, tallestPetSpriteHeight } from './pixel/PetSprite';
+export {
+  default as PetSprite,
+  OUTFIT_SPRITES,
+  petSpriteHeight,
+  tallestPetSpriteHeight,
+} from './pixel/PetSprite';
 
 // Building blocks for screens.
 export { PixelPanel } from './ui/PixelPanel';

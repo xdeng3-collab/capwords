@@ -5,6 +5,7 @@
 // (photo recognition) and features/capture/CameraScreen.js (location).
 
 import { JOURNEY } from './journey';
+import { PRICING } from './pricing';
 
 // Where "Contact us" goes. Empty hides the row until there is an address.
 export const SUPPORT_EMAIL = '';
@@ -132,6 +133,10 @@ export const HELP_FAQ = [
   {
     q: 'How do streaks and islands work?',
     a: `Meet your daily goal to grow your streak; miss a day and it starts again. Every day you meet your goal also earns an island on Home, and those you keep for good. A day counts on the day itself, so changing your goal later does not add or remove islands. Every ${JOURNEY.milestoneEvery}th island is a milestone: your buddy wears a golden halo for ${JOURNEY.haloDays} days.`,
+  },
+  {
+    q: 'What are souvenirs?',
+    a: `Some places on the journey have a local souvenir, like a straw hat at Mount Fuji or a beret in Paris. Your buddy wears it for free while it is there. To keep it for good, buy it for $${PRICING.souvenir.toFixed(2)} - right away, or later from that place's page in the passport. Souvenirs are tied to your Apple ID, so Restore Purchases brings them back on a new phone.`,
   },
   {
     q: 'Where are my photos and words?',

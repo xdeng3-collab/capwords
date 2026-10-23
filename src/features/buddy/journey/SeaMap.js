@@ -16,15 +16,19 @@ import { successFeedback } from '../../../utils/haptics';
 import Halo from './Halo';
 import {
   DECOS,
+  FAR,
   FLAG,
   ISLAND_GRID,
   ISLAND_PALETTES,
   ISLAND_STAND_ROW,
   MILESTONE_FLAG,
   PROPS,
+  SPECKS,
   STAR,
   WAVE_GRID,
   ZONES,
+  islandGridOf,
+  landmarkSilhouette,
   zoneIndexOf,
   zoneOf,
 } from './seaArt';
@@ -40,6 +44,9 @@ import {
 const PX = 5; // world pixel
 const PROP_PX = 3;
 const DECO_PX = 4;
+const FAR_PX = 4;
+const LANDMARK_PX = 7;
+const SPECK_PX = 3;
 const PET_PX = 3;
 const PET_W = 18 * PET_PX;
 const ISLAND_W = ISLAND_GRID[0].length * PX;
@@ -55,6 +62,9 @@ const JUMP_HEIGHT = 115;
 const JUMP_SAMPLES = Array.from({ length: 11 }, (_, k) => k / 10);
 
 const WAVE_PALETTES = Object.fromEntries(ZONES.map((z) => [z.key, { w: z.wave }]));
+const FAR_PALETTES = Object.fromEntries(ZONES.map((z) => [z.key, { a: z.far.a, b: z.far.b }]));
+const SPECK_PALETTES = Object.fromEntries(ZONES.map((z) => [z.key, { s: z.speck.s }]));
+const LANDMARKS = Object.fromEntries(ZONES.map((z) => [z.key, landmarkSilhouette(z)]));
 
 // A cheap repeatable "random" so the scenery stays put between renders.
 const hash = (n) => {
@@ -79,7 +89,7 @@ const Island = memo(function Island({ index, x, y, state }) {
         { left: x - ISLAND_W / 2, top: y, opacity: state === 'locked' ? 0.45 : 1 },
       ]}
     >
-      <PixelSprite grid={ISLAND_GRID} palette={ISLAND_PALETTES[zone.key]} pixelSize={PX} />
+      <PixelSprite grid={islandGridOf(zone)} palette={ISLAND_PALETTES[zone.key]} pixelSize={PX} />
       <PixelSprite
         grid={prop.grid}
         palette={prop.palette}
@@ -305,6 +315,62 @@ export default function SeaMap({
         );
       })}
 
+      {/* The distance: scenery, the place's landmark far away, ground specks */}
+      {rows.map((i) => {
+        const zone = zoneOf(i);
+        const y = islandY(i);
+        // Scenery goes on the side the island leaves open.
+        const openLeft = islandX(i) > width / 2;
+        const far = FAR[zone.far.grid];
+        const farW = far[0].length * FAR_PX;
+        const farH = far.length * FAR_PX;
+        const showLandmark = i > zone.from && (i - zone.from) % 4 === 1;
+        const landmark = LANDMARKS[zone.key];
+        const landmarkW = landmark.grid[0].length * LANDMARK_PX;
+        const landmarkH = landmark.grid.length * LANDMARK_PX;
+        return (
+          <React.Fragment key={`f${i}`}>
+            {hash(i + 3) > 0.3 ? (
+              <PixelSprite
+                grid={far}
+                palette={FAR_PALETTES[zone.key]}
+                pixelSize={FAR_PX}
+                style={{
+                  position: 'absolute',
+                  left: openLeft ? -12 + hash(i + 4) * 24 : width - farW + 12 - hash(i + 4) * 24,
+                  top: y + ISLAND_H / 2 + ROW_H / 2 - farH - 6,
+                }}
+              />
+            ) : null}
+            {showLandmark ? (
+              <PixelSprite
+                grid={landmark.grid}
+                palette={landmark.palette}
+                pixelSize={LANDMARK_PX}
+                style={{
+                  position: 'absolute',
+                  left: openLeft ? 6 : width - landmarkW - 6,
+                  top: y + ISLAND_H - landmarkH,
+                }}
+              />
+            ) : null}
+            {[0, 1, 2, 3, 4].map((k) => (
+              <PixelSprite
+                key={k}
+                grid={SPECKS[zone.speck.grid]}
+                palette={SPECK_PALETTES[zone.key]}
+                pixelSize={SPECK_PX}
+                style={{
+                  position: 'absolute',
+                  left: width * hash(i * 7 + k + 1),
+                  top: y - 40 + hash(i * 11 + k) * ROW_H * 0.9,
+                }}
+              />
+            ))}
+          </React.Fragment>
+        );
+      })}
+
       {/* Waves and things afloat */}
       {rows.map((i) => {
         const zone = zoneOf(i);
@@ -312,6 +378,9 @@ export default function SeaMap({
         const decoKey = zone.decos[i % zone.decos.length];
         const deco = DECOS[decoKey];
         const showDeco = hash(i) > 0.3;
+        const deco2 = DECOS[zone.decos[(i + 1) % zone.decos.length]];
+        const showDeco2 = hash(i + 5) > 0.45;
+        const deco2X = leftSide ? width * (0.03 + hash(i + 21) * 0.12) : width * (0.75 + hash(i + 21) * 0.12);
         const decoX = leftSide ? width * (0.06 + hash(i + 9) * 0.16) : width * (0.66 + hash(i + 9) * 0.16);
         const y = islandY(i);
         return (
@@ -341,6 +410,19 @@ export default function SeaMap({
                 }}
               >
                 <PixelSprite grid={deco.grid} palette={deco.palette} pixelSize={DECO_PX} />
+              </Animated.View>
+            ) : null}
+            {showDeco2 ? (
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: deco2X,
+                  top: y - 44,
+                  transform: [{ translateY: i % 2 ? bobB : bobA }],
+                }}
+              >
+                <PixelSprite grid={deco2.grid} palette={deco2.palette} pixelSize={DECO_PX} />
               </Animated.View>
             ) : null}
           </React.Fragment>

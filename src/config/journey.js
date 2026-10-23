@@ -16,6 +16,11 @@ export const JOURNEY = {
  * keyed by `key`). Never reorder or re-space the places already shipped -
  * people would wake up somewhere else. A test checks every place has its art.
  *
+ * `souvenir` (some places) is a local accessory the buddy wears on the map
+ * while it is there. Buying it (a non-consumable, PRICING.souvenir) keeps it
+ * as an outfit for good, and it can be bought later from the passport too;
+ * its sprite is the outfit of the same id in components/pixel/PetSprite.js.
+ *
  * `hello` is how people greet you there: the `word` as written locally, how
  * to say it in Latin letters when that differs, and `speak`, the speech
  * language that reads it aloud (null when phones have no voice for it).
@@ -48,6 +53,12 @@ export const DESTINATIONS = [
       'It is so big that astronauts can see it from space.',
     ],
     hello: { word: "G'day!", language: 'Australian English', speak: 'en-AU' },
+    souvenir: {
+      id: 'snorkel',
+      name: 'Snorkel mask',
+      description: 'For spotting turtles on the reef.',
+      productId: 'com.capwordsxxx.app.souvenir.snorkel',
+    },
   },
   {
     key: 'santorini',
@@ -104,6 +115,12 @@ export const DESTINATIONS = [
       'It is made of more than two million stone blocks.',
     ],
     hello: { word: 'أهلاً', romanized: 'Ahlan', language: 'Arabic', speak: 'ar-SA' },
+    souvenir: {
+      id: 'nemes',
+      name: 'Pharaoh headdress',
+      description: 'Striped in gold and blue, like a pharaoh.',
+      productId: 'com.capwordsxxx.app.souvenir.nemes',
+    },
   },
   {
     key: 'taj',
@@ -146,6 +163,12 @@ export const DESTINATIONS = [
       'Hundreds of thousands of people climb it every summer, many to watch the sunrise.',
     ],
     hello: { word: 'こんにちは', romanized: 'Konnichiwa', language: 'Japanese', speak: 'ja-JP' },
+    souvenir: {
+      id: 'kasa',
+      name: 'Kasa straw hat',
+      description: 'A wide straw hat for the climb up Fuji.',
+      productId: 'com.capwordsxxx.app.souvenir.kasa',
+    },
   },
   {
     key: 'kilauea',
@@ -160,6 +183,12 @@ export const DESTINATIONS = [
       'Thin strands of cooled lava are called "Pele\'s hair".',
     ],
     hello: { word: 'Aloha!', language: 'Hawaiian', speak: null },
+    souvenir: {
+      id: 'lei',
+      name: 'Flower lei',
+      description: 'A garland of flowers to say aloha.',
+      productId: 'com.capwordsxxx.app.souvenir.lei',
+    },
   },
   {
     key: 'forbidden',
@@ -213,6 +242,12 @@ export const DESTINATIONS = [
       language: 'Quechua',
       speak: null,
     },
+    souvenir: {
+      id: 'chullo',
+      name: 'Chullo hat',
+      description: 'A warm Andean knit hat with ear flaps.',
+      productId: 'com.capwordsxxx.app.souvenir.chullo',
+    },
   },
   {
     key: 'canyon',
@@ -227,6 +262,12 @@ export const DESTINATIONS = [
       'The bottom can be more than 10 °C warmer than the rim.',
     ],
     hello: { word: 'Howdy!', language: 'American English', speak: 'en-US' },
+    souvenir: {
+      id: 'cowboy',
+      name: 'Cowboy hat',
+      description: 'Shade for a sunny day at the canyon rim.',
+      productId: 'com.capwordsxxx.app.souvenir.cowboy',
+    },
   },
   {
     key: 'whitehouse',
@@ -255,6 +296,12 @@ export const DESTINATIONS = [
       'It is repainted by hand about every seven years.',
     ],
     hello: { word: 'Bonjour !', language: 'French', speak: 'fr-FR' },
+    souvenir: {
+      id: 'beret',
+      name: 'Beret',
+      description: 'A soft beret for a walk along the Seine.',
+      productId: 'com.capwordsxxx.app.souvenir.beret',
+    },
   },
   {
     key: 'venice',
@@ -269,6 +316,12 @@ export const DESTINATIONS = [
       'Much of it stands on wooden piles driven into the mud centuries ago.',
     ],
     hello: { word: 'Ciao!', language: 'Italian', speak: 'it-IT' },
+    souvenir: {
+      id: 'boater',
+      name: 'Gondolier hat',
+      description: 'A straw boater with a red ribbon.',
+      productId: 'com.capwordsxxx.app.souvenir.boater',
+    },
   },
   {
     key: 'glacier',
@@ -297,6 +350,12 @@ export const DESTINATIONS = [
       'Emperor penguin dads keep their egg warm on their feet all winter.',
     ],
     hello: null,
+    souvenir: {
+      id: 'bobble',
+      name: 'Bobble hat',
+      description: 'A cosy knit hat for the coldest place on Earth.',
+      productId: 'com.capwordsxxx.app.souvenir.bobble',
+    },
   },
   {
     key: 'aurora',
