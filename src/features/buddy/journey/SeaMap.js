@@ -443,7 +443,7 @@ export default function SeaMap({
               <View style={[styles.sign, { backgroundColor: zone.banner }]}>
                 <Text style={styles.signTitle}>{zone.name.toUpperCase()}</Text>
                 <Text style={styles.signSub}>
-                  {i > reached ? `UNLOCKS AT ISLAND ${i}` : `ISLAND ${i}+`}
+                  {i > reached ? `UNLOCKS AT ISLAND ${i}` : i === 0 ? 'FROM THE START' : `ISLAND ${i}+`}
                 </Text>
               </View>
             </View>
@@ -460,6 +460,16 @@ export default function SeaMap({
           state={i <= reached ? 'won' : i === next ? 'next' : 'locked'}
         />
       ))}
+
+      {/* The dock the voyage sets out from: island 0, not one that was earned */}
+      {first === 0 ? (
+        <View
+          pointerEvents="none"
+          style={[styles.milestoneTag, { left: islandX(0) - 50, top: islandY(0) + ISLAND_H + 2 }]}
+        >
+          <Text style={styles.milestoneText}>START</Text>
+        </View>
+      ) : null}
 
       {/* Milestones still ahead */}
       {rows

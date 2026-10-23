@@ -266,16 +266,21 @@ export default function StickerResultScreen({ route, navigation }) {
                 SHADOW.glow,
               ]}
             >
-              <Animated.View style={{ transform: [{ scale: recordPulse }] }}>
-                <PixelIcon name={isRecording ? 'stop' : 'mic'} size={20} color="#FBF3E0" />
+              <Animated.View style={[styles.recordIcon, { transform: [{ scale: recordPulse }] }]}>
+                <PixelIcon name={isRecording ? 'stop' : 'mic'} size={22} color="#FBF3E0" />
               </Animated.View>
-              <Text style={styles.recordText}>
-                {isRecording
-                  ? 'RECORDING... TAP TO STOP'
-                  : practiceCoins > 0
-                    ? 'PRACTICED! +1 COIN'
-                    : 'TAP TO RECORD YOURSELF (+1 COIN)'}
-              </Text>
+              <View style={styles.recordLabels}>
+                <Text style={styles.recordText}>
+                  {isRecording ? 'RECORDING...' : practiceCoins > 0 ? 'PRACTICED!' : 'RECORD YOURSELF'}
+                </Text>
+                <Text style={styles.recordSub}>
+                  {isRecording
+                    ? 'Tap to stop'
+                    : practiceCoins > 0
+                      ? '+1 coin earned · tap to try again'
+                      : 'Say it out loud · +1 coin'}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -391,18 +396,28 @@ const styles = StyleSheet.create({
   learnTranslation: { fontSize: 13, color: COLORS.textLight, fontWeight: '600', lineHeight: 18 },
   learnFact: { fontSize: 13, color: COLORS.primaryDark, fontWeight: '700', marginTop: 4, lineHeight: 18 },
 
-  actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 12 },
+  actionsContainer: { width: '100%', paddingHorizontal: 28, gap: 16 },
   recordButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 15,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     borderRadius: RADIUS.md,
     borderWidth: 3,
     borderColor: COLORS.outline,
-    gap: 9,
+    gap: 14,
   },
-  recordText: { color: '#FBF3E0', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  recordIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  recordLabels: { flex: 1, gap: 3 },
+  recordText: { color: '#FBF3E0', fontSize: 15, fontWeight: '900', letterSpacing: 0.8 },
+  recordSub: { color: '#FBF3E0CC', fontSize: 12, fontWeight: '700' },
   doneButton: { marginTop: 22, paddingHorizontal: 36, paddingVertical: 12 },
   doneButtonText: { color: COLORS.textLight, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
 });
