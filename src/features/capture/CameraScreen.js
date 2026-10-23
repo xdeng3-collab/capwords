@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
-  Easing,
   Image,
   Linking,
 } from 'react-native';
@@ -30,6 +29,7 @@ import {
   PixelSprite,
   useAlert,
 } from '../../components';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { recognizeAndTranslate, RecognitionFailedError } from '../../services/aiService';
 import { recordLearnedWord } from '../../services/learningService';
 import { getPet } from '../../services/petService';
@@ -39,6 +39,7 @@ import { loadAppSettings, peekAppSettings, setAppSetting } from '../../services/
 import { canLearnWord } from '../../services/subscriptionService';
 import { pressFeedback, selectFeedback } from '../../utils/haptics';
 import { CARET_DOWN, FLIP_ICON, PHOTOS_ICON } from './cameraArt';
+import RecognizingBuddy from './RecognizingBuddy';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FRAME_SIZE = SCREEN_WIDTH * 0.68;
@@ -113,7 +114,8 @@ export default function CameraScreen({ navigation }) {
   const zoomStart = useRef(0);
 
   const cameraRef = useRef(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReduceMotion();
+  const languageName = LANGUAGES.find((l) => l.code === targetLanguage)?.name || targetLanguage;
   const shutterScale = useRef(new Animated.Value(1)).current;
 
   const loadProfile = useCallback(async () => {
@@ -136,30 +138,6 @@ export default function CameraScreen({ navigation }) {
     }, [loadProfile])
   );
 
-  useEffect(() => {
-    if (isProcessing) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 800,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-    }
-  }, [isProcessing, pulseAnim]);
-
   const promptUpgrade = () => setPaywallVisible(true);
 
   const goToPlans = () => {
@@ -172,15 +150,12 @@ export default function CameraScreen({ navigation }) {
     setIsProcessing(true);
     setCapturedUri(uri);
     try {
-      const langName =
-        LANGUAGES.find((l) => l.code === targetLanguage)?.name || targetLanguage;
-
       // Step 1: recognise. Nothing is saved or charged until this succeeds.
       let recognition;
       let location;
       try {
         [recognition, location] = await Promise.all([
-          recognizeAndTranslate(base64, langName),
+          recognizeAndTranslate(base64, languageName),
           captureLocation(),
         ]);
       } catch (error) {
@@ -458,10 +433,7 @@ export default function CameraScreen({ navigation }) {
           <View style={[styles.corner, styles.cornerBR]} />
 
           {isProcessing ? (
-            <Animated.View style={[styles.processingBox, { transform: [{ scale: pulseAnim }] }]}>
-              <ActivityIndicator size="small" color="#FBF3E0" />
-              <Text style={styles.processingText}>FINDING THE WORD...</Text>
-            </Animated.View>
+            <RecognizingBuddy pet={pet} languageName={languageName} reduceMotion={reduceMotion} />
           ) : null}
 
           {!isProcessing && !cameraActive ? (
@@ -676,22 +648,6 @@ const styles = StyleSheet.create({
   cornerTR: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5 },
   cornerBL: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5 },
   cornerBR: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5 },
-  processingBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(58,42,26,0.8)',
-    borderWidth: 2,
-    borderColor: COLORS.sun,
-    borderRadius: RADIUS.sm,
-    padding: 16,
-  },
-  processingText: {
-    color: '#FBF3E0',
-    fontSize: 12,
-    marginTop: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
   guideText: {
     color: '#FBF3E0',
     fontSize: 13,
