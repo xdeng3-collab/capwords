@@ -41,5 +41,6 @@ export const ROUTES = {
   PRIVACY_POLICY: 'PrivacyPolicy',
   // Shared by more than one stack
   LANGUAGE_SELECT: 'LanguageSelect',
+  REVIEW: 'Review',
   AUTH: 'Auth',
 };

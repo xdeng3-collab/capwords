@@ -12,3 +12,4 @@ export * from './copy';
 export * from './routes';
 export * from './legal';
 export * from './journey';
+export * from './review';

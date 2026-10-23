@@ -8,8 +8,9 @@ export const COINS = {
   practiceBonus: 1, // practicing pronunciation of a new word
   cheerBonus: 1, // cheering a pal (per friend, per day)
   milestoneBonus: 100, // landing on a milestone island (see JOURNEY)
+  reviewBonus: 3, // finishing a review session, once per day
   // A dedicated learner earns roughly 25-30 coins/day (words + goal bonus +
-  // daily gift + practice + cheers), so packs are priced to feel like a
+  // daily gift + practice + review + cheers), so packs are priced to feel like a
   // shortcut, not the only path.
   packs: [
     { id: 'coins_small', coins: 150, price: 0.99 },

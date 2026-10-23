@@ -16,6 +16,7 @@ import { EmptyState, PixelIcon } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { getStickersByDate } from '../../services/collectionService';
 import { getStreak } from '../../services/progressService';
+import { getDueCount } from '../../services/reviewService';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { speakWord } from '../../utils/audio';
 import { todayKey } from '../../utils/date';
@@ -41,13 +42,19 @@ export default function CollectionScreen({ navigation }) {
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
   const [refreshing, setRefreshing] = useState(false);
   const [globeOpen, setGlobeOpen] = useState(false);
+  const [dueCount, setDueCount] = useState(0);
   const reduceMotion = useReduceMotion();
   const isFocused = useIsFocused();
 
   const loadData = useCallback(async () => {
-    const [groups, streakData] = await Promise.all([getStickersByDate(), getStreak()]);
+    const [groups, streakData, due] = await Promise.all([
+      getStickersByDate(),
+      getStreak(),
+      getDueCount(),
+    ]);
     setStickerGroups(groups);
     setStreak(streakData);
+    setDueCount(due);
   }, []);
 
   // Newest first, which is what the globe flies to when it opens.
@@ -192,6 +199,24 @@ export default function CollectionScreen({ navigation }) {
           data={stickerGroups}
           renderItem={renderDateGroup}
           keyExtractor={(group) => group.date}
+          ListHeaderComponent={
+            dueCount > 0 ? (
+              <TouchableOpacity
+                style={styles.reviewBanner}
+                activeOpacity={0.85}
+                onPress={() => {
+                  selectFeedback();
+                  navigation.navigate(ROUTES.REVIEW);
+                }}
+              >
+                <PixelIcon name="book" size={22} color={COLORS.water} />
+                <Text style={styles.reviewText}>
+                  {dueCount} {dueCount === 1 ? 'word' : 'words'} to review today
+                </Text>
+                <Text style={styles.reviewStart}>START</Text>
+              </TouchableOpacity>
+            ) : null
+          }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -208,6 +233,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  reviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    marginBottom: 16,
+    backgroundColor: COLORS.surface,
+    borderWidth: 3,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.md,
+    ...SHADOW.card,
+  },
+  reviewText: { flex: 1, fontSize: 15, fontWeight: '800', color: COLORS.text },
+  reviewStart: { fontSize: 13, fontWeight: '900', color: COLORS.water, letterSpacing: 1 },
   header: {
     paddingTop: 60,
     paddingHorizontal: H_PADDING,

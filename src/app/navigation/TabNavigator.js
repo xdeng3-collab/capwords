@@ -19,6 +19,7 @@ import {
   PrivacyPolicyScreen,
   ProfileScreen,
 } from '../../features/profile';
+import { ReviewScreen } from '../../features/review';
 import { SubscriptionScreen } from '../../features/subscription';
 
 const Tab = createBottomTabNavigator();
@@ -33,6 +34,7 @@ function PetStack() {
       <Stack.Screen name={ROUTES.PET_MAIN} component={PetScreen} />
       <Stack.Screen name={ROUTES.WARDROBE} component={WardrobeScreen} />
       <Stack.Screen name={ROUTES.TRAVEL_GUIDE} component={TravelGuideScreen} />
+      <Stack.Screen name={ROUTES.REVIEW} component={ReviewScreen} />
     </Stack.Navigator>
   );
 }
@@ -52,6 +54,7 @@ function CollectionStack() {
     <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name={ROUTES.COLLECTION_MAIN} component={CollectionScreen} />
       <Stack.Screen name={ROUTES.STICKER_DETAIL} component={StickerDetailScreen} />
+      <Stack.Screen name={ROUTES.REVIEW} component={ReviewScreen} />
     </Stack.Navigator>
   );
 }
