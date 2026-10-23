@@ -10,7 +10,8 @@ import PixelSprite from './PixelSprite';
  *
  * Species: 'cat' | 'dog' | 'bunny'
  * Moods:   'happy' | 'content' | 'neutral' | 'sad' | 'sleepy'
- * Outfits: 'none' | 'bow' | 'scarf' | 'cap' | 'crown' (see config OUTFITS)
+ * Outfits: 'none' | 'bow' | 'scarf' | 'cap' | 'crown' (see config OUTFITS),
+ *          plus each place's souvenir (see config DESTINATIONS)
  */
 
 // Shared palette keys used by every species' grid.
@@ -126,7 +127,7 @@ export function tallestPetSpriteHeight(pixelSize = 9) {
  * the blob's top row (ears occupy negative space), so outfits sit correctly
  * on every species regardless of ear height.
  */
-const OUTFIT_SPRITES = {
+export const OUTFIT_SPRITES = {
   bow: {
     x: 6,
     y: -2,
@@ -150,6 +151,98 @@ const OUTFIT_SPRITES = {
     y: -2,
     grid: ['g.gg.g', 'gggggg'],
     palette: { g: '#F2C14E' },
+  },
+  // Souvenirs: one per place that has one (config DESTINATIONS).
+  snorkel: {
+    x: 2,
+    y: -3,
+    grid: [
+      '..............t',
+      '..............t',
+      '..............t',
+      '..............t',
+      '.mmmmmmmmmmmm.t',
+      'mmgggmmmmgggmmt',
+      'mmgggmmmmgggmm.',
+      '.mmmmmmmmmmmm..',
+    ],
+    palette: { m: '#F2C14E', t: '#2F7FD0', g: 'rgba(170,225,255,0.55)' },
+  },
+  nemes: {
+    x: 1,
+    y: -3,
+    grid: [
+      '...yyyyyyyyyy...',
+      '..yyyyyyyyyyyy..',
+      '.ybybybybybybyb.',
+      'yb............by',
+      'by............yb',
+      'yb............by',
+      'by............yb',
+      'yb............by',
+    ],
+    palette: { y: '#F2C14E', b: '#2F5FB0' },
+  },
+  kasa: {
+    x: 1,
+    y: -4,
+    grid: [
+      '.......kk.......',
+      '.....kkkkkk.....',
+      '...kkkkkkkkkk...',
+      '.kkkkkkkkkkkkkk.',
+      'kKkKkKkKkKkKkKkK',
+    ],
+    palette: { k: '#E3C27A', K: '#B8913F' },
+  },
+  lei: {
+    x: 2,
+    y: 5,
+    grid: ['popypopypopypo', '.y.p.o.y.p.o..'],
+    palette: { p: '#F27C9E', o: '#FF9F45', y: '#FFE27A' },
+  },
+  chullo: {
+    x: 3,
+    y: -4,
+    grid: [
+      '.....yy.....',
+      '...rrrrrr...',
+      '..rywrywryr.',
+      '.rrrrrrrrrr.',
+      '.r........r.',
+      '.y........y.',
+    ],
+    palette: { r: '#D9342B', y: '#F2C14E', w: '#FFFFFF' },
+  },
+  cowboy: {
+    x: 1,
+    y: -4,
+    grid: [
+      '.....bbbbbb.....',
+      '....bbbbbbbb....',
+      '....bBBBBBBb....',
+      'b..bbbbbbbbbb..b',
+      '.bbbbbbbbbbbbbb.',
+    ],
+    palette: { b: '#B07A45', B: '#6B4423' },
+  },
+  beret: {
+    x: 2,
+    y: -3,
+    grid: ['.....n.......', '..nnnnnnnn...', '.nnnnhnnnnnn.', 'nnnnnnnnnnnnn'],
+    palette: { n: '#2E2A33', h: '#4A4552' },
+  },
+  boater: {
+    x: 2,
+    y: -3,
+    grid: ['...kkkkkkkk...', '...rrrrrrrr...', 'kkkkkkkkkkkkkk'],
+    palette: { k: '#EBCB7A', r: '#D9342B' },
+  },
+  bobble: {
+    x: 3,
+    y: -4,
+    grid: ['.....ww.....', '.....ww.....', '..bbbbbbbb..', '.bbbbbbbbbb.', 'wwwwwwwwwwww'],
+    palette: { b: '#4FB6D8', w: '#FFFFFF' },
   },
 };
 

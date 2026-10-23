@@ -3,6 +3,141 @@
   "nonRenewingSubscriptions" : [
   ],
   "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520600",
+      "localizations" : [
+        {
+          "description" : "For spotting turtles on the reef.",
+          "displayName" : "Snorkel mask",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.snorkel",
+      "referenceName" : "Souvenir: Snorkel mask",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520601",
+      "localizations" : [
+        {
+          "description" : "Striped in gold and blue, like a pharaoh.",
+          "displayName" : "Pharaoh headdress",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.nemes",
+      "referenceName" : "Souvenir: Pharaoh headdress",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520602",
+      "localizations" : [
+        {
+          "description" : "A wide straw hat for the climb up Fuji.",
+          "displayName" : "Kasa straw hat",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.kasa",
+      "referenceName" : "Souvenir: Kasa straw hat",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520603",
+      "localizations" : [
+        {
+          "description" : "A garland of flowers to say aloha.",
+          "displayName" : "Flower lei",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.lei",
+      "referenceName" : "Souvenir: Flower lei",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520604",
+      "localizations" : [
+        {
+          "description" : "A warm Andean knit hat with ear flaps.",
+          "displayName" : "Chullo hat",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.chullo",
+      "referenceName" : "Souvenir: Chullo hat",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520605",
+      "localizations" : [
+        {
+          "description" : "Shade for a sunny day at the canyon rim.",
+          "displayName" : "Cowboy hat",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.cowboy",
+      "referenceName" : "Souvenir: Cowboy hat",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520606",
+      "localizations" : [
+        {
+          "description" : "A soft beret for a walk along the Seine.",
+          "displayName" : "Beret",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.beret",
+      "referenceName" : "Souvenir: Beret",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520607",
+      "localizations" : [
+        {
+          "description" : "A straw boater with a red ribbon.",
+          "displayName" : "Gondolier hat",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.boater",
+      "referenceName" : "Souvenir: Gondolier hat",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "21520608",
+      "localizations" : [
+        {
+          "description" : "A cosy knit hat for the coldest place on Earth.",
+          "displayName" : "Bobble hat",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.capwordsxxx.app.souvenir.bobble",
+      "referenceName" : "Souvenir: Bobble hat",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_askToBuyEnabled" : false,

@@ -4,6 +4,7 @@ export const PRICING = {
   monthly: 3.99, // $3.99/month - unlimited words
   yearly: 29.99, // $29.99/year - unlimited words (37% discount)
   freeWordsPerDay: 3, // Free tier: 3 words per day
+  souvenir: 0.99, // a place's souvenir, kept for good (see DESTINATIONS)
 };
 
 // App Store product identifiers for the auto-renewing plans. These must match

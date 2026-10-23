@@ -1,23 +1,44 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { JOURNEY } from '../../config';
+import { JOURNEY, PRICING } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { BackButton, PixelIcon, PixelPanel, PixelSprite } from '../../components';
+import {
+  BackButton,
+  PetSprite,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  PixelSprite,
+  useAlert,
+} from '../../components';
+import { equipOutfit, getPetState } from '../../services/petService';
 import {
   currentIsland,
   getJourneyState,
   haloDaysLeft,
   markPlaceSeen,
 } from '../../services/progressService';
+import { buySouvenir, getSouvenirPrices } from '../../services/purchaseService';
+import { findSouvenir, souvenirStatus } from '../../services/souvenirService';
+import { refreshWidget } from '../../services/widgetService';
 import { speakWord } from '../../utils/audio';
-import { selectFeedback, tapFeedback } from '../../utils/haptics';
-import { ISLAND_GRID, ISLAND_PALETTES, ISLAND_STAND_ROW, PROPS, ZONES, zoneIndexOf } from './journey/seaArt';
+import { selectFeedback, successFeedback, tapFeedback } from '../../utils/haptics';
+import {
+  ISLAND_GRID,
+  ISLAND_PALETTES,
+  ISLAND_STAND_ROW,
+  PROPS,
+  ZONES,
+  islandGridOf,
+  zoneIndexOf,
+} from './journey/seaArt';
 
 /**
- * The travel guide behind the pin on the home map: where the buddy is, what
- * is special about it and how people say hello there, plus a passport with a
- * stamp for every place reached so far. Stamps open that place's page.
+ * The passport behind the book on the home map: where the buddy is, what is
+ * special about it, how people say hello there and its souvenir, plus a stamp
+ * for every place reached so far. Stamps open that place's page, so a
+ * souvenir missed on the way can still be bought later.
  */
 
 const HERO_PX = 6;
@@ -25,15 +46,20 @@ const HERO_PROP_PX = 4;
 const STAMP_PX = 2;
 
 export default function TravelGuideScreen({ navigation }) {
+  const showAlert = useAlert();
   const [journey, setJourney] = useState(null);
+  const [pet, setPet] = useState(null);
+  const [prices, setPrices] = useState({});
   const [selected, setSelected] = useState(null);
 
   const load = useCallback(async () => {
-    const j = await getJourneyState();
+    const [j, petState] = await Promise.all([getJourneyState(), getPetState()]);
     const here = ZONES[zoneIndexOf(currentIsland(j))];
     setJourney(j);
-    setSelected(here.key);
+    setPet(petState);
+    setSelected((key) => key ?? here.key);
     markPlaceSeen(here.key);
+    getSouvenirPrices().then(setPrices);
   }, []);
 
   useFocusEffect(
@@ -42,7 +68,7 @@ export default function TravelGuideScreen({ navigation }) {
     }, [load])
   );
 
-  if (!journey) return <View style={styles.container} />;
+  if (!journey || !pet) return <View style={styles.container} />;
 
   const island = currentIsland(journey);
   const hereIndex = zoneIndexOf(island);
@@ -58,6 +84,31 @@ export default function TravelGuideScreen({ navigation }) {
     setSelected(key);
   };
 
+  const souvenir = place.souvenir ? findSouvenir(place.souvenir.id) : null;
+  const souvenirState = souvenir ? souvenirStatus(souvenir, island, pet.ownedOutfits) : null;
+  const priceOf = (id) => prices[id] || `$${PRICING.souvenir.toFixed(2)}`;
+
+  const keepSouvenir = async () => {
+    tapFeedback();
+    const result = await buySouvenir(souvenir.id, island);
+    if (result.status === 'purchased') {
+      successFeedback();
+      load();
+      refreshWidget();
+    } else if (result.status === 'pending') {
+      showAlert('Waiting for approval', 'The souvenir will appear in the wardrobe once the purchase is approved.');
+    } else if (result.status === 'unavailable') {
+      showAlert('Not available yet', "Souvenirs can't be bought in this version yet.");
+    }
+  };
+
+  const wearSouvenir = async () => {
+    tapFeedback();
+    await equipOutfit(souvenir.id);
+    load();
+    refreshWidget();
+  };
+
   const sayHello = () => {
     tapFeedback();
     speakWord(place.hello.word, place.hello.speak);
@@ -67,7 +118,7 @@ export default function TravelGuideScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <BackButton onPress={() => navigation.goBack()} />
-        <Text style={styles.title}>TRAVEL GUIDE</Text>
+        <Text style={styles.title}>PASSPORT</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -130,6 +181,55 @@ export default function TravelGuideScreen({ navigation }) {
           </>
         ) : null}
 
+        {souvenir ? (
+          <>
+            <Text style={styles.groupTitle}>LOCAL SOUVENIR</Text>
+            <PixelPanel style={[styles.panel, styles.souvenirPanel]}>
+              <View style={styles.souvenirRow}>
+                <PetSprite
+                  mood="happy"
+                  species={pet.species}
+                  outfit={souvenir.id}
+                  pixelSize={4}
+                  animate={false}
+                />
+                <View style={styles.souvenirText}>
+                  <Text style={styles.souvenirName}>{souvenir.name}</Text>
+                  <Text style={styles.souvenirAbout}>{souvenir.description}</Text>
+                  <Text style={styles.souvenirStatus}>
+                    {souvenirState === 'owned'
+                      ? pet.equippedOutfit === souvenir.id
+                        ? 'In the wardrobe - wearing it now.'
+                        : 'In the wardrobe for good.'
+                      : souvenirState === 'here'
+                        ? `${pet.name} is wearing it while you're here.`
+                        : `You passed through here. You can still keep it.`}
+                  </Text>
+                </View>
+              </View>
+              {souvenirState === 'owned' ? (
+                pet.equippedOutfit === souvenir.id ? null : (
+                  <PixelButton
+                    label="Wear it everywhere"
+                    icon="check"
+                    color={COLORS.leaf}
+                    style={styles.souvenirButton}
+                    onPress={wearSouvenir}
+                  />
+                )
+              ) : (
+                <PixelButton
+                  label={`Keep it for ${priceOf(souvenir.id)}`}
+                  icon="star"
+                  color={COLORS.berry}
+                  style={styles.souvenirButton}
+                  onPress={keepSouvenir}
+                />
+              )}
+            </PixelPanel>
+          </>
+        ) : null}
+
         {isHere ? (
           <>
             <Text style={styles.groupTitle}>NEXT STOP</Text>
@@ -187,6 +287,20 @@ export default function TravelGuideScreen({ navigation }) {
                 <View style={styles.stampArt}>
                   <PixelSprite grid={prop.grid} palette={prop.palette} pixelSize={STAMP_PX} />
                 </View>
+                {z.souvenir ? (
+                  <View
+                    style={[
+                      styles.stampBadge,
+                      pet.ownedOutfits.includes(z.souvenir.id) && styles.stampBadgeOwned,
+                    ]}
+                  >
+                    <PixelIcon
+                      name={pet.ownedOutfits.includes(z.souvenir.id) ? 'check' : 'star'}
+                      size={10}
+                      color={COLORS.surface}
+                    />
+                  </View>
+                ) : null}
                 <Text style={[styles.stampName, { backgroundColor: z.banner }]} numberOfLines={1}>
                   {z.name}
                 </Text>
@@ -213,7 +327,7 @@ function PlaceDiorama({ place }) {
   return (
     <View style={{ width: islandW, height: top + ISLAND_GRID.length * HERO_PX }}>
       <PixelSprite
-        grid={ISLAND_GRID}
+        grid={islandGridOf(place)}
         palette={ISLAND_PALETTES[place.key]}
         pixelSize={HERO_PX}
         style={{ position: 'absolute', left: 0, top }}
@@ -305,6 +419,24 @@ const styles = StyleSheet.create({
     ...SHADOW.soft,
   },
   stampActive: { borderColor: COLORS.sun },
+  stampBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    padding: 3,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.berry,
+  },
+  stampBadgeOwned: { backgroundColor: COLORS.leaf },
+  souvenirPanel: { gap: 12 },
+  souvenirRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  souvenirText: { flex: 1, minWidth: 0 },
+  souvenirName: { fontSize: 17, fontWeight: '900', color: COLORS.text },
+  souvenirAbout: { fontSize: 13, fontWeight: '600', color: COLORS.textLight, marginTop: 2, lineHeight: 18 },
+  souvenirStatus: { fontSize: 12, fontWeight: '800', color: COLORS.primaryDark, marginTop: 6 },
+  souvenirButton: { alignSelf: 'stretch' },
   stampArt: { height: 60, alignItems: 'center', justifyContent: 'center' },
   stampName: {
     fontSize: 10,

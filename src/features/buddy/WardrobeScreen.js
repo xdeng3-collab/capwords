@@ -7,12 +7,19 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { COINS, OUTFITS, PET_SPECIES } from '../../config';
+import { COINS, OUTFITS, PET_SPECIES, PRICING } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
 import { PetSprite, PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
 import { refreshWidget } from '../../services/widgetService';
 import { buyOutfit, equipOutfit, getPetState, setPetSpecies } from '../../services/petService';
-import { arePacksForSale, buyCoinPack } from '../../services/purchaseService';
+import { currentIsland, getJourneyState } from '../../services/progressService';
+import {
+  arePacksForSale,
+  buyCoinPack,
+  buySouvenir,
+  getSouvenirPrices,
+} from '../../services/purchaseService';
+import { listSouvenirs } from '../../services/souvenirService';
 import { selectFeedback, successFeedback, tapFeedback } from '../../utils/haptics';
 
 export default function WardrobeScreen({ navigation }) {
@@ -20,11 +27,15 @@ export default function WardrobeScreen({ navigation }) {
   const [state, setState] = useState(null);
   // The outfit currently shown on the stage — lets users try before buying.
   const [preview, setPreview] = useState(null);
+  const [island, setIsland] = useState(0);
+  const [prices, setPrices] = useState({});
 
   const load = useCallback(async () => {
-    const petState = await getPetState();
+    const [petState, journey] = await Promise.all([getPetState(), getJourneyState()]);
     setState(petState);
+    setIsland(currentIsland(journey));
     setPreview((p) => p ?? petState.equippedOutfit);
+    getSouvenirPrices().then(setPrices);
   }, []);
 
   useFocusEffect(
@@ -37,8 +48,11 @@ export default function WardrobeScreen({ navigation }) {
     return <View style={styles.container} />;
   }
 
+  const souvenirs = listSouvenirs(island, state.ownedOutfits);
   const previewId = preview ?? state.equippedOutfit;
-  const previewOutfit = OUTFITS.find((o) => o.id === previewId) || OUTFITS[0];
+  const previewSouvenir = souvenirs.find((s) => s.id === previewId) || null;
+  const previewOutfit = previewSouvenir || OUTFITS.find((o) => o.id === previewId) || OUTFITS[0];
+  const priceOf = (id) => prices[id] || `$${PRICING.souvenir.toFixed(2)}`;
   const previewOwned = state.ownedOutfits.includes(previewId);
   const previewEquipped = state.equippedOutfit === previewId;
 
@@ -85,6 +99,32 @@ export default function WardrobeScreen({ navigation }) {
               successFeedback();
               load();
               refreshWidget();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBuySouvenir = () => {
+    const souvenir = previewSouvenir;
+    showAlert(
+      `Keep the ${souvenir.name}?`,
+      `A souvenir from ${souvenir.placeName}. It stays in ${state.name}'s wardrobe for good, to wear anywhere.`,
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: `Keep it for ${priceOf(souvenir.id)}`,
+          onPress: async () => {
+            const result = await buySouvenir(souvenir.id, island);
+            if (result.status === 'purchased') {
+              successFeedback();
+              load();
+              refreshWidget();
+            } else if (result.status === 'pending') {
+              showAlert('Waiting for approval', 'The souvenir will appear here once the purchase is approved.');
+            } else if (result.status === 'unavailable') {
+              showAlert('Not available yet', "Souvenirs can't be bought in this version yet.");
             }
           },
         },
@@ -149,7 +189,19 @@ export default function WardrobeScreen({ navigation }) {
             </Text>
           ) : null}
           {!previewEquipped ? (
-            previewOwned ? (
+            previewSouvenir && !previewOwned ? (
+              previewSouvenir.status === 'locked' ? (
+                <Text style={styles.lockedText}>Reach {previewSouvenir.placeName} to unlock it</Text>
+              ) : (
+                <PixelButton
+                  label={`Keep it for ${priceOf(previewSouvenir.id)}`}
+                  icon="star"
+                  color={COLORS.berry}
+                  style={styles.stageBtn}
+                  onPress={handleBuySouvenir}
+                />
+              )
+            ) : previewOwned ? (
               <PixelButton
                 label={previewId === 'none' ? 'Take outfit off' : 'Wear it'}
                 icon="check"
@@ -224,6 +276,54 @@ export default function WardrobeScreen({ navigation }) {
                       <Text style={styles.needText}>Need {outfit.price - state.coins} more</Text>
                     ) : null}
                   </>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Souvenirs from the journey */}
+        <Text style={styles.sectionTitle}>SOUVENIRS</Text>
+        <Text style={styles.sectionHint}>
+          At each of these places your buddy wears the local souvenir for free. Keep one for good
+          for {priceOf(null)}, then or any time after.
+        </Text>
+        <View style={styles.outfitGrid}>
+          {souvenirs.map((souvenir) => {
+            const equipped = state.equippedOutfit === souvenir.id;
+            const trying = previewId === souvenir.id;
+            const locked = souvenir.status === 'locked';
+            return (
+              <TouchableOpacity
+                key={souvenir.id}
+                style={[styles.outfitCard, trying && styles.cardSelected]}
+                onPress={() => handleTryOn(souvenir)}
+                accessibilityLabel={`${souvenir.name}, from ${souvenir.placeName}`}
+              >
+                <View style={locked && styles.lockedSprite}>
+                  <PetSprite
+                    mood="content"
+                    species={state.species}
+                    outfit={souvenir.id}
+                    pixelSize={3}
+                    animate={false}
+                  />
+                </View>
+                <Text style={styles.outfitName}>{souvenir.name.toUpperCase()}</Text>
+                <Text style={styles.placeText}>{souvenir.placeName}</Text>
+                {equipped ? (
+                  <Text style={styles.outfitStatus}>WEARING</Text>
+                ) : souvenir.status === 'owned' ? (
+                  <Text style={styles.outfitStatus}>OWNED</Text>
+                ) : locked ? (
+                  <View style={styles.lockRow}>
+                    <PixelIcon name="lock" size={10} color={COLORS.textMuted} />
+                    <Text style={styles.lockedTag}>ISLAND {souvenir.from}</Text>
+                  </View>
+                ) : (
+                  <View style={styles.priceTag}>
+                    <Text style={styles.priceText}>{priceOf(souvenir.id)}</Text>
+                  </View>
                 )}
               </TouchableOpacity>
             );
@@ -405,6 +505,29 @@ const styles = StyleSheet.create({
     borderColor: COLORS.outline,
     borderRadius: RADIUS.md,
     ...SHADOW.soft,
+  },
+  sectionHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textLight,
+    lineHeight: 17,
+    marginTop: -4,
+    marginBottom: 10,
+  },
+  placeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  lockedSprite: { opacity: 0.4 },
+  lockRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  lockedTag: { fontSize: 10, fontWeight: '900', color: COLORS.textMuted, letterSpacing: 0.5 },
+  lockedText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.textLight,
+    marginTop: 12,
   },
   outfitName: {
     fontSize: 11,

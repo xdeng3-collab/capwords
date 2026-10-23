@@ -14,6 +14,7 @@ import {
   haloDaysLeft,
   landOnIsland,
 } from '../../services/progressService';
+import { outfitOnMap, placeAt } from '../../services/souvenirService';
 import { fitGoalToPlan } from '../../services/subscriptionService';
 import { claimDailyGift, isDailyGiftAvailable } from '../../services/walletService';
 import { successFeedback } from '../../utils/haptics';
@@ -110,7 +111,15 @@ export default function PetScreen({ navigation }) {
   const haloDays = haloDaysLeft(journey);
   const place = zoneOf(petIsland);
   const guideIsNew = journey.seenPlace !== place.key;
-  const pet = { species: state.species, mood: state.mood, outfit: state.equippedOutfit };
+  // At a place with a souvenir the buddy wears it, on loan until it moves on.
+  const souvenir = placeAt(petIsland).souvenir;
+  const pet = {
+    species: state.species,
+    mood: state.mood,
+    outfit: outfitOnMap(state.equippedOutfit, petIsland),
+  };
+  const onLoan = souvenir && !state.ownedOutfits.includes(souvenir.id);
+  const speech = onLoan ? `Look, a ${souvenir.name.toLowerCase()}! I can wear it while we're here.` : mood.line;
 
   return (
     <View style={[styles.container, { backgroundColor: zoneOf(journey.reached).water }]}>
@@ -134,7 +143,7 @@ export default function PetScreen({ navigation }) {
           wordsToday={state.wordsToday}
           dailyGoal={state.dailyGoal}
           pet={pet}
-          speech={mood.line}
+          speech={speech}
           onSnap={() => navigation.navigate(TABS.CAMERA)}
           halo={haloDays > 0}
           reduceMotion={reduceMotion}
@@ -145,10 +154,10 @@ export default function PetScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.sideButton, styles.guide]}
           activeOpacity={0.85}
-          accessibilityLabel={`Travel guide: ${place.name}`}
+          accessibilityLabel={`Passport: ${place.name}`}
           onPress={() => navigation.navigate(ROUTES.TRAVEL_GUIDE)}
         >
-          <PixelIcon name="pin" size={22} color={COLORS.water} light={COLORS.surface} />
+          <PixelIcon name="passport" size={24} color={COLORS.primaryDark} light={COLORS.sun} />
           {guideIsNew ? <View style={styles.newDot} /> : null}
         </TouchableOpacity>
         <TouchableOpacity

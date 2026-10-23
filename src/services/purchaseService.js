@@ -1,5 +1,13 @@
 import StoreKitBilling from '../../modules/store-kit';
 import { IAP_PRODUCTS, PRODUCT_TO_PLAN } from '../config';
+import { getPet } from '../data/petStore';
+import {
+  SOUVENIRS,
+  canBuySouvenir,
+  findSouvenir,
+  grantSouvenirs,
+  matchSouvenirsTo,
+} from './souvenirService';
 import { getSubscription, updateSubscription } from './subscriptionService';
 import { addCoins } from './walletService';
 
@@ -38,6 +46,52 @@ export async function buyCoinPack(coins) {
   if (!arePacksForSale()) return { status: 'unavailable' };
   await addCoins(coins);
   return { status: 'purchased' };
+}
+
+// ==================== Souvenirs (StoreKit non-consumables) ====================
+
+const SOUVENIR_BY_PRODUCT = Object.fromEntries(SOUVENIRS.map((s) => [s.productId, s.id]));
+
+/**
+ * Buy a place's souvenir for someone whose buddy is on `island`. Only places
+ * already reached are for sale. Returns { status } like purchasePlan; on
+ * 'purchased' the souvenir is in the wardrobe and being worn.
+ *
+ * Builds without StoreKit (Expo Go, the simulator without a StoreKit config)
+ * hand it over in development, the same as packs, and refuse in release.
+ */
+export async function buySouvenir(souvenirId, island) {
+  const souvenir = findSouvenir(souvenirId);
+  if (!souvenir) return { status: 'unavailable' };
+  const pet = await getPet();
+  if (pet.ownedOutfits.includes(souvenirId)) return { status: 'owned' };
+  if (!canBuySouvenir(souvenir, island, pet.ownedOutfits)) return { status: 'locked' };
+
+  if (!isBillingAvailable()) {
+    if (!__DEV__) return { status: 'unavailable' };
+    await grantSouvenirs([souvenirId], { equip: true });
+    return { status: 'purchased' };
+  }
+
+  const result = await StoreKitBilling.purchase(souvenir.productId);
+  if (result?.status === 'purchased') {
+    await grantSouvenirs([souvenirId], { equip: true });
+  }
+  return result || { status: 'unknown' };
+}
+
+/** Souvenir prices from the App Store, keyed by souvenir id ({} if none load). */
+export async function getSouvenirPrices() {
+  if (!isBillingAvailable()) return {};
+  try {
+    const products = await StoreKitBilling.getProducts(SOUVENIRS.map((s) => s.productId));
+    return Object.fromEntries(
+      products.filter((p) => SOUVENIR_BY_PRODUCT[p.id]).map((p) => [SOUVENIR_BY_PRODUCT[p.id], p.price])
+    );
+  } catch (e) {
+    console.warn('Could not load souvenir prices', e);
+    return {};
+  }
 }
 
 // ==================== Subscriptions (StoreKit) ====================
@@ -118,6 +172,11 @@ export async function restorePurchases() {
  * listener can reuse it.
  */
 export async function applyEntitlements(owned) {
+  // Souvenirs ride along: they are owned by the Apple ID like the plans.
+  await matchSouvenirsTo(
+    (owned || []).map((e) => SOUVENIR_BY_PRODUCT[e.productId]).filter(Boolean)
+  );
+
   const current = await getSubscription();
 
   // Newest wins, so an upgrade from monthly to yearly reads correctly.

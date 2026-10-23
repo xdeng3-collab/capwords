@@ -1,16 +1,22 @@
-import { DESTINATIONS, JOURNEY } from '../../../../config';
+import { DESTINATIONS, JOURNEY, OUTFITS } from '../../../../config';
+import { OUTFIT_SPRITES } from '../../../../components';
 import {
   DECOS,
+  FAR,
   FLAG,
   HALO,
   ISLAND_GRID,
   ISLAND_PALETTES,
+  ISLAND_SHAPES,
   MILESTONE_FLAG,
   PROPS,
   SPARKLE,
+  SPECKS,
   STAR,
   WAVE_GRID,
   ZONES,
+  islandGridOf,
+  landmarkSilhouette,
   zoneIndexOf,
   zoneOf,
   zonesMissingArt,
@@ -62,7 +68,32 @@ describe('sprites', () => {
     ZONES.forEach((z) => {
       expect(PROPS[z.prop]).toBeDefined();
       z.decos.forEach((key) => expect(DECOS[key]).toBeDefined());
-      expect(unpainted(ISLAND_GRID, ISLAND_PALETTES[z.key])).toEqual([]);
+      expect([z.key, unpainted(islandGridOf(z), ISLAND_PALETTES[z.key])]).toEqual([z.key, []]);
+      expect(FAR[z.far.grid]).toBeDefined();
+      expect(unpainted(FAR[z.far.grid], { a: z.far.a, b: z.far.b })).toEqual([]);
+      expect(SPECKS[z.speck.grid]).toBeDefined();
+      expect(unpainted(SPECKS[z.speck.grid], { s: z.speck.s })).toEqual([]);
+      const silhouette = landmarkSilhouette(z);
+      expect(unpainted(silhouette.grid, silhouette.palette)).toEqual([]);
+    });
+  });
+
+  it('gives every island shape the same size, so the map lays them out alike', () => {
+    Object.entries(ISLAND_SHAPES).forEach(([name, grid]) => {
+      expect([name, grid.length]).toEqual([name, ISLAND_GRID.length]);
+      grid.forEach((row) => expect([name, row.length]).toEqual([name, ISLAND_GRID[0].length]));
+    });
+  });
+
+  it('draws every outfit and every souvenir on the buddy', () => {
+    const ids = [
+      ...OUTFITS.map((o) => o.id).filter((id) => id !== 'none'),
+      ...DESTINATIONS.filter((d) => d.souvenir).map((d) => d.souvenir.id),
+    ];
+    ids.forEach((id) => {
+      const sprite = OUTFIT_SPRITES[id];
+      expect([id, !!sprite]).toEqual([id, true]);
+      expect([id, unpainted(sprite.grid, sprite.palette)]).toEqual([id, []]);
     });
   });
 
