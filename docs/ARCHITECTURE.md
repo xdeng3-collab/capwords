@@ -55,7 +55,7 @@ The two rules that matter most:
 | A colour, spacing, shadow                          | `theme/`                                   |
 | A price, limit, product id, catalog entry, route name | `config/`                               |
 | A pure function with no app knowledge              | `utils/`                                   |
-| A new place on the home journey                    | The END of `DESTINATIONS` in `config/journey.js` (facts, greeting) + its look in `ZONE_ART` in `features/buddy/journey/seaArt.js`; never re-space shipped places |
+| A new place on the home journey                    | The END of `DESTINATIONS` in `config/journey.js` (facts, greeting, optional souvenir) + its look in `ZONE_ART` in `features/buddy/journey/seaArt.js` (island shape, distant scenery, specks); a souvenir also needs its sprite in `OUTFIT_SPRITES` (`components/pixel/PetSprite.js`) and a non-consumable in `storekit/CapWords.storekit` and App Store Connect; never re-space shipped places |
 
 ## Services
 
@@ -65,10 +65,11 @@ The two rules that matter most:
 | `collectionService`      | Stickers: save (which counts the word), list, group by day, delete   |
 | `progressService`        | Words per day, the streak, what happens when a word is learned, and the journey (islands, milestones, halo) |
 | `petService`             | Name, species, outfits, and the mood ladder (`derivePetMood` is pure) |
+| `souvenirService`        | Each place's souvenir: worn on loan while there, for sale once reached, matched to what the App Store says is owned |
 | `walletService`          | Coins, daily gift, practice bonus                                    |
 | `profileService`         | Local profile, onboarding state, goal-change cooldown                |
 | `subscriptionService`    | Daily allowance, per-word balance, promo codes                       |
-| `purchaseService`        | StoreKit subscriptions; word/coin packs (dev builds only until they have App Store products) |
+| `purchaseService`        | StoreKit subscriptions and souvenirs; word/coin packs (dev builds only until they have App Store products) |
 | `accountService`         | Supabase auth, the profile row, the progress mirror pals can read    |
 | `friendService`          | Pals: search, requests, cheers (all via RPCs)                        |
 | `aiService`              | Recognition and pronunciation prompts, parsing the answers           |

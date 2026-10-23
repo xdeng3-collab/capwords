@@ -9,7 +9,10 @@ import { DESTINATIONS } from '../../../config';
 // One zone per place in DESTINATIONS (config/journey.js), which says where it
 // starts and what to tell people about it. This is how each one looks: the
 // "water" is whatever the islands float over - sea, sand, lawn or cloud.
-// `surf` tints the spray under each island (white unless set).
+// `surf` tints the spray under each island (white unless set), `shape` picks
+// the island's outline from ISLAND_SHAPES, `far` the distant scenery behind
+// the islands (FAR, in its two colours) and `speck` the small texture
+// scattered over the ground (SPECKS).
 
 const ZONE_ART = {
   cove: {
@@ -18,6 +21,9 @@ const ZONE_ART = {
     banner: '#2FA6BC',
     ground: { t: '#F6D98E', T: '#E8C46F', s: '#D9A95B', S: '#B98545' },
     prop: 'palm',
+    shape: 'default',
+    far: { grid: 'treeline', a: '#4AB5C4', b: '#3FA3B2' },
+    speck: { grid: 'sparkle', s: '#E6FAFC' },
     decos: ['fish', 'buoy', 'fish2'],
   },
   reef: {
@@ -26,6 +32,9 @@ const ZONE_ART = {
     banner: '#2A82B8',
     ground: { t: '#F8E6BC', T: '#EBCF95', s: '#E09E96', S: '#B8706E' },
     prop: 'coral',
+    shape: 'default',
+    far: { grid: 'coralbed', a: '#3596C6', b: '#F27C9E' },
+    speck: { grid: 'bubble', s: '#D6F1FB' },
     decos: ['turtle', 'fish', 'boat'],
   },
   santorini: {
@@ -34,6 +43,9 @@ const ZONE_ART = {
     banner: '#1F5F9E',
     ground: { t: '#F7F3EA', T: '#E6DFD0', s: '#8C6A5A', S: '#6B4C40' },
     prop: 'dome',
+    shape: 'default',
+    far: { grid: 'village', a: '#DCE8F2', b: '#2F6FC1' },
+    speck: { grid: 'sparkle', s: '#BFE3F7' },
     decos: ['boat', 'gull', 'gull2'],
   },
   amazon: {
@@ -43,6 +55,9 @@ const ZONE_ART = {
     ground: { t: '#8BD16A', T: '#6FB855', s: '#8A5A3A', S: '#6B4423' },
     surf: '#A6E3A0',
     prop: 'kapok',
+    shape: 'default',
+    far: { grid: 'treeline', a: '#3B6B4A', b: '#2E5A3C' },
+    speck: { grid: 'tuft', s: '#6FA86A' },
     decos: ['parrot', 'lily', 'butterfly'],
   },
   sahara: {
@@ -52,6 +67,9 @@ const ZONE_ART = {
     ground: { t: '#D9A066', T: '#C48A50', s: '#A86B3C', S: '#82502A' },
     surf: '#F6DDA6',
     prop: 'camel',
+    shape: 'dune',
+    far: { grid: 'dunes', a: '#DDB36A', b: '#E8C47E' },
+    speck: { grid: 'dot', s: '#D4A257' },
     decos: ['dune', 'cactus', 'dune'],
   },
   giza: {
@@ -61,6 +79,9 @@ const ZONE_ART = {
     ground: { t: '#D8B07A', T: '#C49A62', s: '#9C7448', S: '#7A5838' },
     surf: '#FBE6B8',
     prop: 'pyramid',
+    shape: 'dune',
+    far: { grid: 'dunes', a: '#E3BE76', b: '#EDCB86' },
+    speck: { grid: 'dot', s: '#D9B068' },
     decos: ['camelSmall', 'dune', 'sun'],
   },
   taj: {
@@ -69,6 +90,9 @@ const ZONE_ART = {
     banner: '#3E8A82',
     ground: { t: '#D98C6A', T: '#C4735A', s: '#A85A44', S: '#7F4232' },
     prop: 'taj',
+    shape: 'default',
+    far: { grid: 'cypress', a: '#4E9890', b: '#3F857D' },
+    speck: { grid: 'sparkle', s: '#D6F2EE' },
     decos: ['lotus', 'lotus', 'gull2'],
   },
   greatwall: {
@@ -78,6 +102,9 @@ const ZONE_ART = {
     ground: { t: '#9CCB7A', T: '#7FB05E', s: '#8E7F6E', S: '#6B5E50' },
     surf: '#DCEFD0',
     prop: 'wall',
+    shape: 'terrace',
+    far: { grid: 'mountains', a: '#6E9F5C', b: '#8FBF77' },
+    speck: { grid: 'tuft', s: '#6E9F5C' },
     decos: ['cloud', 'lantern', 'gull2'],
   },
   fuji: {
@@ -86,6 +113,9 @@ const ZONE_ART = {
     banner: '#D9534F',
     ground: { t: '#F7C6D6', T: '#EAA6BE', s: '#8A6A55', S: '#6B4E40' },
     prop: 'fuji',
+    shape: 'default',
+    far: { grid: 'mountains', a: '#9CC6E8', b: '#FFFFFF' },
+    speck: { grid: 'petal', s: '#F7C6D6' },
     decos: ['torii', 'blossom', 'boat'],
   },
   kilauea: {
@@ -94,6 +124,9 @@ const ZONE_ART = {
     banner: '#B9472E',
     ground: { t: '#7D6C66', T: '#68584F', s: '#4F3F3C', S: '#382B2A' },
     prop: 'volcano',
+    shape: 'default',
+    far: { grid: 'mountains', a: '#264E55', b: '#E8452C' },
+    speck: { grid: 'dot', s: '#E8752C' },
     decos: ['rock', 'fish', 'rock'],
   },
   forbidden: {
@@ -102,6 +135,9 @@ const ZONE_ART = {
     banner: '#B8322A',
     ground: { t: '#E8E2D6', T: '#D4CCBC', s: '#B8322A', S: '#8E2A1F' },
     prop: 'palace',
+    shape: 'plaza',
+    far: { grid: 'rooftops', a: '#4F7E96', b: '#F2C14E' },
+    speck: { grid: 'sparkle', s: '#CFE3EC' },
     decos: ['lantern', 'lotus', 'cloud'],
   },
   galapagos: {
@@ -110,6 +146,9 @@ const ZONE_ART = {
     banner: '#1E7F8E',
     ground: { t: '#6E6A5E', T: '#5A564C', s: '#4A463E', S: '#35322C' },
     prop: 'tortoise',
+    shape: 'default',
+    far: { grid: 'mountains', a: '#2690A1', b: '#2FA3B5' },
+    speck: { grid: 'bubble', s: '#BDEFF2' },
     decos: ['iguana', 'fish', 'gull'],
   },
   machu: {
@@ -118,6 +157,9 @@ const ZONE_ART = {
     banner: '#5E8C3A',
     ground: { t: '#7FBF5E', T: '#62A148', s: '#A89A86', S: '#7F7262' },
     prop: 'machu',
+    shape: 'terrace',
+    far: { grid: 'mountains', a: '#8FB3D9', b: '#FFFFFF' },
+    speck: { grid: 'ripple', s: '#FFFFFF' },
     decos: ['cloud', 'llama', 'condor'],
   },
   canyon: {
@@ -126,6 +168,9 @@ const ZONE_ART = {
     banner: '#B5502F',
     ground: { t: '#E8935A', T: '#D47A45', s: '#B5502F', S: '#8C3A22' },
     prop: 'mesa',
+    shape: 'mesa',
+    far: { grid: 'mesas', a: '#B86A4E', b: '#C8553D' },
+    speck: { grid: 'ripple', s: '#B5E0E8' },
     decos: ['condor', 'cactus', 'balloon'],
   },
   whitehouse: {
@@ -135,7 +180,10 @@ const ZONE_ART = {
     ground: { t: '#9BD07E', T: '#7FB866', s: '#B7AFA0', S: '#8E877A' },
     surf: '#DDF0CF',
     prop: 'whitehouse',
-    decos: ['blossom', 'cloud', 'blossom'],
+    shape: 'plaza',
+    far: { grid: 'treeline', a: '#6AA85A', b: '#5C9A4E' },
+    speck: { grid: 'tuft', s: '#6AA85A' },
+    decos: ['blossom', 'obelisk', 'cloud'],
   },
   eiffel: {
     water: '#7FA6C9',
@@ -143,6 +191,9 @@ const ZONE_ART = {
     banner: '#3B5BA5',
     ground: { t: '#9CCB7A', T: '#7FB05E', s: '#C9B79A', S: '#A8957A' },
     prop: 'eiffel',
+    shape: 'plaza',
+    far: { grid: 'rooftops', a: '#6E95BA', b: '#E8C9A0' },
+    speck: { grid: 'sparkle', s: '#DCEAF6' },
     decos: ['balloon', 'cloud', 'boat'],
   },
   venice: {
@@ -151,6 +202,9 @@ const ZONE_ART = {
     banner: '#B5502F',
     ground: { t: '#E8C9A0', T: '#D4B086', s: '#C8553D', S: '#9C3D2B' },
     prop: 'campanile',
+    shape: 'plaza',
+    far: { grid: 'rooftops', a: '#2F8A88', b: '#C8553D' },
+    speck: { grid: 'sparkle', s: '#BFEAE4' },
     decos: ['gondola', 'gull', 'gondola'],
   },
   glacier: {
@@ -159,6 +213,9 @@ const ZONE_ART = {
     banner: '#2E5C96',
     ground: { t: '#F4FAFF', T: '#DCEEFA', s: '#A6D4EE', S: '#78B3D8' },
     prop: 'pine',
+    shape: 'floe',
+    far: { grid: 'icepeaks', a: '#6A93C4', b: '#FFFFFF' },
+    speck: { grid: 'sparkle', s: '#D4E9F9' },
     decos: ['iceberg', 'whale', 'floe'],
   },
   antarctica: {
@@ -167,6 +224,9 @@ const ZONE_ART = {
     banner: '#2A6FA8',
     ground: { t: '#FFFFFF', T: '#E4F2FB', s: '#BBDDF2', S: '#86BEE0' },
     prop: 'emperor',
+    shape: 'floe',
+    far: { grid: 'icepeaks', a: '#2D5583', b: '#E2F1FB' },
+    speck: { grid: 'dot', s: '#E2F1FB' },
     decos: ['penguin', 'iceberg', 'floe'],
   },
   aurora: {
@@ -175,6 +235,9 @@ const ZONE_ART = {
     banner: '#5B4BB5',
     ground: { t: '#EAF2FF', T: '#C9D6F0', s: '#5E5A6E', S: '#433F52' },
     prop: 'turfhouse',
+    shape: 'default',
+    far: { grid: 'ribbons', a: '#6BF0A8', b: '#B48CF0' },
+    speck: { grid: 'sparkle', s: '#FFF3B0' },
     decos: ['ribbon', 'moon', 'stars'],
   },
 };
@@ -203,21 +266,97 @@ export function zonesMissingArt() {
 }
 
 // ==================== Islands ====================
-// A floating chunk of land, seen slightly from above like a Jump Jump tile:
-// t/T the top surface, s/S the cliff, f the surf.
+// Floating chunks of land, seen slightly from above like a Jump Jump tile:
+// t/T the top surface, s/S the cliff, f the surf. Every shape is 20 x 10 with
+// the walking surface on the same rows, so the map lays them all out alike.
 
-export const ISLAND_GRID = [
-  '......tttttttt......',
-  '...tttttttttttttt...',
-  '.tttttttttttttttttt.',
-  'TttttttttttttttttttT',
-  '.TTttttttttttttttTT.',
-  '.ssssssssssssssssss.',
-  '..ssssssssssssssss..',
-  '...SssssssssssssS...',
-  '.ff.SSSSSSSSSSSS.ff.',
-  '...ffff......ffff...',
-];
+export const ISLAND_SHAPES = {
+  default: [
+    '......tttttttt......',
+    '...tttttttttttttt...',
+    '.tttttttttttttttttt.',
+    'TttttttttttttttttttT',
+    '.TTttttttttttttttTT.',
+    '.ssssssssssssssssss.',
+    '..ssssssssssssssss..',
+    '...SssssssssssssS...',
+    '.ff.SSSSSSSSSSSS.ff.',
+    '...ffff......ffff...',
+  ],
+  // A sand dune with wind ripples.
+  dune: [
+    '.......tttttt.......',
+    '....tttttttttttt....',
+    '..ttttTTttttttTTtt..',
+    '.tttttttttttttttttt.',
+    'ttTTtttttttttTTttttt',
+    'TttttttTTttttttttttT',
+    '.TTTTttttttttttTTTT.',
+    '..sSSTTTTTTTTTTSSs..',
+    '...ssssssssssssss...',
+    '.ff...ssssssss...ff.',
+  ],
+  // A flat slab of floating ice with cracks.
+  floe: [
+    '..tttttttttttttt....',
+    '.ttttttttTtttttttt..',
+    'tttTtttttTttttttttt.',
+    'ttttTTttttttttTttttt',
+    'TttttttttttttttttttT',
+    'sssssssssssssssssss.',
+    'SsssssssssssssssssS.',
+    '.SSSSSSSSSSSSSSSSS..',
+    'ff..fffff....fffff..',
+    '....................',
+  ],
+  // Stepped farm terraces held up by stone walls.
+  terrace: [
+    '.....tttttttttt.....',
+    '...tttttttttttttt...',
+    '..tttttttttttttttt..',
+    '.tttttttttttttttttt.',
+    'TTTTTTTTTTTTTTTTTTTT',
+    'ssssssssssssssssssss',
+    '.TTTTTTTTTTTTTTTTTT.',
+    '.ssssssssssssssssss.',
+    '...TTTTTTTTTTTTTT...',
+    '...SSSSSSSSSSSSSS...',
+  ],
+  // A paved square on two steps.
+  plaza: [
+    '....tttttttttttt....',
+    '..tTtttTtttTtttTtt..',
+    '.tttttttttttttttttt.',
+    'ttTtttTtttTtttTtttTt',
+    '.tttttttttttttttttt.',
+    'SSSSSSSSSSSSSSSSSSSS',
+    'ssssssssssssssssssss',
+    '.SSSSSSSSSSSSSSSSSS.',
+    '.ssssssssssssssssss.',
+    'ff.ffffffffffffff.ff',
+  ],
+  // A flat-topped butte with striped rock walls.
+  mesa: [
+    '.tttttttttttttttttt.',
+    'tttTttttttttttttTttt',
+    'tttttttttttttttttttt',
+    'TTTTTTTTTTTTTTTTTTTT',
+    'ssssssssssssssssssss',
+    'SSSSSSSSSSSSSSSSSSSS',
+    '.ssssssssssssssssss.',
+    '..SSSSSSSSSSSSSSSS..',
+    '...ssssssssssssss...',
+    '.ff..SSSSSSSSSS..ff.',
+  ],
+};
+
+/** The default outline; every shape has its size. */
+export const ISLAND_GRID = ISLAND_SHAPES.default;
+
+/** The outline islands take in `zone`. */
+export function islandGridOf(zone) {
+  return ISLAND_SHAPES[zone.shape] || ISLAND_SHAPES.default;
+}
 
 /** Rows down from the top of ISLAND_GRID where the buddy's feet rest. */
 export const ISLAND_STAND_ROW = 2;
@@ -229,6 +368,127 @@ const SURF = '#FFFFFF';
 export const ISLAND_PALETTES = Object.fromEntries(
   ZONES.map((z) => [z.key, { ...z.ground, f: z.surf || SURF }])
 );
+
+// ==================== The distance ====================
+// Scenery drawn behind the islands in two colours (a, b) so the ground does
+// not read as a flat fill: skylines, mountains, dunes, tree lines. Each place
+// also shows its own landmark big and far away (see landmarkSilhouette).
+
+export const FAR = {
+  hills: [
+    '......aaaa..............',
+    '....aaaaaaaa.......aaa..',
+    '..aaaaaaaaaaaa...aaaaaaa',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  mountains: [
+    '.....b..................',
+    '....bab.........b.......',
+    '...aaaaa.......aba......',
+    '..aaaaaaa.....aaaaa.....',
+    '.aaaaaaaaa...aaaaaaa....',
+    'aaaaaaaaaaaaaaaaaaaaaa..',
+  ],
+  icepeaks: [
+    '....b.........b.........',
+    '...bba.......bba........',
+    '..bbaaa.....baaaa...b...',
+    '.aaaaaaa...aaaaaaa.baa..',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  dunes: [
+    '.........bbbbb..........',
+    '.....bbbbaaaaabbb.......',
+    '..bbbaaaaaaaaaaaaabbb...',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  mesas: [
+    '...bbbbbb.........bbbb..',
+    '...aaaaaa........aaaaaa.',
+    '..aaaaaaaa......aaaaaaaa',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  treeline: [
+    '..aa.....aaa......aa....',
+    '.aaaa..aaaaaa...aaaaa.a.',
+    'abaaaaaaabaaaaaaaaabaaaa',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  cypress: [
+    '..a.....a.....a.....a...',
+    '.aaa...aaa...aaa...aaa..',
+    '.aaa...aaa...aaa...aaa..',
+    '.aba...aba...aba...aba..',
+    '..a.....a.....a.....a...',
+  ],
+  rooftops: [
+    '.....b.............b....',
+    '....bbb.....bb....bbb...',
+    '.bb.aaa..b.baab.bbaaa.bb',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  village: [
+    '......b..........b......',
+    '.....bbb...a....bbb.....',
+    '..a..aaa..aaa...aaa..a..',
+    '.aaa.aaa.aaaaa.aaaaaaaa.',
+    'aaaaaaaaaaaaaaaaaaaaaaaa',
+  ],
+  coralbed: [
+    '.b..........a......b....',
+    '.b.b...a...aa..b..bb.a..',
+    'bbbb..aaa..aaa.bb.bbbbb.',
+  ],
+  ribbons: [
+    'aa......aa......aa......',
+    '..aa..aa..aa..aa..aa..aa',
+    '....aa......aa......aa..',
+    '........................',
+    '.bb......bb......bb.....',
+    '...bb..bb..bb..bb..bb...',
+    '.....bb......bb......bb.',
+  ],
+};
+
+/** `hex` moved `amount` (-1..1) towards black or white. */
+function shade(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  const target = amount < 0 ? 0 : 255;
+  const mix = (c) => Math.round(c + (target - c) * Math.abs(amount));
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+/** Whether a background is dark enough that shapes on it should be lighter. */
+function isDark(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 90;
+}
+
+/**
+ * A place's landmark as one flat colour, for drawing it big in the distance:
+ * the ground's own colour a shade darker (lighter at night), like haze.
+ */
+export function landmarkSilhouette(zone) {
+  const prop = PROPS[zone.prop];
+  const colour = shade(zone.water, isDark(zone.water) ? 0.14 : -0.12);
+  const palette = {};
+  Object.keys(prop.palette).forEach((k) => {
+    palette[k] = colour;
+  });
+  return { grid: prop.grid, palette };
+}
+
+// Tiny marks scattered over the ground: sand grains, grass, sparkles, petals.
+export const SPECKS = {
+  dot: ['s'],
+  sparkle: ['.s.', 'sss', '.s.'],
+  tuft: ['s.s', '.s.'],
+  bubble: ['.s.', 's.s', '.s.'],
+  ripple: ['ss.ss'],
+  petal: ['s.', '.s'],
+};
 
 // ==================== Props that grow on islands ====================
 
@@ -711,6 +971,10 @@ export const DECOS = {
   gondola: {
     grid: ['....r......', '....k.....k', 'k...k....k.', '.kkkkkkkkk.', '..ffffff...'],
     palette: { r: '#E8574B', k: '#25303F', f: SURF },
+  },
+  obelisk: {
+    grid: ['..w..', '.www.', '.www.', '.www.', '.www.', '.www.', '.www.', 'ggggg'],
+    palette: { w: '#F4F1EA', g: '#5C9A4E' },
   },
   ribbon: {
     grid: ['g...g...', '.g.g.g.g', '..g...g.'],

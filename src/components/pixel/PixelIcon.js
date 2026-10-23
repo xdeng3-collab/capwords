@@ -149,10 +149,10 @@ const ICONS = {
     grid: ['.c.c.', 'ccccc', '.c.c.', 'ccccc', '..c..', 'c.c.c'],
     map: { c: 'C' },
   },
-  // A map pin: "where am I".
-  pin: {
-    grid: ['.ccc.', 'ccLcc', 'cLLLc', 'ccLcc', '.ccc.', '..c..'],
-    map: { c: 'C', L: 'L' },
+  // A passport: dark spine, a globe on the cover, the title line under it.
+  passport: {
+    grid: ['Occccc', 'OccLcc', 'OcLcLc', 'OccLcc', 'Occccc', 'OcLLLc', 'Occccc'],
+    map: { c: 'C', L: 'L', O: 'O' },
   },
   coin: {
     grid: ['.ccc.', 'ccccc', 'ccLcc', 'ccLcc', 'ccccc', '.ccc.'],
