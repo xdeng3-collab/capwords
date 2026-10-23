@@ -122,7 +122,7 @@ export default function StickerDetailScreen({ route, navigation }) {
 
         <PixelButton
           label="Share this word"
-          icon="heart"
+          icon="share"
           color={COLORS.water}
           onPress={() => {
             selectFeedback();

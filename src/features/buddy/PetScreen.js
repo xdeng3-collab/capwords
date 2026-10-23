@@ -153,7 +153,7 @@ export default function PetScreen({ navigation }) {
           accessibilityLabel={`Travel guide: ${place.name}`}
           onPress={() => navigation.navigate(ROUTES.TRAVEL_GUIDE)}
         >
-          <PixelIcon name="pin" size={22} color={COLORS.water} light={COLORS.surface} />
+          <PixelIcon name="pin" size={33} color={COLORS.secondary} light={COLORS.surface} />
           {guideIsNew ? <View style={styles.newDot} /> : null}
         </TouchableOpacity>
         <TouchableOpacity

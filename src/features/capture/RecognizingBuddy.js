@@ -6,12 +6,14 @@ import { COLORS, RADIUS } from '../../theme';
 // What the buddy is "doing" while the photo is recognised. Recognition takes a
 // few seconds, so the steps turn the wait into something to watch. They are a
 // story, not progress: the last one stays up until the answer arrives.
+// Each step is a short title and a detail, one line each, so nothing ever
+// breaks mid-phrase and the box keeps its size from step to step.
 export function recognizingSteps(languageName) {
   return [
-    'Taking a close look...',
-    `Finding the word in ${languageName}...`,
-    'Practising how to say it...',
-    'Writing you a fun fact...',
+    { title: 'LOOKING CLOSELY', detail: 'at your photo' },
+    { title: 'FINDING THE WORD', detail: `in ${languageName}` },
+    { title: 'PRACTISING IT', detail: 'so you can hear it' },
+    { title: 'ONE FUN FACT', detail: 'coming right up' },
   ];
 }
 
@@ -81,7 +83,11 @@ export default function RecognizingBuddy({ pet, languageName, reduceMotion = fal
   };
 
   return (
-    <View style={styles.box} accessibilityRole="progressbar" accessibilityLabel={steps[step]}>
+    <View
+      style={styles.box}
+      accessibilityRole="progressbar"
+      accessibilityLabel={`${steps[step].title} ${steps[step].detail}`}
+    >
       <View style={styles.stage}>
         <PetSprite
           mood="happy"
@@ -91,10 +97,15 @@ export default function RecognizingBuddy({ pet, languageName, reduceMotion = fal
           animate={!reduceMotion}
         />
         <Animated.View style={[styles.glass, glassMotion]}>
-          <PixelSprite grid={GLASS.grid} palette={GLASS.palette} pixelSize={3} />
+          <PixelSprite grid={GLASS.grid} palette={GLASS.palette} pixelSize={4} />
         </Animated.View>
       </View>
-      <Text style={styles.text}>{steps[step].toUpperCase()}</Text>
+      <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {steps[step].title}
+      </Text>
+      <Text style={styles.detail} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+        {steps[step].detail}
+      </Text>
       <View style={styles.dots}>
         {steps.map((_, i) => (
           <View key={i} style={[styles.dot, i <= step && styles.dotOn]} />
@@ -105,24 +116,35 @@ export default function RecognizingBuddy({ pet, languageName, reduceMotion = fal
 }
 
 const styles = StyleSheet.create({
+  // Fixed size: the steps change, the box does not.
   box: {
+    width: 220,
+    height: 168,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(58,42,26,0.85)',
     borderWidth: 2,
     borderColor: COLORS.sun,
     borderRadius: RADIUS.sm,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    maxWidth: 240,
+    paddingHorizontal: 14,
   },
   stage: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   glass: { marginBottom: 18 },
-  text: {
+  title: {
+    alignSelf: 'stretch',
     color: '#FBF3E0',
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 10,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  detail: {
+    alignSelf: 'stretch',
+    color: COLORS.sun,
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '700',
     textAlign: 'center',
   },
   dots: { flexDirection: 'row', gap: 5, marginTop: 8 },

@@ -41,7 +41,7 @@ export default function ShareSheet({ visible, card, message, onClose, onShared }
           ) : null}
           <PixelButton
             label={busy ? 'Getting it ready...' : 'Share'}
-            icon="heart"
+            icon="share"
             color={COLORS.secondary}
             onPress={share}
             disabled={busy}

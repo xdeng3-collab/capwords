@@ -145,7 +145,7 @@ export default function TravelGuideScreen({ navigation }) {
           <>
             <PixelButton
               label="Share where we are"
-              icon="heart"
+              icon="share"
               color={COLORS.water}
               onPress={() => {
                 selectFeedback();
