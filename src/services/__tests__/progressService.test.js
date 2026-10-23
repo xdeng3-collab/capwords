@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COINS, JOURNEY } from '../../config';
+import { COINS, DESTINATIONS, JOURNEY } from '../../config';
 import { getCoins } from '../walletService';
 import { updateUserProfile } from '../profileService';
 import {
@@ -11,6 +11,7 @@ import {
   isMilestoneIsland,
   landOnIsland,
   milestonesBetween,
+  placeAt,
   recordWordLearned,
 } from '../progressService';
 
@@ -190,5 +191,19 @@ describe('milestones', () => {
     jest.setSystemTime(day(JOURNEY.haloDays));
     expect(haloDaysLeft(landed)).toBe(0);
     expect(haloDaysLeft({})).toBe(0);
+  });
+});
+
+describe('placeAt', () => {
+  it('starts at home and moves on exactly at each place\'s first island', () => {
+    expect(placeAt(0)).toBe(DESTINATIONS[0]);
+    const second = DESTINATIONS[1];
+    expect(placeAt(second.from - 1)).toBe(DESTINATIONS[0]);
+    expect(placeAt(second.from)).toBe(second);
+  });
+
+  it('stays at the last place once the list runs out', () => {
+    const last = DESTINATIONS[DESTINATIONS.length - 1];
+    expect(placeAt(last.from + 1000)).toBe(last);
   });
 });

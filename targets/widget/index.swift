@@ -601,7 +601,7 @@ struct CapWordsWidget: Widget {
         StaticConfiguration(kind: kind, provider: CapWordsProvider()) { entry in
             CapWordsWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("CapWords")
+        .configurationDisplayName("Voyaword")
         .description("Your buddy, your streak, and how today is going.")
         .supportedFamilies([.systemSmall, .systemMedium])
     }

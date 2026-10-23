@@ -1,4 +1,4 @@
-# CapWords accounts
+# Voyaword accounts
 
 Supabase holds three things and nothing else:
 

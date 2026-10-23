@@ -1,4 +1,4 @@
-import { COINS, JOURNEY } from '../config';
+import { COINS, DESTINATIONS, JOURNEY } from '../config';
 import { getUserProfile } from '../data/profileStore';
 import {
   getAllWordCounts,
@@ -100,6 +100,20 @@ export function haloDaysLeft(journey, today = todayKey()) {
 /** Where the buddy stands: the island before the one a pending jump goes to. */
 export function currentIsland(journey) {
   return journey.reached > journey.landed ? journey.reached - 1 : journey.reached;
+}
+
+/** The place on the journey that island `island` belongs to. */
+export function placeAt(island) {
+  let place = DESTINATIONS[0];
+  for (const d of DESTINATIONS) if (island >= d.from) place = d;
+  return place;
+}
+
+/** Where the buddy is now: { journey, island, place }. */
+export async function getCurrentPlace() {
+  const journey = await getJourneyState();
+  const island = currentIsland(journey);
+  return { journey, island, place: placeAt(island) };
 }
 
 /** The saved journey, with today booked if today's goal is met. */

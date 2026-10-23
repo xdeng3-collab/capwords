@@ -21,7 +21,7 @@ export const PRIVACY_UPDATED = 'October 22, 2026';
 
 export const PRIVACY_SUMMARY = [
   'Your words, photos and voice recordings stay on your phone.',
-  'To recognise an object, the photo you take is sent to DeepSeek, a third-party AI service, through CapWords\' server, which does not store it - only after you agree.',
+  'To recognise an object, the photo you take is sent to DeepSeek, a third-party AI service, through Voyaword\' server, which does not store it - only after you agree.',
   'An account is optional. If you make one, your pals can see your name, @username, buddy, streak and word counts.',
   'No ads, no analytics or tracking tools, and we never sell your data.',
 ];
@@ -31,7 +31,7 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'What stays on your phone',
     body: [
-      'Everything you make in CapWords is stored only on this device:',
+      'Everything you make in Voyaword is stored only on this device:',
       [
         'your stickers - the photo, the word, its example sentence and fun fact',
         'where a photo was taken, if you allow location',
@@ -44,16 +44,16 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'Photos sent for recognition',
     body: [
-      'When you take or choose a photo to learn a word, the image is sent to DeepSeek, a third-party AI service, which tells the app what the object is and writes the word, an example sentence and a fun fact. The photo passes through CapWords\' server on its way to DeepSeek; the server does not store it.',
-      'CapWords asks for your permission before the first photo is sent, and you can turn this off in Me → App settings (you then cannot learn new words from photos).',
-      'CapWords does not keep the photo on any server. DeepSeek processes it under its own privacy policy. Please avoid photographing people, documents or anything private.',
+      'When you take or choose a photo to learn a word, the image is sent to DeepSeek, a third-party AI service, which tells the app what the object is and writes the word, an example sentence and a fun fact. The photo passes through Voyaword\' server on its way to DeepSeek; the server does not store it.',
+      'Voyaword asks for your permission before the first photo is sent, and you can turn this off in Me → App settings (you then cannot learn new words from photos).',
+      'Voyaword does not keep the photo on any server. DeepSeek processes it under its own privacy policy. Please avoid photographing people, documents or anything private.',
       'To stop the service being overused, our server counts how many requests come from each account, or from each install and network address if you are not signed in. It keeps only a scrambled form of these, never the photo, and deletes the counts within two days.',
     ],
   },
   {
     title: 'Your account (optional)',
     body: [
-      'You can use CapWords without an account. An account lets you add pals and keep them if you change phones. It is stored with Supabase, our database host, and holds:',
+      'You can use Voyaword without an account. An account lets you add pals and keep them if you change phones. It is stored with Supabase, our database host, and holds:',
       [
         'your email address, or your Apple ID if you use Sign in with Apple (Apple lets you hide your real email)',
         'your username and display name',
@@ -73,7 +73,7 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'Location, camera, microphone and photos',
     body: [
-      'CapWords asks iOS for permission before using any of these, and you can change your answer any time in iPhone Settings → CapWords.',
+      'Voyaword asks iOS for permission before using any of these, and you can change your answer any time in iPhone Settings → Voyaword.',
       [
         'Camera and Photos: to take or choose the picture you learn from.',
         'Microphone: to record yourself saying a word. Recordings stay on your phone.',
@@ -108,7 +108,7 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'Children',
     body: [
-      'CapWords is not directed to children under 13, and we do not knowingly collect personal information from them. If you think a child has made an account, contact us and we will delete it.',
+      'Voyaword is not directed to children under 13, and we do not knowingly collect personal information from them. If you think a child has made an account, contact us and we will delete it.',
     ],
   },
   {
@@ -123,7 +123,7 @@ export const PRIVACY_SECTIONS = [
 export const HELP_FAQ = [
   {
     q: 'How do I learn a new word?',
-    a: 'Tap SNAP, point the camera at something and tap the yellow button. Or tap PHOTOS to pick a picture you already have. CapWords tells you the word in the language you are learning and saves it as a sticker.',
+    a: 'Tap SNAP, point the camera at something and tap the yellow button. Or tap PHOTOS to pick a picture you already have. Voyaword tells you the word in the language you are learning and saves it as a sticker.',
   },
   {
     q: 'Why can I only learn 3 words a day?',
@@ -143,7 +143,7 @@ export const HELP_FAQ = [
   },
   {
     q: 'How do I manage or cancel my subscription?',
-    a: 'Subscriptions are handled by Apple: open iPhone Settings → your name → Subscriptions → CapWords. On a new phone, tap Restore purchases on the Upgrade page.',
+    a: 'Subscriptions are handled by Apple: open iPhone Settings → your name → Subscriptions → Voyaword. On a new phone, tap Restore purchases on the Upgrade page.',
   },
   {
     q: 'How do I get a refund?',

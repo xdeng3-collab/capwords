@@ -1,4 +1,4 @@
-# CapWords
+# Voyaword
 
 Expo (SDK 52) / React Native app. Read docs/ARCHITECTURE.md before adding or
 moving code: `src/` is layered and imports only point down the stack.

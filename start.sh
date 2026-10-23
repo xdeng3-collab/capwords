@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# CapWords - start script
+# Voyaword - start script
 # Builds (if needed), installs and launches the app on the iOS simulator,
 # and starts the Metro bundler. Just run: ./start.sh
 #
@@ -24,7 +24,7 @@ fi
 cd "$(dirname "$0")"
 
 echo "==============================================="
-echo "  CapWords - starting on the iOS simulator"
+echo "  Voyaword - starting on the iOS simulator"
 echo "  Node: $(node -v)"
 echo "==============================================="
 echo ""

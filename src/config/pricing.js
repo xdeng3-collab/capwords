@@ -23,6 +23,12 @@ export const PRODUCT_TO_PLAN = {
 // Promo codes. Redeeming one grants a plan without going through billing.
 // Keys must be uppercase - user input is trimmed and upper-cased before lookup.
 export const PROMO_CODES = {
+  VOYAWORD2026: {
+    plan: 'unlimited',
+    label: 'Unlimited Pro',
+    message: 'Unlimited words unlocked forever. Go snap everything!',
+  },
+  // From before the rename; kept so codes already handed out still work.
   CAPWORDS2026: {
     plan: 'unlimited',
     label: 'Unlimited Pro',

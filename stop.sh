@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# CapWords - stop script
+# Voyaword - stop script
 # Stops the Metro bundler and any running Expo dev server. Just run: ./stop.sh
 #
-echo "Stopping CapWords dev server..."
+echo "Stopping Voyaword dev server..."
 
 # Kill the Metro bundler listening on the default port (8081).
 if lsof -ti tcp:8081 >/dev/null 2>&1; then

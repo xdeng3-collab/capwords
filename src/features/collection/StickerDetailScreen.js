@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,18 @@ import {
 import { format } from 'date-fns';
 import { LANGUAGES } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
-import { BackButton, PixelButton, PixelIcon, PixelPanel, useAlert } from '../../components';
+import {
+  BackButton,
+  PixelButton,
+  PixelIcon,
+  PixelPanel,
+  ShareSheet,
+  useAlert,
+} from '../../components';
+import { wordShareCard } from '../capture';
 import { deleteSticker } from '../../services/collectionService';
+import { getPet } from '../../services/petService';
+import { getCurrentPlace } from '../../services/progressService';
 import { refreshWidget } from '../../services/widgetService';
 import { speakWord } from '../../utils/audio';
 import { selectFeedback, successFeedback } from '../../utils/haptics';
@@ -21,6 +31,16 @@ export default function StickerDetailScreen({ route, navigation }) {
   const { sticker } = route.params;
   const categoryStyle = getCategoryStyle(sticker.category);
   const showAlert = useAlert();
+  const [pet, setPet] = useState(null);
+  const [place, setPlace] = useState(null);
+  const [sharing, setSharing] = useState(false);
+
+  useEffect(() => {
+    getPet().then(setPet).catch(() => {});
+    getCurrentPlace()
+      .then((here) => setPlace(here.place))
+      .catch(() => {});
+  }, []);
 
   // Deleting only removes the sticker and its photo. The word still counted
   // toward the day it was learned, so streaks and coins already earned stay
@@ -100,6 +120,18 @@ export default function StickerDetailScreen({ route, navigation }) {
           style={styles.listenButton}
         />
 
+        <PixelButton
+          label="Share this word"
+          icon="share"
+          color={COLORS.water}
+          onPress={() => {
+            selectFeedback();
+            setSharing(true);
+          }}
+          size="lg"
+          style={styles.listenButton}
+        />
+
         {sticker.exampleSentence || sticker.funFact ? (
           <PixelPanel style={styles.learnCard}>
             {sticker.exampleSentence ? (
@@ -133,6 +165,13 @@ export default function StickerDetailScreen({ route, navigation }) {
           <Text style={styles.deleteLinkText}>Delete this sticker</Text>
         </TouchableOpacity>
       </View>
+
+      <ShareSheet
+        visible={sharing}
+        {...wordShareCard({ sticker, pet, place })}
+        onClose={() => setSharing(false)}
+        onShared={() => setSharing(false)}
+      />
     </ScrollView>
   );
 }

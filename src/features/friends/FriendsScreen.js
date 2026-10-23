@@ -267,7 +267,7 @@ export default function FriendsScreen({ navigation }) {
     </View>
   );
 
-  // Pals are the one part of CapWords that genuinely cannot work on-device:
+  // Pals are the one part of Voyaword that genuinely cannot work on-device:
   // there is no one to be pals with until there is an account.
   if (isSupabaseConfigured && !user) {
     return (

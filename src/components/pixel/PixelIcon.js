@@ -150,9 +150,36 @@ const ICONS = {
     map: { c: 'C' },
   },
   // A map pin: "where am I".
+  // A map marker: outlined teardrop with a hole, point at the bottom.
   pin: {
-    grid: ['.ccc.', 'ccLcc', 'cLLLc', 'ccLcc', '.ccc.', '..c..'],
-    map: { c: 'C', L: 'L' },
+    grid: [
+      '..OOOOO..',
+      '.OcccccO.',
+      'OccLLLccO',
+      'OcLLLLLcO',
+      'OccLLLccO',
+      'OcccccccO',
+      '.OcccccO.',
+      '.OOcccOO.',
+      '..OcccO..',
+      '...OcO...',
+      '....O....',
+    ],
+    map: { c: 'C', L: 'L', O: 'O' },
+  },
+  // The iOS share glyph: an arrow leaving a tray.
+  share: {
+    grid: [
+      '...c...',
+      '..ccc..',
+      '.c.c.c.',
+      '...c...',
+      'cc.c.cc',
+      'c.....c',
+      'c.....c',
+      'ccccccc',
+    ],
+    map: { c: 'C' },
   },
   coin: {
     grid: ['.ccc.', 'ccccc', 'ccLcc', 'ccLcc', 'ccccc', '.ccc.'],

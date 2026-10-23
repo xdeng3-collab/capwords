@@ -2,7 +2,7 @@
 module.exports = () => ({
   type: 'widget',
   name: 'CapWordsWidget',
-  displayName: 'CapWords',
+  displayName: 'Voyaword',
   // Shown beside the widget in the gallery. Resolved relative to this folder.
   icon: '../../assets/icon.png',
   // Shared container: the app writes the snapshot here, the widget reads it.

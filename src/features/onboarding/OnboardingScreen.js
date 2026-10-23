@@ -337,7 +337,7 @@ export default function OnboardingScreen({ onDone }) {
           </View>
           <Text style={styles.welcomeTitle}>Snap a photo.{'\n'}Learn the word.</Text>
           <Text style={styles.welcomeBody}>
-            Point your camera at anything around you. CapWords names it in the language you are
+            Point your camera at anything around you. Voyaword names it in the language you are
             learning and turns it into a sticker for your collection.
           </Text>
         </View>
@@ -664,7 +664,7 @@ export default function OnboardingScreen({ onDone }) {
       </View>
       <View style={styles.centeredBody}>
         <StickerPreview />
-        <Text style={styles.primerTitle}>CapWords needs your camera</Text>
+        <Text style={styles.primerTitle}>Voyaword needs your camera</Text>
         <Text style={styles.primerBody}>
           Snap things around you to learn their names.
         </Text>

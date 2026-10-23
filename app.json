@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CapWords",
+    "name": "Voyaword",
     "slug": "capwords",
     "version": "1.2.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
         "NSMicrophoneUsageDescription": "Record yourself saying a word.",
         "NSLocationWhenInUseUsageDescription": "Pin each word to where you found it.",
         "NSPhotoLibraryUsageDescription": "Choose photos to learn new words.",
-        "NSLocalNetworkUsageDescription": "CapWords connects to the local development server while running a development build.",
+        "NSLocalNetworkUsageDescription": "Voyaword connects to the local development server while running a development build.",
         "NSBonjourServices": [
           "_expo._tcp",
           "_dns-sd._udp"

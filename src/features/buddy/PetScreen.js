@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { COINS, JOURNEY, PET_MOODS, ROUTES, TABS } from '../../config';
 import { COLORS, RADIUS, SHADOW } from '../../theme';
-import { PixelIcon } from '../../components';
+import { PixelIcon, TabIcon } from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { useSession } from '../../hooks/useSession';
 import { describeCheers, getNewCheers, markCheersSeen } from '../../services/friendService';
 import { getPetState } from '../../services/petService';
+import { getDueCount } from '../../services/reviewService';
 import {
   currentIsland,
   getJourneyState,
@@ -40,6 +41,7 @@ export default function PetScreen({ navigation }) {
   const [milestone, setMilestone] = useState(null); // { island, coins }
   const { user } = useSession();
   const reduceMotion = useReduceMotion();
+  const [dueCount, setDueCount] = useState(0);
 
   const startJumpIfOwed = useCallback((j) => {
     if (j && j.reached > j.landed) setJumpTo(j.reached);
@@ -55,6 +57,9 @@ export default function PetScreen({ navigation }) {
     ]);
     setState(petState);
     setJourney(j);
+    getDueCount()
+      .then(setDueCount)
+      .catch(() => {});
     if (gift) setGiftOpen(true);
     else startJumpIfOwed(j);
 
@@ -148,8 +153,21 @@ export default function PetScreen({ navigation }) {
           accessibilityLabel={`Travel guide: ${place.name}`}
           onPress={() => navigation.navigate(ROUTES.TRAVEL_GUIDE)}
         >
-          <PixelIcon name="pin" size={22} color={COLORS.water} light={COLORS.surface} />
+          <PixelIcon name="pin" size={33} color={COLORS.secondary} light={COLORS.surface} />
           {guideIsNew ? <View style={styles.newDot} /> : null}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sideButton, styles.review]}
+          activeOpacity={0.85}
+          accessibilityLabel={dueCount ? `Review ${dueCount} words` : 'Review'}
+          onPress={() => navigation.navigate(ROUTES.REVIEW)}
+        >
+          <TabIcon name="book" size={26} />
+          {dueCount > 0 ? (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{dueCount > 9 ? '9+' : dueCount}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.sideButton}
@@ -224,8 +242,24 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xl,
     ...SHADOW.card,
   },
-  // Stacked above the wardrobe.
-  guide: { bottom: 112 + 52 + 12 },
+  // Stacked above the wardrobe: review, then the guide.
+  review: { bottom: 112 + 52 + 12 },
+  guide: { bottom: 112 + (52 + 12) * 2 },
+  countBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -7,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: COLORS.outline,
+    backgroundColor: COLORS.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: { fontSize: 11, fontWeight: '900', color: COLORS.surface },
   newDot: {
     position: 'absolute',
     top: -5,

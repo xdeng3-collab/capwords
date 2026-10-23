@@ -1,4 +1,4 @@
-# CapWords
+# Voyaword
 
 A visual language learning app where users photograph objects to learn vocabulary in their target language — wrapped in a cozy Stardew-Valley-style pixel art theme with a virtual pet companion.
 

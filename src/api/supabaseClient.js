@@ -7,7 +7,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 /**
  * The one Supabase client for the app.
  *
- * CapWords stays offline-first: the phone owns the collection, the streak, and
+ * Voyaword stays offline-first: the phone owns the collection, the streak, and
  * the pet, and Supabase holds the account, a mirror of the numbers, and the
  * friend graph. So every caller here has to survive Supabase being missing or
  * unreachable — `supabase` is null when the project is not configured, and

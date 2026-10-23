@@ -19,13 +19,22 @@ import {
 import * as Speech from 'expo-speech';
 import { CELEBRATIONS } from '../../config';
 import { COLORS, RADIUS, SHADOW, getCategoryStyle } from '../../theme';
-import { PetSprite, PixelButton, PixelIcon, StreakCelebration, useAlert } from '../../components';
+import {
+  PetSprite,
+  PixelButton,
+  PixelIcon,
+  ShareSheet,
+  StreakCelebration,
+  useAlert,
+} from '../../components';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { getPet } from '../../services/petService';
+import { getCurrentPlace } from '../../services/progressService';
 import { awardPracticeBonus } from '../../services/walletService';
 import { pressFeedback, selectFeedback, successFeedback } from '../../utils/haptics';
 import { formatPronunciation } from '../../utils/text';
 import { playbackMode, speakWord } from '../../utils/audio';
+import { wordShareCard } from './wordShareCard';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const STICKER_SIZE = SCREEN_WIDTH * 0.52;
@@ -40,10 +49,15 @@ export default function StickerResultScreen({ route, navigation }) {
   const [pet, setPet] = useState(null);
   const [practiceCoins, setPracticeCoins] = useState(0);
   const [playingMine, setPlayingMine] = useState(false);
+  const [place, setPlace] = useState(null);
+  const [sharing, setSharing] = useState(false);
   const reduceMotion = useReduceMotion();
 
   useEffect(() => {
     getPet().then(setPet).catch(() => {});
+    getCurrentPlace()
+      .then((here) => setPlace(here.place))
+      .catch(() => {});
   }, []);
 
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -251,6 +265,16 @@ export default function StickerResultScreen({ route, navigation }) {
               size="lg"
             />
           ) : null}
+          <PixelButton
+            label="Share this word"
+            icon="share"
+            color={COLORS.water}
+            onPress={() => {
+              selectFeedback();
+              setSharing(true);
+            }}
+            size="lg"
+          />
         </Animated.View>
 
         <TouchableOpacity style={styles.doneButton} onPress={() => navigation.goBack()}>
@@ -265,6 +289,13 @@ export default function StickerResultScreen({ route, navigation }) {
           reduceMotion={reduceMotion}
         />
       ) : null}
+
+      <ShareSheet
+        visible={sharing}
+        {...wordShareCard({ sticker, pet, place })}
+        onClose={() => setSharing(false)}
+        onShared={() => setSharing(false)}
+      />
     </View>
   );
 }

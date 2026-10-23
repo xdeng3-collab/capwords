@@ -63,7 +63,7 @@ export default function HelpScreen({ navigation }) {
             <LinkRow
               label="Email us"
               value={SUPPORT_EMAIL}
-              onPress={() => open(`mailto:${SUPPORT_EMAIL}?subject=CapWords%20help`)}
+              onPress={() => open(`mailto:${SUPPORT_EMAIL}?subject=Voyaword%20help`)}
             />
           ) : null}
           <LinkRow label="Manage subscription" onPress={() => open(MANAGE_SUBSCRIPTIONS_URL)} />
