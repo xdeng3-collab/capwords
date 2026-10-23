@@ -81,7 +81,7 @@ export default function AppSettingsScreen({ navigation }) {
               ? `Your iPhone's Reduce Motion is ${systemReduce ? 'on' : 'off'}, so animations are ${
                   effective ? 'reduced' : 'on'
                 }.`
-              : `Animations are ${effective ? 'reduced' : 'on'} in CapWords.`}
+              : `Animations are ${effective ? 'reduced' : 'on'} in Voyaword.`}
           </Text>
         </View>
 
@@ -108,7 +108,7 @@ export default function AppSettingsScreen({ navigation }) {
             <View style={styles.switchText}>
               <Text style={styles.rowLabel}>Photo recognition</Text>
               <Text style={styles.rowHint}>
-                Photos you take are sent to a third-party AI to recognise the object. When off, CapWords asks first.
+                Photos you take are sent to a third-party AI to recognise the object. When off, Voyaword asks first.
               </Text>
             </View>
             <View style={styles.switchWrap}>
@@ -128,7 +128,7 @@ export default function AppSettingsScreen({ navigation }) {
         </View>
 
         <Text style={styles.version}>
-          CapWords {Constants.expoConfig?.version || ''}
+          Voyaword {Constants.expoConfig?.version || ''}
         </Text>
       </ScrollView>
     </View>

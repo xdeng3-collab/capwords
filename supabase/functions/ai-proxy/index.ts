@@ -11,7 +11,7 @@ import { withSupabase } from 'npm:@supabase/server'
  * memory and are gone. The only thing written anywhere is a hit counter (see
  * migrations/20261022000000_ai_usage.sql).
  *
- * Who may call it. Accounts are optional in CapWords and recognising a photo
+ * Who may call it. Accounts are optional in Voyaword and recognising a photo
  * is not, so this accepts either
  *   - a signed-in user's JWT on Authorization  -> limited per user, or
  *   - the app's publishable key on apikey      -> limited per install and per IP.

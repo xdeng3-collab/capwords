@@ -1,10 +1,10 @@
-import { DEFAULT_DAILY_GOAL } from '../config';
+import { DEFAULT_DAILY_GOAL, DEFAULT_DISPLAY_NAME, PLACEHOLDER_DISPLAY_NAMES } from '../config';
 import { STORAGE_KEYS, readJSON, writeJSON } from './storage';
 
 function defaultProfile() {
   return {
     id: Date.now().toString(),
-    name: 'CapWords User',
+    name: DEFAULT_DISPLAY_NAME,
     avatar: null,
     targetLanguage: 'es',
     nativeLanguage: 'en',
@@ -28,6 +28,10 @@ export function readStoredProfile() {
 /** The local profile, created with defaults on first read. */
 export async function getUserProfile() {
   const stored = await readStoredProfile();
+  // A profile still wearing a placeholder from before the rename gets today's.
+  if (stored && stored.name !== DEFAULT_DISPLAY_NAME && PLACEHOLDER_DISPLAY_NAMES.includes(stored.name)) {
+    return writeJSON(STORAGE_KEYS.USER_PROFILE, { ...stored, name: DEFAULT_DISPLAY_NAME });
+  }
   if (stored) return stored;
   return writeJSON(STORAGE_KEYS.USER_PROFILE, defaultProfile());
 }

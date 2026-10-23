@@ -62,8 +62,8 @@ export default function LoadingScreen({ petName = 'your buddy', ready = true, on
     <View style={styles.container}>
       <Animated.View style={[styles.middle, { opacity: fade }]}>
         <View style={styles.wordmarkBlock}>
-          <Text style={styles.wordmark}>CAPWORDS</Text>
-          <Text style={styles.tagline}>SNAP IT · LEARN IT</Text>
+          <Text style={styles.wordmark}>VOYAWORD</Text>
+          <Text style={styles.tagline}>SNAP WORDS · SAIL THE WORLD</Text>
         </View>
 
         <PetSprite mood={current.mood} pixelSize={9} />

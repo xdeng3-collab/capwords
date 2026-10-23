@@ -1,6 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Platform } from 'react-native';
-import { APPLE_SIGN_IN_ENABLED } from '../config';
+import { APPLE_SIGN_IN_ENABLED, DEFAULT_DISPLAY_NAME, PLACEHOLDER_DISPLAY_NAMES } from '../config';
 import {
   friendlyError,
   isSupabaseConfigured,
@@ -15,7 +15,7 @@ import { getCoins } from './walletService';
 import { todayKey } from '../utils/date';
 
 /**
- * The user's CapWords account.
+ * The user's Voyaword account.
  *
  * Two rules keep this from turning the app into a thin client:
  *
@@ -306,7 +306,7 @@ export async function getMyProfile() {
     .insert({
       id: user.id,
       username: fallbackHandle,
-      display_name: user.user_metadata?.display_name || 'CapWords User',
+      display_name: user.user_metadata?.display_name || DEFAULT_DISPLAY_NAME,
     })
     .select()
     .maybeSingle();
@@ -445,7 +445,7 @@ async function afterSignIn(appleName) {
   if (!profile) return;
 
   // Apple only ever tells us the name once, on first authorisation.
-  if (appleName && profile.display_name === 'CapWords User') {
+  if (appleName && PLACEHOLDER_DISPLAY_NAMES.includes(profile.display_name)) {
     await updateMyProfile({ display_name: appleName });
     profile.display_name = appleName;
   }

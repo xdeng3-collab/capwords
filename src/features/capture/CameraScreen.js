@@ -381,7 +381,7 @@ export default function CameraScreen({ navigation }) {
         />
         <Text style={styles.permissionTitle}>LET'S SEE THE WORLD</Text>
         <Text style={styles.permissionText}>
-          CapWords uses your camera to turn everyday objects into pixel vocabulary stickers.
+          Voyaword uses your camera to turn everyday objects into pixel vocabulary stickers.
         </Text>
         <PixelButton
           label="Enable camera"

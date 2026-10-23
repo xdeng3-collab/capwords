@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CapWords API proxy - the laptop version, for local development.
+ * Voyaword API proxy - the laptop version, for local development.
  *
  * Production uses the ai-proxy Supabase Edge Function
  * (supabase/functions/ai-proxy), which does the same job with per-user and
@@ -129,7 +129,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`CapWords proxy listening on http://0.0.0.0:${PORT}`);
+  console.log(`Voyaword proxy listening on http://0.0.0.0:${PORT}`);
   console.log('Health check: GET /health · Chat: POST /v1/chat/completions');
   console.log(`Rate limit: ${RATE_LIMIT} requests per ${RATE_WINDOW_MS / 60000} min per client`);
   if (!PROXY_TOKEN) {
