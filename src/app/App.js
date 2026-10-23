@@ -10,6 +10,7 @@ import {
   pushProgress,
   startSessionAutoRefresh,
 } from '../services/accountService';
+import { rememberInviteFromUrl } from '../services/referralService';
 
 export default function App() {
   // Keep the home screen widget in step with the app: once on launch, and
@@ -32,11 +33,18 @@ export default function App() {
   // Links from Supabase's emails — the sign-up confirmation and the password
   // reset — come back into the app as capwords:// URLs carrying a session.
   // They have to be caught here rather than in a screen, because a cold start
-  // from Mail has no screen mounted yet. Anything that is not an auth link
-  // (the widget's capwords://camera) falls through to the navigator.
+  // from Mail has no screen mounted yet. An invite link is caught here for the
+  // same reason: on a first run there is no navigator yet, only onboarding,
+  // and its code has to wait for the account made there. Anything else (the
+  // widget's capwords://camera) falls through to the navigator.
   useEffect(() => {
-    Linking.getInitialURL().then((url) => url && completeAuthFromUrl(url));
-    const sub = Linking.addEventListener('url', ({ url }) => completeAuthFromUrl(url));
+    const handle = (url) => {
+      if (!url) return;
+      rememberInviteFromUrl(url).catch(() => {});
+      completeAuthFromUrl(url);
+    };
+    Linking.getInitialURL().then(handle);
+    const sub = Linking.addEventListener('url', ({ url }) => handle(url));
     return () => sub.remove();
   }, []);
 

@@ -8,6 +8,10 @@ import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { useSession } from '../../hooks/useSession';
 import { describeCheers, getNewCheers, markCheersSeen } from '../../services/friendService';
 import { getPetState } from '../../services/petService';
+import {
+  describeReferralNotice,
+  getReferralNotice,
+} from '../../services/referralService';
 import { getDueCount } from '../../services/reviewService';
 import {
   currentIsland,
@@ -38,6 +42,8 @@ export default function PetScreen({ navigation }) {
   const [giftOpen, setGiftOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState(null);
   const [cheerMessage, setCheerMessage] = useState(null);
+  // Invite Pro ending soon, or just ended. Waits behind a cheer.
+  const [planNotice, setPlanNotice] = useState(null);
   const [milestone, setMilestone] = useState(null); // { island, coins }
   const { user } = useSession();
   const reduceMotion = useReduceMotion();
@@ -70,11 +76,17 @@ export default function PetScreen({ navigation }) {
       if (cheers.length) {
         setCheerMessage(describeCheers(cheers));
         markCheersSeen(cheers);
+        return;
       }
     }
+
+    // Only asked when it can actually be shown: it is marked seen on asking.
+    const notice = await getReferralNotice().catch(() => null);
+    if (notice) setPlanNotice(notice);
   }, [startJumpIfOwed, user]);
 
   const hideCheer = useCallback(() => setCheerMessage(null), []);
+  const hidePlanNotice = useCallback(() => setPlanNotice(null), []);
 
   useFocusEffect(
     useCallback(() => {
@@ -187,6 +199,15 @@ export default function PetScreen({ navigation }) {
           onPress={() => {
             hideCheer();
             navigation.navigate(TABS.FRIENDS);
+          }}
+        />
+      ) : planNotice && !cheerMessage && !giftOpen && jumpTo == null && !milestone ? (
+        <CheerToast
+          message={describeReferralNotice(planNotice)}
+          onHidden={hidePlanNotice}
+          onPress={() => {
+            hidePlanNotice();
+            navigation.navigate(TABS.PROFILE, { screen: ROUTES.INVITE });
           }}
         />
       ) : null}

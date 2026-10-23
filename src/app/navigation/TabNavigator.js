@@ -19,6 +19,7 @@ import {
   PrivacyPolicyScreen,
   ProfileScreen,
 } from '../../features/profile';
+import { InviteScreen } from '../../features/referral';
 import { ReviewScreen } from '../../features/review';
 import { SubscriptionScreen } from '../../features/subscription';
 
@@ -81,6 +82,7 @@ function ProfileStack() {
       <Stack.Screen name={ROUTES.APP_SETTINGS} component={AppSettingsScreen} />
       <Stack.Screen name={ROUTES.HELP} component={HelpScreen} />
       <Stack.Screen name={ROUTES.PRIVACY_POLICY} component={PrivacyPolicyScreen} />
+      <Stack.Screen name={ROUTES.INVITE} component={InviteScreen} />
     </Stack.Navigator>
   );
 }

@@ -129,6 +129,7 @@ export async function applyEntitlements(owned) {
     return updateSubscription({
       type: PRODUCT_TO_PLAN[active.productId],
       expiresAt: active.expiresAt ? new Date(active.expiresAt).toISOString() : null,
+      periodStart: active.purchasedAt ? new Date(active.purchasedAt).toISOString() : null,
       promoCode: null,
     });
   }
@@ -136,7 +137,7 @@ export async function applyEntitlements(owned) {
   // Nothing owned. Only clear plans that came from the store — a promo-code
   // grant or a per-word balance is not Apple's to revoke.
   if (STORE_PLANS.includes(current.type)) {
-    return updateSubscription({ type: 'free', expiresAt: null });
+    return updateSubscription({ type: 'free', expiresAt: null, periodStart: null });
   }
   return current;
 }

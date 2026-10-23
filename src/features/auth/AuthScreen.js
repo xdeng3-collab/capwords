@@ -22,6 +22,11 @@ import {
   signInWithEmail,
   signUpWithEmail,
 } from '../../services/accountService';
+import {
+  getPendingInviteCode,
+  parseInviteCode,
+  setPendingInviteCode,
+} from '../../services/referralService';
 import { successFeedback } from '../../utils/haptics';
 
 /**
@@ -61,6 +66,8 @@ export default function AuthScreen({ onDone, onCancel, initialMode = 'signin' })
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  // A pal's invite code, filled in from an invite link when there was one.
+  const [inviteCode, setInviteCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -72,10 +79,33 @@ export default function AuthScreen({ onDone, onCancel, initialMode = 'signin' })
   useEffect(() => {
     let alive = true;
     isAppleSignInAvailable().then((ok) => alive && setAppleReady(ok));
+    getPendingInviteCode()
+      .then((code) => alive && code && setInviteCode(code))
+      .catch(() => {});
     return () => {
       alive = false;
     };
   }, []);
+
+  /**
+   * Park the invite code for the account about to be made. The app redeems it
+   * as soon as that account has a session (RootNavigator), which also covers
+   * the session arriving later from a confirmation email. Returns false, with
+   * the error shown, when what was typed cannot be a code.
+   */
+  const holdInviteCode = async () => {
+    if (mode !== 'signup') return true;
+    if (!inviteCode.trim()) {
+      await setPendingInviteCode(null);
+      return true;
+    }
+    if (!parseInviteCode(inviteCode)) {
+      setError('Invite codes are 6 letters and numbers. Check it, or leave it empty.');
+      return false;
+    }
+    await setPendingInviteCode(inviteCode);
+    return true;
+  };
 
   const run = async (task) => {
     if (busy) return;
@@ -102,6 +132,7 @@ export default function AuthScreen({ onDone, onCancel, initialMode = 'signin' })
         setError('Fill in your email and password first.');
         return;
       }
+      if (!(await holdInviteCode())) return;
 
       const result =
         mode === 'signup'
@@ -121,6 +152,7 @@ export default function AuthScreen({ onDone, onCancel, initialMode = 'signin' })
 
   const handleApple = () =>
     run(async () => {
+      if (!(await holdInviteCode())) return;
       const result = await signInWithApple();
       if (result.ok) {
         succeed(false);
@@ -272,6 +304,20 @@ export default function AuthScreen({ onDone, onCancel, initialMode = 'signin' })
           onSubmitEditing={handleEmailSubmit}
         />
 
+        {signingUp ? (
+          <TextInput
+            style={[styles.input, styles.inviteInput]}
+            placeholder="Invite code from a pal (optional)"
+            placeholderTextColor={COLORS.textMuted}
+            value={inviteCode}
+            onChangeText={setInviteCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            autoComplete="off"
+            maxLength={12}
+          />
+        ) : null}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
@@ -382,6 +428,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
+
+  // A code typed in reads better spaced out; the placeholder stays normal.
+  inviteInput: { letterSpacing: 1 },
 
   fill: { alignSelf: 'stretch', width: '100%', marginTop: 4 },
 
